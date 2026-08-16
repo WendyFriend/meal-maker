@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import IngredientInput from './features/meal-generator/components/IngredientInput';
 import TotalCalories from './features/meal-generator/components/TotalCalories';
+import Protein from './features/meal-generator/components/Protein';
+import './App.css';
 
 type CaloriePreference = {
     enabled: boolean;
     value: number;
 };
+
+export type ProteinPreference = {
+    type: 'grams' | 'percentage';
+    grams: number;
+    percentage: number;
+} | null;
 
 function App() {
     const [ingredients, setIngredients] = useState<string[]>([]);
@@ -15,17 +23,20 @@ function App() {
             value: 500,
         });
 
+    const [proteinPreference, setProteinPreference] =
+        useState<ProteinPreference>(null);
+
     function onCaloriePreferenceEnabledChange(enabled: boolean): void {
         setCaloriePreference((previous) => ({
             ...previous,
-            enabled
+            enabled,
         }));
     }
 
     function setCalorieValueChange(value: number): void {
         setCaloriePreference((previous) => ({
             ...previous,
-            value
+            value,
         }));
     }
 
@@ -34,7 +45,6 @@ function App() {
             <h1>🍲 Meal Maker</h1>
 
             <section>
-                <h2>What ingredients do you have?</h2>
                 <IngredientInput
                     ingredients={ingredients}
                     onChange={setIngredients}
@@ -42,7 +52,6 @@ function App() {
             </section>
 
             <section>
-                <h2>Calories</h2>
                 <TotalCalories
                     enabled={caloriePreference.enabled}
                     value={caloriePreference.value}
@@ -52,17 +61,10 @@ function App() {
             </section>
 
             <section>
-                <h2>Protein</h2>
-
-                <label>
-                    <input type="radio" name="protein" />
-                    No preference
-                </label>
-
-                <label>
-                    <input type="radio" name="protein" />
-                    40 g
-                </label>
+                <Protein
+                    preference={proteinPreference}
+                    onPreferenceChange={setProteinPreference}
+                />
             </section>
 
             <button>Generate my meal</button>

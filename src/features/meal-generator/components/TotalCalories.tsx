@@ -39,6 +39,7 @@ function TotalCalories({
 
     return (
         <div className="total-calories">
+            <h2>Calories</h2>
             <div className="total-calories-control">
                 <input
                     className="total-calories-checkbox"
