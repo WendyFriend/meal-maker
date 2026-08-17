@@ -216,6 +216,7 @@
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
+  color: #222
 }
 
 .ingredient-input input {
