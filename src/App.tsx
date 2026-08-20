@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import IngredientInput from './features/meal-generator/components/IngredientInput';
-import TotalCalories from './features/meal-generator/components/TotalCalories';
+import Calories from './features/meal-generator/components/Calories';
 import Protein from './features/meal-generator/components/Protein';
 import './App.css';
 
@@ -17,28 +17,6 @@ export type ProteinPreference = {
 
 function App() {
     const [ingredients, setIngredients] = useState<string[]>([]);
-    const [caloriePreference, setCaloriePreference] =
-        useState<CaloriePreference>({
-            enabled: false,
-            value: 500,
-        });
-
-    const [proteinPreference, setProteinPreference] =
-        useState<ProteinPreference>(null);
-
-    function onCaloriePreferenceEnabledChange(enabled: boolean): void {
-        setCaloriePreference((previous) => ({
-            ...previous,
-            enabled,
-        }));
-    }
-
-    function setCalorieValueChange(value: number): void {
-        setCaloriePreference((previous) => ({
-            ...previous,
-            value,
-        }));
-    }
 
     return (
         <main>
@@ -52,18 +30,12 @@ function App() {
             </section>
 
             <section>
-                <TotalCalories
-                    enabled={caloriePreference.enabled}
-                    value={caloriePreference.value}
-                    onEnabledChange={onCaloriePreferenceEnabledChange}
-                    onValueChange={setCalorieValueChange}
+                <Calories
                 />
             </section>
 
             <section>
                 <Protein
-                    preference={proteinPreference}
-                    onPreferenceChange={setProteinPreference}
                 />
             </section>
 

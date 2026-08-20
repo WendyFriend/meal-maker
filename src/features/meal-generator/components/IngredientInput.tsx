@@ -42,7 +42,7 @@ function IngredientInput({ ingredients, onChange }: IngredientInputProps) {
 
     return (
         <div className="ingredient-input">
-            <h2>What ingredients do you have?</h2>
+            <h2>Ingredients</h2>
             <div className="ingredient-chips">
                 {ingredients.map((ingredient) => (
                     <span className="ingredient-chip" key={ingredient}>

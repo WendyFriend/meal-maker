@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import '@ncdai/react-wheel-picker/style.css';
-import './Protein.css';
+import './Calories.css';
 
 import {
     WheelPicker,
@@ -10,40 +10,45 @@ import {
 import BottomSheet from './BottomSheet';
 import Picker from './Picker';
 
-function Protein() {
+function Calories() {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedValue, setSelectedValue] = useState('none');
-    const proteinOptions: WheelPickerOption[] = [
+    const caloriesOptions: WheelPickerOption[] = [
         { label: 'No preference', value: 'none' },
-        { label: '0%', value: '0' },
-        { label: '10%', value: '10' },
-        { label: '20%', value: '20' },
-        { label: '30%', value: '30' },
-        { label: '40%', value: '40' },
-        { label: '50%', value: '50' },
-        { label: '60%', value: '60' },
-        { label: '70%', value: '70' },
-        { label: '80%', value: '80' },
-        { label: '90%', value: '90' },
-        { label: '100%', value: '100' },
+        { label: '200 kcal', value: '200' },
+        { label: '250 kcal', value: '250' },
+        { label: '300 kcal', value: '300' },
+        { label: '350 kcal', value: '350' },
+        { label: '400 kcal', value: '400' },
+        { label: '450 kcal', value: '450' },
+        { label: '500 kcal', value: '500' },
+        { label: '550 kcal', value: '550' },
+        { label: '600 kcal', value: '600' },
+        { label: '650 kcal', value: '650' },
+        { label: '700 kcal', value: '700' },
+        { label: '750 kcal', value: '750' },
+        { label: '800 kcal', value: '800' },
+        { label: '850 kcal', value: '850' },
+        { label: '900 kcal', value: '900' },
+        { label: '950 kcal', value: '950' },
+        { label: '1000 kcal', value: '1000' },
     ];
 
-    const selectedLabel = proteinOptions.find(
+    const selectedLabel = caloriesOptions.find(
         (op) => op.value === selectedValue,
     )?.label;
 
     return (
-        <div className="protein">
-            <h2>Protein</h2>
+        <div className="calories">
+            <h2>Calories</h2>
             <Picker
                 value={selectedLabel}
                 onClick={() => setIsOpen(true)}
             ></Picker>
-
             <BottomSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
                 <WheelPickerWrapper className="w-56 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
                     <WheelPicker
-                        options={proteinOptions}
+                        options={caloriesOptions}
                         value={selectedValue}
                         onValueChange={setSelectedValue}
                         classNames={{
@@ -60,4 +65,4 @@ function Protein() {
     );
 }
 
-export default Protein;
+export default Calories;
