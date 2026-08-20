@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './IngredientInput.css';
 
 type IngredientInputProps = {
     ingredients: string[];
