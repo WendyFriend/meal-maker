@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import tailwindcss from '@tailwindcss/vite';
 
 const certPath = './192.168.4.26.pem';
 const keyPath = './192.168.4.26-key.pem';
@@ -52,6 +53,7 @@ export default defineConfig({
                 ],
             },
         }),
+        tailwindcss(),
     ],
     preview: {
         host: true,

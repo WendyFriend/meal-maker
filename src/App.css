@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;
@@ -203,7 +205,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #e8e8e8;
   color: #222;
   font-size: 16px;
