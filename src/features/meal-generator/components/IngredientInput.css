@@ -18,8 +18,8 @@
     gap: 6px;
     padding: 8px 12px;
     border-radius: 8px;
-    background: #e8e8e8;
-    color: #222;
+    background: var(--accent-green);
+    color: var(--text-h);
     font-size: 16px;
 }
 
@@ -30,7 +30,7 @@
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
-    color: #222
+    color: var(--text-h)
 }
 
 .ingredient-input input {
@@ -40,4 +40,5 @@
     border-radius: 8px;
     border: 1px solid #aaa;
     font-size: 16px;
+    border: 1.5px solid color-mix(in srgb, var(--text-h) 35%, var(--border));
 }
