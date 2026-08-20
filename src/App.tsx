@@ -4,16 +4,6 @@ import Calories from './features/meal-generator/components/Calories';
 import Protein from './features/meal-generator/components/Protein';
 import './App.css';
 
-type CaloriePreference = {
-    enabled: boolean;
-    value: number;
-};
-
-export type ProteinPreference = {
-    type: 'grams' | 'percentage';
-    grams: number;
-    percentage: number;
-} | null;
 
 function App() {
     const [ingredients, setIngredients] = useState<string[]>([]);
@@ -30,16 +20,14 @@ function App() {
             </section>
 
             <section>
-                <Calories
-                />
+                <Calories />
             </section>
 
             <section>
-                <Protein
-                />
+                <Protein />
             </section>
 
-            <button>Generate my meal</button>
+            <button className="create-button">Create</button>
         </main>
     );
 }

@@ -184,98 +184,45 @@
     border-right-color: var(--border);
   }
 }
+.create-button {
+  width: 33%;
+  margin: 24px auto 40px;
+  padding: 14px 24px;
 
-/* IngredientInput */
-.ingredient-input {
-  /* width: min(100%, 400px); */
-  width: 50%;
-  margin: 1em auto;
-  text-align: left;
-}
-
-.ingredient-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.ingredient-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: #e8e8e8;
-  color: #222;
-  font-size: 16px;
-}
-
-.ingredient-chip button {
   border: none;
-  background: none;
-  padding: 0;
-  font-size: 18px;
-  line-height: 1;
+  border-radius: 12px;
+
+  background: var(--accent);
+  color: #ffffff;
+
+  font: inherit;
+  font-weight: 600;
+  font-size: 17px;
+
   cursor: pointer;
-  color: #222
+
+  transition:
+    background 150ms ease,
+    transform 100ms ease,
+    box-shadow 150ms ease;
 }
 
-.ingredient-input input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #aaa;
-  font-size: 16px;
+.create-button:hover {
+  background: #ed6d60;
+  box-shadow: 0 4px 12px rgba(244, 121, 108, 0.25);
 }
 
-/* TotalCalories */
-.total-calories {
-  width: 50%;
-  /* width: min(100%, 400px); */
-  display: flex;
-  flex-direction: column;
-  margin: 1em auto;
-  text-align: left;
-  align-items: flex-start;
-  gap: 12px;
+.create-button:active {
+  transform: scale(0.98);
 }
 
-.total-calories-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 16px;
+.create-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
-.total-calories-checkbox {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
-.total-calories-input {
-  width: 90px;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #aaa;
-  font-size: 16px;
-  text-align: right;
-}
-
-.total-calories-input:focus {
+.ingredient-input input:focus {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-color: var(--accent);
 }
-
-.total-calories-input:disabled {
-  background: #f5f5f5;
-  color: #888;
-  cursor: not-allowed;
-}
-
