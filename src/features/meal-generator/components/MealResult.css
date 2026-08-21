@@ -201,3 +201,44 @@
     background: var(--surface);
     border-color: var(--accent);
 }
+
+.total-value-updated {
+    animation: total-value-flash 2500ms ease-in-out;
+    border-radius: 6px;
+}
+
+@keyframes total-value-flash {
+
+    0%,
+    100% {
+        color: var(--text-h);
+        background: transparent;
+        transform: scale(1);
+    }
+
+    /* First flash */
+    15% {
+        color: var(--accent);
+        background: rgba(244, 121, 108, 0.15);
+        transform: scale(1.06);
+    }
+
+    30% {
+        color: var(--text-h);
+        background: transparent;
+        transform: scale(1);
+    }
+
+    /* Second flash */
+    50% {
+        color: var(--accent);
+        background: rgba(244, 121, 108, 0.15);
+        transform: scale(1.06);
+    }
+
+    65% {
+        color: var(--text-h);
+        background: transparent;
+        transform: scale(1);
+    }
+}

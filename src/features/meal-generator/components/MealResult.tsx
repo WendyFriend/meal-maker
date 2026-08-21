@@ -22,6 +22,16 @@ function MealResult() {
         })),
     );
 
+    const [isTotalUpdated, setIsTotalUpdated] = useState(false);
+
+    function showTotalUpdated() {
+        setIsTotalUpdated(true);
+
+        setTimeout(() => {
+            setIsTotalUpdated(false);
+        }, 2500);
+    }
+
     function updateNutritionInput(
         name: string,
         field: 'caloriesPer100g' | 'proteinPer100g',
@@ -98,6 +108,8 @@ function MealResult() {
                     : ingredient,
             ),
         );
+
+        showTotalUpdated();
     }
 
     const mealWithNutrition = meal.map((mealIngredient) => {
@@ -200,6 +212,8 @@ function MealResult() {
                     : ingredient,
             ),
         );
+
+        showTotalUpdated();
     }
 
     return (
@@ -317,8 +331,22 @@ function MealResult() {
                         <div className="meal-row meal-total-row">
                             <span>Total</span>
                             <span></span>
-                            <span>{totalCalories} kcal</span>
-                            <span>{totalProtein} g</span>
+
+                            <span
+                                className={
+                                    isTotalUpdated ? 'total-value-updated' : ''
+                                }
+                            >
+                                {totalCalories} kcal
+                            </span>
+
+                            <span
+                                className={
+                                    isTotalUpdated ? 'total-value-updated' : ''
+                                }
+                            >
+                                {totalProtein} g
+                            </span>
                         </div>
 
                         <div className="meal-row protein-percentage">
