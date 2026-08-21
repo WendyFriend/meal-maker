@@ -36,11 +36,7 @@ function App() {
                 Create
             </button>
 
-            {showResult ? (
-                <MealResult />
-            ) : (
-                <>{/* ingredient + calorie + protein inputs */}</>
-            )}
+            {showResult && <MealResult />}
         </main>
     );
 }

@@ -1,28 +1,48 @@
 /* Meal Result */
 
 .meal-result {
-    width: min(100% - 40px, 500px);
+    width: min(100% - 32px, 500px);
     margin: 0 auto;
-    padding: 32px 0;
+    padding: 24px 0 40px;
+
+    color: var(--text-h);
+    font-size: 15px;
+    line-height: 1.5;
     text-align: left;
 }
 
 .meal-result h1 {
+    margin: 0 0 24px;
+
+    font-size: 1.5rem;
+    font-weight: 600;
     text-align: center;
 }
 
+/* Sections / Cards */
+
 .meal-section {
     width: 100%;
-    max-width: 500px;
     box-sizing: border-box;
 
-    margin: 32px auto 0;
-    padding: 20px;
+    margin-top: 24px;
+    padding: 16px;
 
     background: #dce8e9;
-    border-radius: 16px;
+    border-radius: 12px;
 
     text-align: left;
+}
+
+.meal-section+.meal-section {
+    margin-top: 24px;
+}
+
+.meal-section h2 {
+    margin: 0 0 10px;
+
+    font-size: 1.05rem;
+    font-weight: 600;
 }
 
 /* Horizontal scrolling */
@@ -52,38 +72,41 @@
 /* Ingredients table */
 
 .nutrition-table {
-    display: grid;
     grid-template-columns: max-content max-content max-content;
     column-gap: 20px;
-    width: max-content;
-    min-width: 100%;
 }
 
 .nutrition-row {
     display: contents;
 }
 
-.nutrition-row > span {
-    min-height: 44px;
+.nutrition-row>span {
+    min-height: 42px;
 
     display: flex;
     align-items: center;
 
-    border-bottom: 1px solid rgba(15, 30, 48, 0.12);
+    border-bottom: 1px solid rgba(15, 30, 48, 0.08);
 
     font-size: 15px;
+    white-space: nowrap;
 }
 
-.nutrition-header > span {
-    font-size: 14px;
+.nutrition-header>span {
+    min-height: 36px;
+
+    font-size: 13px;
     font-weight: 600;
-    color: var(--text-h);
+    color: rgba(15, 30, 48, 0.6);
 }
+
+/* Editable nutrition values */
 
 .nutrition-value {
     display: flex;
     align-items: center;
     gap: 3px;
+
     white-space: nowrap;
 }
 
@@ -98,8 +121,7 @@
     color: var(--text-h);
 
     font: inherit;
-    font-size: 14px;
-
+    font-size: 15px;
     text-align: left;
 
     transition:
@@ -108,7 +130,7 @@
 }
 
 .nutrition-input:hover {
-    background: var(--bg);
+    background: var(--surface);
     border-color: var(--border);
 }
 
@@ -118,56 +140,46 @@
     border-color: var(--accent);
 }
 
-
 /* Meal table */
 
-.meal-section h2 {
-    margin-bottom: 16px;
-}
-
 .meal-table {
-    display: grid;
-    grid-template-columns: max-content max-content max-content max-content;
+    grid-template-columns:
+        max-content max-content max-content max-content;
+
     column-gap: 20px;
-    width: max-content;
-    min-width: 100%;
 }
 
 .meal-row {
     display: contents;
 }
 
-.meal-row > span {
-    min-height: 44px;
+.meal-row>span {
+    min-height: 42px;
+
     display: flex;
     align-items: center;
+
+    border-bottom: 1px solid rgba(15, 30, 48, 0.08);
+
     font-size: 15px;
-    border-bottom: 1px solid rgba(15, 30, 48, 0.12)
+    white-space: nowrap;
 }
 
-.meal-header > span {
-    font-size: 14px;
+.meal-header>span {
+    min-height: 36px;
+
+    font-size: 13px;
     font-weight: 600;
-    color: var(--text-h);
+    color: rgba(15, 30, 48, 0.6);
 }
 
-.meal-total-row > span {
-    font-weight: 600;
-    color: var(--text-h);
-    border-bottom: none;
-}
-
-.protein-percentage {
-    margin-top: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--accent);
-}
+/* Editable meal amount */
 
 .meal-amount {
     display: flex;
     align-items: center;
     gap: 3px;
+
     white-space: nowrap;
 }
 
@@ -182,8 +194,7 @@
     color: var(--text-h);
 
     font: inherit;
-    font-size: 14px;
-
+    font-size: 15px;
     text-align: left;
 
     transition:
@@ -192,7 +203,7 @@
 }
 
 .meal-amount-input:hover {
-    background: var(--bg);
+    background: var(--surface);
     border-color: var(--border);
 }
 
@@ -202,9 +213,30 @@
     border-color: var(--accent);
 }
 
+/* Total */
+
+.meal-total-row>span {
+    min-height: 44px;
+
+    font-weight: 600;
+    color: var(--text-h);
+
+    border-bottom: none;
+}
+
+.protein-percentage {
+    margin-top: 8px;
+
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+/* Total update animation */
+
 .total-value-updated {
-    animation: total-value-flash 2500ms ease-in-out;
     border-radius: 6px;
+    animation: total-value-flash 2500ms ease-in-out;
 }
 
 @keyframes total-value-flash {
@@ -216,7 +248,6 @@
         transform: scale(1);
     }
 
-    /* First flash */
     15% {
         color: var(--accent);
         background: rgba(244, 121, 108, 0.15);
@@ -229,7 +260,6 @@
         transform: scale(1);
     }
 
-    /* Second flash */
     50% {
         color: var(--accent);
         background: rgba(244, 121, 108, 0.15);

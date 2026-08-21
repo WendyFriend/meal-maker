@@ -32,6 +32,10 @@ function MealResult() {
         }, 2500);
     }
 
+    function formatNumber(value: number): string {
+        return Number.isInteger(value) ? String(value) : value.toFixed(1);
+    }
+
     function updateNutritionInput(
         name: string,
         field: 'caloriesPer100g' | 'proteinPer100g',
@@ -239,7 +243,9 @@ function MealResult() {
                                 <span className="nutrition-value">
                                     <input
                                         className="nutrition-input"
-                                        type="number"
+                                        type="text"
+                                        inputMode="decimal"
+                                        enterKeyHint="done"
                                         value={ingredient.caloriesPer100g}
                                         onChange={(event) =>
                                             updateNutritionInput(
@@ -254,6 +260,12 @@ function MealResult() {
                                                 'caloriesPer100g',
                                             )
                                         }
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                event.currentTarget.blur();
+                                            }
+                                        }}
                                     />
                                     kcal
                                 </span>
@@ -261,8 +273,10 @@ function MealResult() {
                                 <span className="nutrition-value">
                                     <input
                                         className="nutrition-input"
-                                        type="number"
                                         value={ingredient.proteinPer100g}
+                                        type="text"
+                                        inputMode="decimal"
+                                        enterKeyHint="done"
                                         onChange={(event) =>
                                             updateNutritionInput(
                                                 ingredient.name,
@@ -276,6 +290,12 @@ function MealResult() {
                                                 'proteinPer100g',
                                             )
                                         }
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                event.currentTarget.blur();
+                                            }
+                                        }}
                                     />
                                     g
                                 </span>
@@ -303,7 +323,9 @@ function MealResult() {
                                 <span className="meal-amount">
                                     <input
                                         className="meal-amount-input"
-                                        type="number"
+                                        type="text"
+                                        inputMode="decimal"
+                                        enterKeyHint="done"
                                         value={
                                             mealInputs.find(
                                                 (input) =>
@@ -320,11 +342,21 @@ function MealResult() {
                                         onBlur={() =>
                                             commitMealAmount(ingredient.name)
                                         }
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                event.currentTarget.blur();
+                                            }
+                                        }}
                                     />
                                     g
                                 </span>
-                                <span>{ingredient.calories} kcal</span>
-                                <span>{ingredient.protein} g</span>
+                                <span>
+                                    {formatNumber(ingredient.calories)} kcal
+                                </span>
+                                <span>
+                                    {formatNumber(ingredient.protein)} g
+                                </span>
                             </div>
                         ))}
 
@@ -337,7 +369,7 @@ function MealResult() {
                                     isTotalUpdated ? 'total-value-updated' : ''
                                 }
                             >
-                                {totalCalories} kcal
+                                {formatNumber(totalCalories)} kcal
                             </span>
 
                             <span
@@ -345,7 +377,7 @@ function MealResult() {
                                     isTotalUpdated ? 'total-value-updated' : ''
                                 }
                             >
-                                {totalProtein} g
+                                {formatNumber(totalProtein)} g
                             </span>
                         </div>
 
