@@ -3,10 +3,11 @@ import IngredientInput from './features/meal-generator/components/IngredientInpu
 import Calories from './features/meal-generator/components/Calories';
 import Protein from './features/meal-generator/components/Protein';
 import './App.css';
-
+import MealResult from './features/meal-generator/components/MealResult';
 
 function App() {
     const [ingredients, setIngredients] = useState<string[]>([]);
+    const [showResult, setShowResult] = useState(false);
 
     return (
         <main>
@@ -27,7 +28,19 @@ function App() {
                 <Protein />
             </section>
 
-            <button className="create-button">Create</button>
+            <button
+                type="button"
+                className="create-button"
+                onClick={() => setShowResult(true)}
+            >
+                Create
+            </button>
+
+            {showResult ? (
+                <MealResult />
+            ) : (
+                <>{/* ingredient + calorie + protein inputs */}</>
+            )}
         </main>
     );
 }

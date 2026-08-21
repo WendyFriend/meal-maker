@@ -1,0 +1,203 @@
+/* Meal Result */
+
+.meal-result {
+    width: min(100% - 40px, 500px);
+    margin: 0 auto;
+    padding: 32px 0;
+    text-align: left;
+}
+
+.meal-result h1 {
+    text-align: center;
+}
+
+.meal-section {
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+
+    margin: 32px auto 0;
+    padding: 20px;
+
+    background: #dce8e9;
+    border-radius: 16px;
+
+    text-align: left;
+}
+
+/* Horizontal scrolling */
+
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    /* Hide scrollbar */
+    scrollbar-width: none;
+}
+
+.table-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* Shared table styles */
+
+.nutrition-table,
+.meal-table {
+    display: grid;
+    width: max-content;
+    min-width: 100%;
+}
+
+/* Ingredients table */
+
+.nutrition-table {
+    display: grid;
+    grid-template-columns: max-content max-content max-content;
+    column-gap: 20px;
+    width: max-content;
+    min-width: 100%;
+}
+
+.nutrition-row {
+    display: contents;
+}
+
+.nutrition-row > span {
+    min-height: 44px;
+
+    display: flex;
+    align-items: center;
+
+    border-bottom: 1px solid rgba(15, 30, 48, 0.12);
+
+    font-size: 15px;
+}
+
+.nutrition-header > span {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-h);
+}
+
+.nutrition-value {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.nutrition-input {
+    width: 60px;
+    padding: 4px 2px;
+
+    border: 1px solid transparent;
+    border-radius: 5px;
+
+    background: transparent;
+    color: var(--text-h);
+
+    font: inherit;
+    font-size: 14px;
+
+    text-align: left;
+
+    transition:
+        border-color 150ms ease,
+        background 150ms ease;
+}
+
+.nutrition-input:hover {
+    background: var(--bg);
+    border-color: var(--border);
+}
+
+.nutrition-input:focus {
+    outline: none;
+    background: var(--surface);
+    border-color: var(--accent);
+}
+
+
+/* Meal table */
+
+.meal-section h2 {
+    margin-bottom: 16px;
+}
+
+.meal-table {
+    display: grid;
+    grid-template-columns: max-content max-content max-content max-content;
+    column-gap: 20px;
+    width: max-content;
+    min-width: 100%;
+}
+
+.meal-row {
+    display: contents;
+}
+
+.meal-row > span {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+    border-bottom: 1px solid rgba(15, 30, 48, 0.12)
+}
+
+.meal-header > span {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-h);
+}
+
+.meal-total-row > span {
+    font-weight: 600;
+    color: var(--text-h);
+    border-bottom: none;
+}
+
+.protein-percentage {
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.meal-amount {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.meal-amount-input {
+    width: 55px;
+    padding: 4px 2px;
+
+    border: 1px solid transparent;
+    border-radius: 5px;
+
+    background: transparent;
+    color: var(--text-h);
+
+    font: inherit;
+    font-size: 14px;
+
+    text-align: left;
+
+    transition:
+        border-color 150ms ease,
+        background 150ms ease;
+}
+
+.meal-amount-input:hover {
+    background: var(--bg);
+    border-color: var(--border);
+}
+
+.meal-amount-input:focus {
+    outline: none;
+    background: var(--surface);
+    border-color: var(--accent);
+}
