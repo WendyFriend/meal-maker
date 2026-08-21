@@ -31,6 +31,8 @@ function IngredientInput({ ingredients, onChange }: IngredientInputProps) {
 
         onChange([...ingredients, ingredient]);
         setInput(''); // clear the input field
+
+        event.currentTarget.blur();
     }
 
     function removeIngredient(ingredientToRemove: string) {
@@ -64,6 +66,7 @@ function IngredientInput({ ingredients, onChange }: IngredientInputProps) {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
+                enterKeyHint="done"
                 placeholder="Add an ingredient..."
             />
 
