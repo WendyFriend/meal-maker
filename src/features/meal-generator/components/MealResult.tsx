@@ -1,20 +1,16 @@
 import { useState } from 'react';
-import { mockIngredientNutrition } from '../mockData';
 import './MealResult.css';
-import type { IngredientNutrition, Meal } from '../meal-generator/types';
+import type { GeneratedMeal, IngredientNutrition, Meal } from '../types';
 import NutritionTable from './NutritionTable';
 import MealTable from './MealTable';
 
 type MealResultProps = {
-    meal: Meal;
+    result: GeneratedMeal;
 };
 
-function MealResult({ meal: initialMeal }: MealResultProps) {
-    const [nutrition, setNutrition] = useState<IngredientNutrition[]>(
-        mockIngredientNutrition,
-    );
-
-    const [meal, setMeal] = useState<Meal>(initialMeal);
+function MealResult({ result }: MealResultProps) {
+    const [meal, setMeal] = useState(result.meal);
+    const [nutrition, setNutrition] = useState(result.nutrition);
 
     const [isTotalUpdated, setIsTotalUpdated] = useState(false);
 

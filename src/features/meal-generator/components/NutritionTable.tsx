@@ -1,15 +1,12 @@
 import { useState } from 'react';
-import type { IngredientNutrition } from '../meal-generator/types';
+import type { IngredientNutrition } from '../types';
 
 type NutritionTableProps = {
     nutrition: IngredientNutrition[];
     onNutritionChange: (nutrition: IngredientNutrition[]) => void;
 };
 
-function NutritionTable({
-    nutrition,
-    onNutritionChange,
-}: NutritionTableProps) {
+function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
     const [nutritionInputs, setNutritionInputs] = useState(
         nutrition.map((ingredient) => ({
             name: ingredient.name,

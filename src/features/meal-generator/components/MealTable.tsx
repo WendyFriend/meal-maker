@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { IngredientNutrition, Meal } from '../meal-generator/types';
+import type { IngredientNutrition, Meal } from '../types';
 
 type MealTableProps = {
     meal: Meal;

@@ -5,26 +5,40 @@ import Protein from './features/meal-generator/components/Protein';
 import './App.css';
 import MealResult from './features/meal-generator/components/MealResult';
 import type {
+    GeneratedMeal,
     GenerateMealInput,
-    Meal,
-} from './features/meal-generator/meal-generator/types';
-import { generateMeal } from './features/meal-generator/meal-generator/generateMeal';
+    IngredientNutrition,
+} from './features/meal-generator/types';
+import { generateMeal } from './features/meal-generator/generateMeal';
+import { findNutrition } from './features/meal-generator/nutrition';
+
+type CaloriesGoal = number | undefined;
+type ProteinGoal = number | undefined;
 
 function App() {
     const [ingredients, setIngredients] = useState<string[]>([]);
-    const [meal, setMeal] = useState<Meal | undefined>(undefined);
+
+    const [caloriesGoal, setCaloriesGoal] = useState<CaloriesGoal>(undefined);
+    const [proteinGoal, setProteinGoal] = useState<ProteinGoal>(undefined);
+
+    const [result, setResult] = useState<GeneratedMeal>();
 
     async function handleCreate() {
         const input: GenerateMealInput = {
-            ingredients: [],
+            ingredients,
+            nutrition: ingredients.map(findNutrition).filter(
+                (ingredient): ingredient is IngredientNutrition =>
+                    ingredient !== undefined, // checks whether ingredient is an IngredientNutrition.
+            ),
             requirements: {
-                calories: 500,
-                proteinPercentage: 20,
+                calories: caloriesGoal,
+                proteinPercentage: proteinGoal,
             },
         };
 
-        const meal = await generateMeal(input);
-        setMeal(meal);
+        const result = await generateMeal(input);
+
+        setResult(result);
     }
 
     return (
@@ -39,11 +53,11 @@ function App() {
             </section>
 
             <section>
-                <Calories />
+                <Calories value={caloriesGoal} onChange={setCaloriesGoal} />
             </section>
 
             <section>
-                <Protein />
+                <Protein value={proteinGoal} onChange={setProteinGoal} />
             </section>
 
             <button
@@ -54,7 +68,7 @@ function App() {
                 Create
             </button>
 
-            {meal && <MealResult meal={meal} />}
+            {result && <MealResult result={result} />}
         </main>
     );
 }

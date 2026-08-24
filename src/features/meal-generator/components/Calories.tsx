@@ -10,9 +10,13 @@ import {
 import BottomSheet from './BottomSheet';
 import Picker from './Picker';
 
-function Calories() {
+type CaloriesProps = {
+    value: number | undefined;
+    onChange: (value: number | undefined) => void;
+};
+
+function Calories({ value, onChange }: CaloriesProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedValue, setSelectedValue] = useState('none');
     const caloriesOptions: WheelPickerOption[] = [
         { label: 'No preference', value: 'none' },
         { label: '200 kcal', value: '200' },
@@ -34,9 +38,19 @@ function Calories() {
         { label: '1000 kcal', value: '1000' },
     ];
 
+    const selectedValue = value === undefined ? 'none' : String(value);
+
     const selectedLabel = caloriesOptions.find(
         (op) => op.value === selectedValue,
     )?.label;
+
+    function onValueChange(value: string) {
+        if (value === 'none') {
+            onChange(undefined);
+        } else {
+            onChange(Number(value));
+        }
+    }
 
     return (
         <div className="calories">
@@ -50,7 +64,7 @@ function Calories() {
                     <WheelPicker
                         options={caloriesOptions}
                         value={selectedValue}
-                        onValueChange={setSelectedValue}
+                        onValueChange={onValueChange}
                         classNames={{
                             optionItem:
                                 'text-zinc-400 dark:text-zinc-500 data-disabled:opacity-40',

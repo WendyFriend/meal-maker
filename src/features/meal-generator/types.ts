@@ -22,9 +22,17 @@ export type MealRequirements = {
 };
 
 export type GenerateMealInput = {
-    ingredients: IngredientNutrition[];
-    requirements: MealRequirements;
+    ingredients: string[]; // what the user entered
+    nutrition: IngredientNutrition[]; // information we found in our database
+    requirements: {
+        calories?: number;
+        proteinPercentage?: number;
+    };
 };
 
 export type Meal = MealIngredient[];
 
+export type GeneratedMeal = {
+    meal: Meal;
+    nutrition: IngredientNutrition[];
+};

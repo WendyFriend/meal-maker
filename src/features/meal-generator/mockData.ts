@@ -1,8 +1,23 @@
-import type {
-    GenerateMealInput,
-    IngredientNutrition,
-    Meal
-} from './meal-generator/types';
+import type { IngredientNutrition, Meal } from './types';
+
+export const mockMeal: Meal = [
+    {
+        name: 'Tofu',
+        amount: 100,
+    },
+    {
+        name: 'Pumpkin',
+        amount: 200,
+    },
+    {
+        name: 'Kale',
+        amount: 180,
+    },
+    {
+        name: 'Oats',
+        amount: 50,
+    },
+];
 
 export const mockIngredientNutrition: IngredientNutrition[] = [
     {
@@ -24,24 +39,5 @@ export const mockIngredientNutrition: IngredientNutrition[] = [
         name: 'Pumpkin',
         caloriesPer100g: 26,
         proteinPer100g: 1,
-    },
-];
-
-export const mockMeal: Meal = [
-    {
-        name: 'Tofu',
-        amount: 100,
-    },
-    {
-        name: 'Pumpkin',
-        amount: 200,
-    },
-    {
-        name: 'Kale',
-        amount: 180,
-    },
-    {
-        name: 'Oats',
-        amount: 50,
     },
 ];

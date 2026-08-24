@@ -10,9 +10,13 @@ import {
 import BottomSheet from './BottomSheet';
 import Picker from './Picker';
 
-function Protein() {
+type ProteinProps = {
+    value: number | undefined;
+    onChange: (value: number | undefined) => void;
+};
+
+function Protein({ value, onChange }: ProteinProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedValue, setSelectedValue] = useState('none');
     const proteinOptions: WheelPickerOption[] = [
         { label: 'No preference', value: 'none' },
         { label: '0%', value: '0' },
@@ -27,11 +31,19 @@ function Protein() {
         { label: '90%', value: '90' },
         { label: '100%', value: '100' },
     ];
-
+    
+    const selectedValue = value === undefined ? 'none' : String(value);
     const selectedLabel = proteinOptions.find(
         (op) => op.value === selectedValue,
     )?.label;
 
+    function onValueChange(value: string) {
+        if (value === 'none') {
+            return onChange(undefined);
+        } else {
+            onChange(Number(value));
+        }
+    }
     return (
         <div className="protein">
             <h2>Protein</h2>
@@ -45,7 +57,7 @@ function Protein() {
                     <WheelPicker
                         options={proteinOptions}
                         value={selectedValue}
-                        onValueChange={setSelectedValue}
+                        onValueChange={onValueChange}
                         classNames={{
                             optionItem:
                                 'text-zinc-400 dark:text-zinc-500 data-disabled:opacity-40',
