@@ -1,23 +1,4 @@
-import type { IngredientNutrition, Meal } from './types';
-
-export const mockMeal: Meal = [
-    {
-        name: 'Tofu',
-        amount: 100,
-    },
-    {
-        name: 'Pumpkin',
-        amount: 200,
-    },
-    {
-        name: 'Kale',
-        amount: 180,
-    },
-    {
-        name: 'Oats',
-        amount: 50,
-    },
-];
+import type { IngredientNutrition } from './types';
 
 export const mockIngredientNutrition: IngredientNutrition[] = [
     {

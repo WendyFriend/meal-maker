@@ -1,4 +1,4 @@
-import type { AiClient } from '../../src/features/meal-generator/AiClient.js';
+import type { AiClient } from '../ai/AiClient.ts';
 import { buildMealPrompt } from './buildMealPrompt.js';
 import type {
     GeneratedMeal,
@@ -12,7 +12,7 @@ export async function generateMeal(
 ): Promise<GeneratedMeal> {
     const prompt = buildMealPrompt(input);
     const response = await aiClient.generate(prompt);
-    console.log("generateMeal.ts: " + response);
+    console.log('generateMeal.ts: ' + response);
 
     const parsed: unknown = JSON.parse(response);
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { generateMeal } from './generateMeal.js';
 import type { GenerateMealInput } from '../../src/features/meal-generator/types.js';
-import type { AiClient } from '../../src/features/meal-generator/AiClient.js';
+import type { AiClient } from '../ai/AiClient.ts';
 
 describe('generateMeal', () => {
     const input: GenerateMealInput = {

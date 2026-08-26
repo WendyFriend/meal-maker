@@ -4,13 +4,6 @@ export type IngredientNutrition = {
     proteinPer100g: number;
 };
 
-export type MealIngredient = {
-    name: string;
-    amount: number;
-    // calories: number;
-    // protein: number;
-};
-
 export type MealIngredientWithNutrition = MealIngredient & {
     calories: number;
     protein: number;
@@ -30,9 +23,20 @@ export type GenerateMealInput = {
     };
 };
 
-export type Meal = MealIngredient[];
 
 export type GeneratedMeal = {
     meal: Meal;
-    nutrition: IngredientNutrition[];
+};
+
+export type Meal = {
+    totalCalories: number;
+    totalProteinGrams: number;
+    ingredients: MealIngredient[];
+};
+
+export type MealIngredient = {
+    name: string;
+    amount: number;
+    caloriesPer100g: number;
+    proteinPer100g: number;
 };

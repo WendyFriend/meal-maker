@@ -1,21 +1,19 @@
 import { useState } from 'react';
-import type { IngredientNutrition, Meal } from '../types';
+import type { MealIngredient } from '../types';
 
 type MealTableProps = {
-    meal: Meal;
-    nutrition: IngredientNutrition[];
-    onMealChange: (meal: Meal) => void;
+    ingredients: MealIngredient[];
+    onChange: (ingredients: MealIngredient[]) => void;
     isTotalUpdated: boolean;
 };
 
 function MealTable({
-    meal,
-    nutrition,
-    onMealChange,
+    ingredients,
+    onChange,
     isTotalUpdated,
 }: MealTableProps) {
-    const [mealInputs, setMealInputs] = useState(
-        meal.map((ingredient) => ({
+    const [ingredientAmountInput, setIngredientAmountInput] = useState(
+        ingredients.map((ingredient) => ({
             name: ingredient.name,
             amount: String(ingredient.amount),
         })),
@@ -25,38 +23,27 @@ function MealTable({
         return Number.isInteger(value) ? String(value) : value.toFixed(1);
     }
 
-    const mealWithNutrition = meal.map((mealIngredient) => {
-        const ingredientNutrition = nutrition.find(
-            (ingredient) => ingredient.name === mealIngredient.name,
-        );
-
-        if (!ingredientNutrition) {
-            return {
-                ...mealIngredient,
-                calories: 0,
-                protein: 0,
-            };
-        }
+    const calculatedIngredients = ingredients.map((ingredient) => {
 
         const calories =
-            (mealIngredient.amount / 100) * ingredientNutrition.caloriesPer100g;
+            (ingredient.amount / 100) * ingredient.caloriesPer100g;
 
         const protein =
-            (mealIngredient.amount / 100) * ingredientNutrition.proteinPer100g;
+            (ingredient.amount / 100) * ingredient.proteinPer100g;
 
         return {
-            ...mealIngredient,
+            ...ingredient,
             calories,
             protein,
         };
     });
 
-    const totalCalories = mealWithNutrition.reduce(
+    const totalCalories = calculatedIngredients.reduce(
         (total, ingredient) => total + ingredient.calories,
         0,
     );
 
-    const totalProtein = mealWithNutrition.reduce(
+    const totalProtein = calculatedIngredients.reduce(
         (total, ingredient) => total + ingredient.protein,
         0,
     );
@@ -64,8 +51,8 @@ function MealTable({
     const proteinPercentage =
         totalCalories > 0 ? (totalProtein * 4 * 100) / totalCalories : 0;
 
-    function updateMealInput(name: string, value: string) {
-        setMealInputs((current) =>
+    function updateIngredientAmount(name: string, value: string) {
+        setIngredientAmountInput((current) =>
             current.map((ingredient) =>
                 ingredient.name === name
                     ? {
@@ -77,10 +64,10 @@ function MealTable({
         );
     }
 
-    function commitMealAmount(name: string) {
-        const input = mealInputs.find((ingredient) => ingredient.name === name);
+    function commitIngredientAmount(name: string) {
+        const input = ingredientAmountInput.find((ingredient) => ingredient.name === name);
 
-        const current = meal.find((ingredient) => ingredient.name === name);
+        const current = ingredients.find((ingredient) => ingredient.name === name);
 
         if (!input || !current) return;
 
@@ -90,7 +77,7 @@ function MealTable({
             input.amount.trim() !== '' && Number.isFinite(value) && value >= 0;
 
         if (!isValid) {
-            setMealInputs((currentInputs) =>
+            setIngredientAmountInput((currentInputs) =>
                 currentInputs.map((ingredient) =>
                     ingredient.name === name
                         ? {
@@ -104,8 +91,8 @@ function MealTable({
             return;
         }
 
-        onMealChange(
-            meal.map((ingredient) =>
+        onChange(
+            ingredients.map((ingredient) =>
                 ingredient.name === name
                     ? {
                           ...ingredient,
@@ -115,7 +102,7 @@ function MealTable({
             ),
         );
 
-        setMealInputs((currentInputs) =>
+        setIngredientAmountInput((currentInputs) =>
             currentInputs.map((ingredient) =>
                 ingredient.name === name
                     ? {
@@ -140,7 +127,7 @@ function MealTable({
                         <span>Protein</span>
                     </div>
 
-                    {mealWithNutrition.map((ingredient) => (
+                    {calculatedIngredients.map((ingredient) => (
                         <div className="meal-row" key={ingredient.name}>
                             <span>{ingredient.name}</span>
                             <span className="meal-amount">
@@ -150,24 +137,24 @@ function MealTable({
                                     inputMode="decimal"
                                     enterKeyHint="done"
                                     value={
-                                        mealInputs.find(
+                                        ingredientAmountInput.find(
                                             (input) =>
                                                 input.name === ingredient.name,
                                         )?.amount ?? ''
                                     }
                                     onChange={(event) =>
-                                        updateMealInput(
+                                        updateIngredientAmount(
                                             ingredient.name,
                                             event.target.value,
                                         )
                                     }
                                     onBlur={() =>
-                                        commitMealAmount(ingredient.name)
+                                        commitIngredientAmount(ingredient.name)
                                     }
                                     onKeyDown={(event) => {
                                         if (event.key === 'Enter') {
                                             event.preventDefault();
-                                            commitMealAmount(ingredient.name);
+                                            commitIngredientAmount(ingredient.name);
                                             event.currentTarget.blur();
                                         }
                                     }}

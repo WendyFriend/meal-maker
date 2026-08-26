@@ -9,7 +9,6 @@ import type {
     GenerateMealInput,
     IngredientNutrition,
 } from './features/meal-generator/types';
-import { generateMeal } from './features/meal-generator/generateMeal';
 import { findNutrition } from './features/meal-generator/nutrition';
 
 type CaloriesGoal = number | undefined;
@@ -24,21 +23,40 @@ function App() {
     const [result, setResult] = useState<GeneratedMeal>();
 
     async function handleCreate() {
-        const input: GenerateMealInput = {
-            ingredients,
-            nutrition: ingredients.map(findNutrition).filter(
-                (ingredient): ingredient is IngredientNutrition =>
-                    ingredient !== undefined, // checks whether ingredient is an IngredientNutrition.
-            ),
-            requirements: {
-                calories: caloriesGoal,
-                proteinPercentage: proteinGoal,
-            },
-        };
+        try {
+            const input: GenerateMealInput = {
+                ingredients,
+                nutrition: ingredients
+                    .map(findNutrition)
+                    .filter(
+                        (ingredient): ingredient is IngredientNutrition =>
+                            ingredient !== undefined,
+                    ),
+                requirements: {
+                    calories: caloriesGoal,
+                    proteinPercentage: proteinGoal,
+                },
+            };
 
-        const result = await generateMeal(input);
+            const response = await fetch('/api/generate-meal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(input),
+            });
 
-        setResult(result);
+            if (!response.ok) {
+                throw new Error('Failed to generate meal');
+            }
+
+            const result: GeneratedMeal = await response.json();
+
+            setResult(result);
+        } catch (error) {
+            console.error(error);
+            // Later: show an error message in the UI
+        }
     }
 
     return (

@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import type { IngredientNutrition } from '../types';
+import type { MealIngredient } from '../types';
 
 type NutritionTableProps = {
-    nutrition: IngredientNutrition[];
-    onNutritionChange: (nutrition: IngredientNutrition[]) => void;
+    ingredients: MealIngredient[];
+    onChange: (ingredients: MealIngredient[]) => void;
 };
 
-function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
-    const [nutritionInputs, setNutritionInputs] = useState(
-        nutrition.map((ingredient) => ({
+function NutritionTable({
+    ingredients,
+    onChange,
+}: NutritionTableProps) {
+    const [ingredientNutritionInput, setIngredientNutritionInput] = useState(
+        ingredients.map((ingredient) => ({
             name: ingredient.name,
             caloriesPer100g: String(ingredient.caloriesPer100g),
             proteinPer100g: String(ingredient.proteinPer100g),
@@ -20,7 +23,7 @@ function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
         field: 'caloriesPer100g' | 'proteinPer100g',
         value: string,
     ) {
-        setNutritionInputs((current) =>
+        setIngredientNutritionInput((current) =>
             current.map((ingredient) =>
                 ingredient.name === name
                     ? {
@@ -35,11 +38,11 @@ function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
         name: string,
         field: 'caloriesPer100g' | 'proteinPer100g',
     ) {
-        const input = nutritionInputs.find(
+        const input = ingredientNutritionInput.find(
             (ingredient) => ingredient.name === name,
         );
 
-        const current = nutrition.find(
+        const current = ingredients.find(
             (ingredient) => ingredient.name === name,
         );
 
@@ -53,7 +56,7 @@ function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
 
         if (!isValid) {
             // Restore the input to the last valid value
-            setNutritionInputs((currentInputs) =>
+            setIngredientNutritionInput((currentInputs) =>
                 currentInputs.map((ingredient) =>
                     ingredient.name === name
                         ? {
@@ -67,8 +70,8 @@ function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
         }
 
         // Commit the valid value
-        onNutritionChange(
-            nutrition.map((ingredient) =>
+        onChange(
+            ingredients.map((ingredient) =>
                 ingredient.name === name
                     ? {
                           ...ingredient,
@@ -79,7 +82,7 @@ function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
         );
 
         // Normalize the displayed value
-        setNutritionInputs((currentInputs) =>
+        setIngredientNutritionInput((currentInputs) =>
             currentInputs.map((ingredient) =>
                 ingredient.name === name
                     ? {
@@ -102,7 +105,7 @@ function NutritionTable({ nutrition, onNutritionChange }: NutritionTableProps) {
                         <span>Protein/100g</span>
                     </div>
 
-                    {nutritionInputs.map((ingredient) => (
+                    {ingredientNutritionInput.map((ingredient) => (
                         <div className="nutrition-row" key={ingredient.name}>
                             <span>{ingredient.name}</span>
 

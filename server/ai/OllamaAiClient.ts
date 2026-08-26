@@ -1,4 +1,4 @@
-import type { AiClient } from '../../src/features/meal-generator/AiClient.js';
+import type { AiClient } from './AiClient.ts';
 
 type OllamaChatResponse = {
     choices: {
@@ -7,7 +7,6 @@ type OllamaChatResponse = {
         };
     }[];
 };
-
 
 export class OllamaAiClient implements AiClient {
     private readonly apiKey: string;

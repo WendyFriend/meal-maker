@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import './MealResult.css';
-import type { GeneratedMeal, IngredientNutrition, Meal } from '../types';
+import type { GeneratedMeal, MealIngredient } from '../types';
 import NutritionTable from './NutritionTable';
 import MealTable from './MealTable';
 
@@ -9,8 +9,7 @@ type MealResultProps = {
 };
 
 function MealResult({ result }: MealResultProps) {
-    const [meal, setMeal] = useState(result.meal);
-    const [nutrition, setNutrition] = useState(result.nutrition);
+    const [mealIngredients, setMealIngredients] = useState(result.meal.ingredients);
 
     const [isTotalUpdated, setIsTotalUpdated] = useState(false);
 
@@ -22,13 +21,8 @@ function MealResult({ result }: MealResultProps) {
         }, 2500);
     }
 
-    function handleNutritionChange(nutrition: IngredientNutrition[]) {
-        setNutrition(nutrition);
-        showTotalUpdated();
-    }
-
-    function handleMealChange(meal: Meal) {
-        setMeal(meal);
+    function handleMealIngredientsChange(ingredients: MealIngredient[]) {
+        setMealIngredients(ingredients);
         showTotalUpdated();
     }
 
@@ -36,14 +30,13 @@ function MealResult({ result }: MealResultProps) {
         <div className="meal-result">
             <h1>Your Meal</h1>
             <NutritionTable
-                nutrition={nutrition}
-                onNutritionChange={handleNutritionChange}
+                ingredients={mealIngredients}
+                onChange={handleMealIngredientsChange}
             />
 
             <MealTable
-                meal={meal}
-                nutrition={nutrition}
-                onMealChange={handleMealChange}
+                ingredients={mealIngredients}
+                onChange={handleMealIngredientsChange}
                 isTotalUpdated={isTotalUpdated}
             />
         </div>
