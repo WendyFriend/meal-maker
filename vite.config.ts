@@ -63,4 +63,9 @@ export default defineConfig({
         host: true,
         https,
     },
+    server: {
+        proxy: {
+            '/api': 'http://localhost:3001',
+        },
+    },
 });

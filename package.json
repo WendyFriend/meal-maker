@@ -10,9 +10,11 @@
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "test": "vitest"
+    "test": "vitest",
+    "server": "tsx --env-file=.env server/server.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.18.0",
     "@ncdai/react-wheel-picker": "^1.2.2",
     "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.8",
@@ -35,6 +37,7 @@
     "globals": "^17.7.0",
     "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
+    "tsx": "^4.23.12",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.65.0",
     "vite": "^8.2.0",
