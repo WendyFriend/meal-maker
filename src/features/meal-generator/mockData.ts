@@ -1,4 +1,4 @@
-import type { IngredientNutrition } from './types';
+import type { IngredientNutrition } from './types.js';
 
 export const mockIngredientNutrition: IngredientNutrition[] = [
     {

@@ -8,6 +8,7 @@ import type {
     GeneratedMeal,
     GenerateMealInput,
     IngredientNutrition,
+    MealIngredient,
 } from './features/meal-generator/types';
 import { findNutrition } from './features/meal-generator/nutrition';
 
@@ -20,10 +21,15 @@ function App() {
     const [caloriesGoal, setCaloriesGoal] = useState<CaloriesGoal>(undefined);
     const [proteinGoal, setProteinGoal] = useState<ProteinGoal>(undefined);
 
-    const [result, setResult] = useState<GeneratedMeal>();
+    const [mealIngredients, setMealIngredients] = useState<MealIngredient[]>(
+        [],
+    );
+    const [isGenerating, setIsGenerating] = useState(false);
 
     async function handleCreate() {
         try {
+            setIsGenerating(true);
+            setMealIngredients([]);
             const input: GenerateMealInput = {
                 ingredients,
                 nutrition: ingredients
@@ -52,10 +58,13 @@ function App() {
 
             const result: GeneratedMeal = await response.json();
 
-            setResult(result);
+            // setResult(result);
+            setMealIngredients(result.meal.ingredients);
         } catch (error) {
             console.error(error);
             // Later: show an error message in the UI
+        } finally {
+            setIsGenerating(false);
         }
     }
 
@@ -86,7 +95,14 @@ function App() {
                 Create
             </button>
 
-            {result && <MealResult result={result} />}
+            {isGenerating && <p>Generating your meal...</p>}
+
+            {!isGenerating && mealIngredients.length > 0 && (
+                <MealResult
+                    ingredients={mealIngredients}
+                    onChange={setMealIngredients}
+                />
+            )}
         </main>
     );
 }

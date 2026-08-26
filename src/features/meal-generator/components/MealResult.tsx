@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import './MealResult.css';
-import type { GeneratedMeal, MealIngredient } from '../types';
+import type { MealIngredient } from '../types';
 import NutritionTable from './NutritionTable';
 import MealTable from './MealTable';
 
 type MealResultProps = {
-    result: GeneratedMeal;
+    ingredients: MealIngredient[];
+    onChange: (ingredients: MealIngredient[]) => void;
 };
 
-function MealResult({ result }: MealResultProps) {
-    const [mealIngredients, setMealIngredients] = useState(result.meal.ingredients);
+function MealResult({ ingredients, onChange }: MealResultProps) {
 
     const [isTotalUpdated, setIsTotalUpdated] = useState(false);
 
@@ -22,7 +22,7 @@ function MealResult({ result }: MealResultProps) {
     }
 
     function handleMealIngredientsChange(ingredients: MealIngredient[]) {
-        setMealIngredients(ingredients);
+        onChange(ingredients);
         showTotalUpdated();
     }
 
@@ -30,12 +30,12 @@ function MealResult({ result }: MealResultProps) {
         <div className="meal-result">
             <h1>Your Meal</h1>
             <NutritionTable
-                ingredients={mealIngredients}
+                ingredients={ingredients}
                 onChange={handleMealIngredientsChange}
             />
 
             <MealTable
-                ingredients={mealIngredients}
+                ingredients={ingredients}
                 onChange={handleMealIngredientsChange}
                 isTotalUpdated={isTotalUpdated}
             />

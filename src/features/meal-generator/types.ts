@@ -23,7 +23,6 @@ export type GenerateMealInput = {
     };
 };
 
-
 export type GeneratedMeal = {
     meal: Meal;
 };
