@@ -7,11 +7,7 @@ type MealTableProps = {
     isTotalUpdated: boolean;
 };
 
-function MealTable({
-    ingredients,
-    onChange,
-    isTotalUpdated,
-}: MealTableProps) {
+function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
     const [ingredientAmountInput, setIngredientAmountInput] = useState(
         ingredients.map((ingredient) => ({
             name: ingredient.name,
@@ -24,12 +20,9 @@ function MealTable({
     }
 
     const calculatedIngredients = ingredients.map((ingredient) => {
+        const calories = (ingredient.amount / 100) * ingredient.caloriesPer100g;
 
-        const calories =
-            (ingredient.amount / 100) * ingredient.caloriesPer100g;
-
-        const protein =
-            (ingredient.amount / 100) * ingredient.proteinPer100g;
+        const protein = (ingredient.amount / 100) * ingredient.proteinPer100g;
 
         return {
             ...ingredient,
@@ -65,9 +58,13 @@ function MealTable({
     }
 
     function commitIngredientAmount(name: string) {
-        const input = ingredientAmountInput.find((ingredient) => ingredient.name === name);
+        const input = ingredientAmountInput.find(
+            (ingredient) => ingredient.name === name,
+        );
 
-        const current = ingredients.find((ingredient) => ingredient.name === name);
+        const current = ingredients.find(
+            (ingredient) => ingredient.name === name,
+        );
 
         if (!input || !current) return;
 
@@ -83,6 +80,22 @@ function MealTable({
                         ? {
                               ...ingredient,
                               amount: String(current.amount),
+                          }
+                        : ingredient,
+                ),
+            );
+
+            return;
+        }
+
+        // Nothing changed — don't notify the parent.
+        if (value === current.amount) {
+            setIngredientAmountInput((currentInputs) =>
+                currentInputs.map((ingredient) =>
+                    ingredient.name === name
+                        ? {
+                              ...ingredient,
+                              amount: String(value),
                           }
                         : ingredient,
                 ),
@@ -154,7 +167,9 @@ function MealTable({
                                     onKeyDown={(event) => {
                                         if (event.key === 'Enter') {
                                             event.preventDefault();
-                                            commitIngredientAmount(ingredient.name);
+                                            commitIngredientAmount(
+                                                ingredient.name,
+                                            );
                                             event.currentTarget.blur();
                                         }
                                     }}

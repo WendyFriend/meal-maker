@@ -34,6 +34,7 @@ function NutritionTable({
             ),
         );
     }
+
     function commitNutrition(
         name: string,
         field: 'caloriesPer100g' | 'proteinPer100g',
@@ -62,6 +63,21 @@ function NutritionTable({
                         ? {
                               ...ingredient,
                               [field]: String(current[field]),
+                          }
+                        : ingredient,
+                ),
+            );
+            return;
+        }
+
+        // No change — don't notify the parent
+        if (value === current[field]) {
+            setIngredientNutritionInput((currentInputs) =>
+                currentInputs.map((ingredient) =>
+                    ingredient.name === name
+                        ? {
+                              ...ingredient,
+                              [field]: String(value),
                           }
                         : ingredient,
                 ),

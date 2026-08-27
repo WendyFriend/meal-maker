@@ -141,4 +141,82 @@ describe('NutritionTable', () => {
             },
         ]);
     });
+
+    it('does not call onChange when calories are unchanged', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <NutritionTable ingredients={ingredients} onChange={onChange} />,
+        );
+        const caloriesInput = screen.getByDisplayValue('130');
+        await user.click(caloriesInput);
+        await user.tab();
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('calls onChange when calories are changed', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <NutritionTable ingredients={ingredients} onChange={onChange} />,
+        );
+        const caloriesInput = screen.getByDisplayValue('130');
+        await user.clear(caloriesInput);
+        await user.type(caloriesInput, '150');
+        await user.tab();
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenCalledWith([
+            {
+                name: 'Tofu',
+                amount: 150,
+                caloriesPer100g: 150,
+                proteinPer100g: 14,
+            },
+            {
+                name: 'Kale',
+                amount: 100,
+                caloriesPer100g: 35,
+                proteinPer100g: 3,
+            },
+        ]);
+    });
+
+    it('does not call onChange when protein is unchanged', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <NutritionTable ingredients={ingredients} onChange={onChange} />,
+        );
+        const proteinInput = screen.getByDisplayValue('14');
+        await user.click(proteinInput);
+        await user.tab();
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('calls onChange when protein is changed', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <NutritionTable ingredients={ingredients} onChange={onChange} />,
+        );
+        const proteinInput = screen.getByDisplayValue('14');
+        await user.clear(proteinInput);
+        await user.type(proteinInput, '16');
+        await user.tab();
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenCalledWith([
+            {
+                name: 'Tofu',
+                amount: 150,
+                caloriesPer100g: 130,
+                proteinPer100g: 16,
+            },
+            {
+                name: 'Kale',
+                amount: 100,
+                caloriesPer100g: 35,
+                proteinPer100g: 3,
+            },
+        ]);
+    });
 });

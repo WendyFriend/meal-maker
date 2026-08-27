@@ -198,4 +198,51 @@ describe('MealTable', () => {
 
         expect(updatedTotals).toHaveLength(0);
     });
+
+    it('does not call onChange when amount is unchanged', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <MealTable
+                ingredients={ingredients}
+                onChange={onChange}
+                isTotalUpdated={false}
+            />,
+        );
+        const amountInput = screen.getByDisplayValue('100');
+        await user.click(amountInput);
+        await user.tab();
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('calls onChange when amount is changed', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <MealTable
+                ingredients={ingredients}
+                onChange={onChange}
+                isTotalUpdated={false}
+            />,
+        );
+        const amountInput = screen.getByDisplayValue('100');
+        await user.clear(amountInput);
+        await user.type(amountInput, '200');
+        await user.tab();
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenCalledWith([
+            {
+                name: 'Tofu',
+                amount: 200,
+                caloriesPer100g: 130,
+                proteinPer100g: 14,
+            },
+            {
+                name: 'Pumpkin',
+                amount: 200,
+                caloriesPer100g: 26,
+                proteinPer100g: 1,
+            },
+        ]);
+    });
 });
