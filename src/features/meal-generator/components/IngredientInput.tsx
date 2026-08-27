@@ -32,7 +32,6 @@ function IngredientInput({ ingredients, onChange }: IngredientInputProps) {
         onChange([...ingredients, ingredient]);
         setInput(''); // clear the input field
 
-        event.currentTarget.blur();
     }
 
     function removeIngredient(ingredientToRemove: string) {
