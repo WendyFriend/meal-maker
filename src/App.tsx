@@ -5,6 +5,8 @@ import Protein from './features/meal-generator/components/Protein';
 import './App.css';
 import MealResult from './features/meal-generator/components/MealResult';
 import type {
+    AppError,
+    ErrorResponse,
     GeneratedMeal,
     GenerateMealInput,
     IngredientNutrition,
@@ -25,11 +27,13 @@ function App() {
         [],
     );
     const [isGenerating, setIsGenerating] = useState(false);
+    const [error, setError] = useState<AppError>();
 
     async function handleCreate() {
+        setIsGenerating(true);
+        setMealIngredients([]);
+        setError(undefined);
         try {
-            setIsGenerating(true);
-            setMealIngredients([]);
             const input: GenerateMealInput = {
                 ingredients,
                 nutrition: ingredients
@@ -52,17 +56,27 @@ function App() {
                 body: JSON.stringify(input),
             });
 
+            if (response.status === 422) {
+                const data: ErrorResponse = await response.json();
+
+                setError(data.error);
+                return;
+            }
+
             if (!response.ok) {
                 throw new Error('Failed to generate meal');
             }
 
             const result: GeneratedMeal = await response.json();
 
-            // setResult(result);
             setMealIngredients(result.meal.ingredients);
         } catch (error) {
             console.error(error);
-            // Later: show an error message in the UI
+            setError({
+                code: 'UNKNOWN_ERROR',
+                message:
+                    'Something went wrong while generating your meal. Please try again.',
+            });
         } finally {
             setIsGenerating(false);
         }
@@ -95,7 +109,45 @@ function App() {
                 Create
             </button>
 
-            {isGenerating && <p>Generating your meal...</p>}
+            {isGenerating && (
+                <p className="generating-message">Generating your meal...</p>
+            )}
+
+            {error?.code === 'REQUIREMENT_NOT_MET' && (
+                <div className="error-message" role="alert">
+                    {/* <div className="error-container"> */}
+                        <div className="error-title">⚠️ {error.message}</div>
+
+                        <div className="error-stats">
+                            <div>
+                                <span>Your goal: </span>
+                                <strong>{error.proteinGoal}%</strong>
+                            </div>
+
+                            <div>
+                                <span>Maximum possible: </span>
+                                <strong>
+                                    {error.maximumProteinPercentage.toFixed(2)}%
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div className="error-suggestion">
+                            <p>Try:</p>
+                            <ul>
+                                <li>Lowering your protein goal</li>
+                                <li>Adding a higher-protein ingredient</li>
+                            </ul>
+                        </div>
+                    {/* </div> */}
+                </div>
+            )}
+
+            {error?.code === 'UNKNOWN_ERROR' && (
+                <div className="error-message" role="alert">
+                    {error.message}
+                </div>
+            )}
 
             {!isGenerating && mealIngredients.length > 0 && (
                 <MealResult

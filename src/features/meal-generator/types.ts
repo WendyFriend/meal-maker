@@ -39,3 +39,19 @@ export type MealIngredient = {
     caloriesPer100g: number;
     proteinPer100g: number;
 };
+
+export type ErrorResponse = {
+    error: AppError;
+};
+
+export type AppError =
+    | {
+          code: 'REQUIREMENT_NOT_MET';
+          message: string;
+          proteinGoal: number;
+          maximumProteinPercentage: number;
+      }
+    | {
+          code: 'UNKNOWN_ERROR';
+          message: string;
+      };
