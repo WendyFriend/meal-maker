@@ -40,6 +40,8 @@ For ingredients where nutritional information is unavailable, use a reliable nut
 
 Return nutritional information for every ingredient in the meal.
 
+Please only uses ingredients provided above.
+
 Please choose sensible amounts for the ingredients and try to meet the user's nutritional goals.
 
 All ingredient amounts must be specified in grams as numbers.

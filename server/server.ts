@@ -1,11 +1,22 @@
-import { createServer } from 'node:http';
+import { createServer, ServerResponse } from 'node:http';
 import { OllamaAiClient } from './ai/OllamaAiClient.js';
 import { generateMeal } from './meal-generator/generateMeal.js';
 import type { GenerateMealInput } from '../src/features/meal-generator/types.js';
 import process from 'node:process';
+import { checkProteinFeasibility } from './meal-generator/checkProteinFeasibility.ts';
 
 const apiKey = process.env.OLLAMA_API_KEY;
 const model = process.env.OLLAMA_MODEL;
+
+
+export type ProteinFeasibilityResult =
+    | {
+          feasible: true;
+      }
+    | {
+          feasible: false;
+          maximumProteinPercentage: number;
+      };
 
 if (!apiKey) {
     throw new Error('OLLAMA_API_KEY is not configured');
@@ -23,43 +34,48 @@ const server = createServer(async (req, res) => {
             const body = await readRequestBody(req);
             const input = JSON.parse(body) as GenerateMealInput;
 
+            const feasibility = checkProteinFeasibility(
+                input.nutrition,
+                input.requirements.proteinPercentage,
+            );
+
+            if (!feasibility.feasible) {
+                handleInfeasibleRequest(
+                    res,
+                    input.requirements.proteinPercentage!,
+                    feasibility.maximumProteinPercentage,
+                );
+                return;
+            }
+
             const result = await generateMeal(input, ollamaAiClient);
-
-            res.writeHead(200, {
-                'Content-Type': 'application/json',
-            });
-
-            res.end(JSON.stringify(result));
+            sendJson(res, 200, result);
         } catch (error) {
             console.error('server.ts error: ' + error);
 
-            res.writeHead(500, {
-                'Content-Type': 'application/json',
+            sendJson(res, 500, {
+                message: 'Failed to generate meal',
             });
-
-            res.end(
-                JSON.stringify({
-                    error: 'Failed to generate meal',
-                }),
-            );
         }
         return;
     }
 
-    res.writeHead(404, {
-        'Content-Type': 'application/json',
+    sendJson(res, 404, {
+        error: 'Not found',
     });
-
-    res.end(
-        JSON.stringify({
-            error: 'Not found',
-        }),
-    );
 });
 
 server.listen(3001, () => {
     console.log('Server listening on http://localhost:3001');
 });
+
+function sendJson(res: ServerResponse, statusCode: number, body: unknown) {
+    res.writeHead(statusCode, {
+        'Content-Type': 'application/json',
+    });
+
+    res.end(JSON.stringify(body));
+}
 
 function readRequestBody(req: NodeJS.ReadableStream): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -73,3 +89,19 @@ function readRequestBody(req: NodeJS.ReadableStream): Promise<string> {
         req.on('error', reject);
     });
 }
+
+function handleInfeasibleRequest(
+    res: ServerResponse,
+    proteinGoal: number,
+    maximumProteinPercentage: number,
+) {
+    sendJson(res, 422, {
+        error: {
+            code: 'REQUIREMENT_NOT_MET',
+            message: `Protein goal can't be reached`,
+            proteinGoal,
+            maximumProteinPercentage,
+        },
+    });
+}
+
