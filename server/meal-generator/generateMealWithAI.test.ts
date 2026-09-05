@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { generateMeal } from './generateMeal.js';
-import type { GenerateMealInput } from '../../src/features/meal-generator/types.js';
+import { generateMealWithAI } from './generateMealWithAI.ts';
+import type { GenerateMealInput } from '../../client/meal-generator/types.ts';
 import type { AiClient } from '../ai/AiClient.ts';
 
-describe('generateMeal', () => {
+describe('generateMealWithAI', () => {
     const input: GenerateMealInput = {
         ingredients: ['Tofu', 'Pumpkin', 'Kale'],
         nutrition: [],
@@ -39,7 +39,7 @@ describe('generateMeal', () => {
             generate: vi.fn().mockResolvedValue(response),
         };
 
-        const result = await generateMeal(input, aiClient);
+        const result = await generateMealWithAI(input, aiClient);
 
         expect(result).toEqual(JSON.parse(response));
     });
@@ -64,7 +64,7 @@ describe('generateMeal', () => {
             generate: vi.fn().mockResolvedValue(response),
         };
 
-        await generateMeal(input, aiClient);
+        await generateMealWithAI(input, aiClient);
 
         expect(aiClient.generate).toHaveBeenCalledTimes(1);
 
@@ -78,7 +78,7 @@ describe('generateMeal', () => {
             generate: vi.fn().mockResolvedValue('not valid JSON'),
         };
 
-        await expect(generateMeal(input, aiClient)).rejects.toThrow(
+        await expect(generateMealWithAI(input, aiClient)).rejects.toThrow(
             SyntaxError,
         );
     });
@@ -96,7 +96,7 @@ describe('generateMeal', () => {
             generate: vi.fn().mockResolvedValue(response),
         };
 
-        await expect(generateMeal(input, aiClient)).rejects.toThrow(
+        await expect(generateMealWithAI(input, aiClient)).rejects.toThrow(
             'AI returned an invalid meal response',
         );
     });

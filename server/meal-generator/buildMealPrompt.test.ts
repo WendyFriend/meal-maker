@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildMealPrompt } from './buildMealPrompt.js';
-import { mockIngredientNutrition } from '../../src/features/meal-generator/mockData.js';
+import { mockIngredientNutrition } from '../../client/meal-generator/mockData.ts';
 
 describe('buildMealPrompt', () => {
     it('includes nutrition information when available', () => {

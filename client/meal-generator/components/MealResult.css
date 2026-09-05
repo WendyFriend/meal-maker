@@ -173,9 +173,9 @@
     color: rgba(15, 30, 48, 0.6);
 }
 
-/* Editable meal amount */
+/* Editable meal weight */
 
-.meal-amount {
+.meal-weight {
     display: flex;
     align-items: center;
     gap: 3px;
@@ -183,7 +183,7 @@
     white-space: nowrap;
 }
 
-.meal-amount-input {
+.meal-weight-input {
     width: 55px;
     padding: 4px 2px;
 
@@ -202,12 +202,12 @@
         background 150ms ease;
 }
 
-.meal-amount-input:hover {
+.meal-weight-input:hover {
     background: var(--surface);
     border-color: var(--border);
 }
 
-.meal-amount-input:focus {
+.meal-weight-input:focus {
     outline: none;
     background: var(--surface);
     border-color: var(--accent);

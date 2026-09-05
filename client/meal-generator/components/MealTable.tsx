@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { MealIngredient } from '../types';
+import type { MealIngredient } from '../../../shared/types/types';
+// import type { MealIngredient } from '../types';
 
 type MealTableProps = {
     ingredients: MealIngredient[];
@@ -8,10 +9,10 @@ type MealTableProps = {
 };
 
 function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
-    const [ingredientAmountInput, setIngredientAmountInput] = useState(
+    const [ingredientWeightInput, setIngredientWeightInput] = useState(
         ingredients.map((ingredient) => ({
             name: ingredient.name,
-            amount: String(ingredient.amount),
+            weight: String(ingredient.weight),
         })),
     );
 
@@ -20,9 +21,9 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
     }
 
     const calculatedIngredients = ingredients.map((ingredient) => {
-        const calories = (ingredient.amount / 100) * ingredient.caloriesPer100g;
+        const calories = (ingredient.weight / 100) * ingredient.caloriesPer100g;
 
-        const protein = (ingredient.amount / 100) * ingredient.proteinPer100g;
+        const protein = (ingredient.weight / 100) * ingredient.proteinPer100g;
 
         return {
             ...ingredient,
@@ -44,21 +45,21 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
     const proteinPercentage =
         totalCalories > 0 ? (totalProtein * 4 * 100) / totalCalories : 0;
 
-    function updateIngredientAmount(name: string, value: string) {
-        setIngredientAmountInput((current) =>
+    function updateIngredientWeight(name: string, value: string) {
+        setIngredientWeightInput((current) =>
             current.map((ingredient) =>
                 ingredient.name === name
                     ? {
                           ...ingredient,
-                          amount: value,
+                          weight: value,
                       }
                     : ingredient,
             ),
         );
     }
 
-    function commitIngredientAmount(name: string) {
-        const input = ingredientAmountInput.find(
+    function commitIngredientWeight(name: string) {
+        const input = ingredientWeightInput.find(
             (ingredient) => ingredient.name === name,
         );
 
@@ -68,18 +69,18 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
 
         if (!input || !current) return;
 
-        const value = Number(input.amount);
+        const value = Number(input.weight);
 
         const isValid =
-            input.amount.trim() !== '' && Number.isFinite(value) && value >= 0;
+            input.weight.trim() !== '' && Number.isFinite(value) && value >= 0;
 
         if (!isValid) {
-            setIngredientAmountInput((currentInputs) =>
+            setIngredientWeightInput((currentInputs) =>
                 currentInputs.map((ingredient) =>
                     ingredient.name === name
                         ? {
                               ...ingredient,
-                              amount: String(current.amount),
+                              weight: String(current.weight),
                           }
                         : ingredient,
                 ),
@@ -89,13 +90,13 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
         }
 
         // Nothing changed — don't notify the parent.
-        if (value === current.amount) {
-            setIngredientAmountInput((currentInputs) =>
+        if (value === current.weight) {
+            setIngredientWeightInput((currentInputs) =>
                 currentInputs.map((ingredient) =>
                     ingredient.name === name
                         ? {
                               ...ingredient,
-                              amount: String(value),
+                              weight: String(value),
                           }
                         : ingredient,
                 ),
@@ -109,18 +110,18 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
                 ingredient.name === name
                     ? {
                           ...ingredient,
-                          amount: value,
+                          weight: value,
                       }
                     : ingredient,
             ),
         );
 
-        setIngredientAmountInput((currentInputs) =>
+        setIngredientWeightInput((currentInputs) =>
             currentInputs.map((ingredient) =>
                 ingredient.name === name
                     ? {
                           ...ingredient,
-                          amount: String(value),
+                          weight: String(value),
                       }
                     : ingredient,
             ),
@@ -135,7 +136,7 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
                 <div className="meal-table">
                     <div className="meal-row meal-header">
                         <span>Food</span>
-                        <span>Amount</span>
+                        <span>Weight</span>
                         <span>Calories</span>
                         <span>Protein</span>
                     </div>
@@ -143,31 +144,31 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
                     {calculatedIngredients.map((ingredient) => (
                         <div className="meal-row" key={ingredient.name}>
                             <span>{ingredient.name}</span>
-                            <span className="meal-amount">
+                            <span className="meal-weight">
                                 <input
-                                    className="meal-amount-input"
+                                    className="meal-weight-input"
                                     type="text"
                                     inputMode="decimal"
                                     enterKeyHint="done"
                                     value={
-                                        ingredientAmountInput.find(
+                                        ingredientWeightInput.find(
                                             (input) =>
                                                 input.name === ingredient.name,
-                                        )?.amount ?? ''
+                                        )?.weight ?? ''
                                     }
                                     onChange={(event) =>
-                                        updateIngredientAmount(
+                                        updateIngredientWeight(
                                             ingredient.name,
                                             event.target.value,
                                         )
                                     }
                                     onBlur={() =>
-                                        commitIngredientAmount(ingredient.name)
+                                        commitIngredientWeight(ingredient.name)
                                     }
                                     onKeyDown={(event) => {
                                         if (event.key === 'Enter') {
                                             event.preventDefault();
-                                            commitIngredientAmount(
+                                            commitIngredientWeight(
                                                 ingredient.name,
                                             );
                                             event.currentTarget.blur();

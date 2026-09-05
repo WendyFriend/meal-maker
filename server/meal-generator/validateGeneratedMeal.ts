@@ -1,4 +1,4 @@
-import type { GeneratedMeal } from '../../src/features/meal-generator/types.js';
+import type { GeneratedMeal } from '../../client/meal-generator/types.ts';
 
 export function isGeneratedMeal(value: unknown): value is GeneratedMeal {
     if (!value || typeof value !== 'object') {

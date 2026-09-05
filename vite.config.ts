@@ -57,7 +57,7 @@ export default defineConfig({
     ],
     test: {
         environment: 'jsdom',
-        setupFiles: './src/test/setup.ts',
+        setupFiles: './client/test/setup.ts',
     },
     preview: {
         host: true,

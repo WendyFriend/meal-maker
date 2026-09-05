@@ -1,4 +1,4 @@
-import type { GenerateMealInput } from '../../src/features/meal-generator/types.js';
+import type { GenerateMealInput } from '../../client/meal-generator/types.ts';
 
 export function buildMealPrompt(input: GenerateMealInput): string {
     const { ingredients, nutrition, requirements } = input;

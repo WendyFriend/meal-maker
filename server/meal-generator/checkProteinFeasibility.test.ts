@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { IngredientNutrition } from '../../src/features/meal-generator/types.ts';
+import type { IngredientNutrition } from '../../client/meal-generator/types.ts';
 import { checkProteinFeasibility } from './checkProteinFeasibility.ts';
 
 describe('checkProteinFeasibility', () => {
@@ -88,10 +88,7 @@ describe('checkProteinFeasibility', () => {
 
         expect(result).toEqual({
             feasible: false,
-            maximumProteinPercentage: expect.closeTo(
-                (14 * 4 * 100) / 130,
-                10,
-            ),
+            maximumProteinPercentage: expect.closeTo((14 * 4 * 100) / 130, 10),
         });
     });
 
@@ -118,10 +115,7 @@ describe('checkProteinFeasibility', () => {
 
         expect(result).toEqual({
             feasible: false,
-            maximumProteinPercentage: expect.closeTo(
-                (14 * 4 * 100) / 130,
-                10,
-            ),
+            maximumProteinPercentage: expect.closeTo((14 * 4 * 100) / 130, 10),
         });
     });
 });

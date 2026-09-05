@@ -22,5 +22,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "server/ai/AiClient.ts"]
+  "include": ["client", "client/main.tsx", "client/App.tsx", "client/test", "client/meal-generator"]
 }

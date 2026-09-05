@@ -1,18 +1,15 @@
 import { useState } from 'react';
-import IngredientInput from './features/meal-generator/components/IngredientInput';
-import Calories from './features/meal-generator/components/Calories';
-import Protein from './features/meal-generator/components/Protein';
 import './App.css';
-import MealResult from './features/meal-generator/components/MealResult';
-import type {
-    AppError,
-    ErrorResponse,
-    GeneratedMeal,
-    GenerateMealInput,
-    IngredientNutrition,
-    MealIngredient,
-} from './features/meal-generator/types';
-import { findNutrition } from './features/meal-generator/nutrition';
+import type { AppError, ErrorResponse } from './meal-generator/types';
+import {
+    type GenerateMealRequest,
+    type GenerateMealResponse,
+    type MealIngredient,
+} from '../shared/types/types';
+import IngredientInput from './meal-generator/components/IngredientInput';
+import Calories from './meal-generator/components/Calories';
+import Protein from './meal-generator/components/Protein';
+import MealResult from './meal-generator/components/MealResult';
 
 type CaloriesGoal = number | undefined;
 type ProteinGoal = number | undefined;
@@ -34,14 +31,14 @@ function App() {
         setMealIngredients([]);
         setError(undefined);
         try {
-            const input: GenerateMealInput = {
+            const input: GenerateMealRequest = {
                 ingredients,
-                nutrition: ingredients
-                    .map(findNutrition)
-                    .filter(
-                        (ingredient): ingredient is IngredientNutrition =>
-                            ingredient !== undefined,
-                    ),
+                // nutrition: ingredients
+                //     .map(findNutrition)
+                //     .filter(
+                //         (ingredient): ingredient is IngredientNutrition =>
+                //             ingredient !== undefined,
+                //     ),
                 requirements: {
                     calories: caloriesGoal,
                     proteinPercentage: proteinGoal,
@@ -56,20 +53,17 @@ function App() {
                 body: JSON.stringify(input),
             });
 
-            if (response.status === 422) {
-                const data: ErrorResponse = await response.json();
+            const payload = await response.json();
 
-                setError(data.error);
+            if (response.status === 422) {
+                setError((payload as ErrorResponse).error);
                 return;
             }
+            if (!response.ok) throw new Error('Failed to generate meal');
 
-            if (!response.ok) {
-                throw new Error('Failed to generate meal');
-            }
-
-            const result: GeneratedMeal = await response.json();
-
-            setMealIngredients(result.meal.ingredients);
+            setMealIngredients(
+                (payload as GenerateMealResponse).mealIngredients,
+            );
         } catch (error) {
             console.error(error);
             setError({
@@ -116,29 +110,29 @@ function App() {
             {error?.code === 'REQUIREMENT_NOT_MET' && (
                 <div className="error-message" role="alert">
                     {/* <div className="error-container"> */}
-                        <div className="error-title">⚠️ {error.message}</div>
+                    <div className="error-title">⚠️ {error.message}</div>
 
-                        <div className="error-stats">
-                            <div>
-                                <span>Your goal: </span>
-                                <strong>{error.proteinGoal}%</strong>
-                            </div>
-
-                            <div>
-                                <span>Maximum possible: </span>
-                                <strong>
-                                    {error.maximumProteinPercentage.toFixed(2)}%
-                                </strong>
-                            </div>
+                    <div className="error-stats">
+                        <div>
+                            <span>Your goal: </span>
+                            <strong>{error.proteinGoal}%</strong>
                         </div>
 
-                        <div className="error-suggestion">
-                            <p>Try:</p>
-                            <ul>
-                                <li>Lowering your protein goal</li>
-                                <li>Adding a higher-protein ingredient</li>
-                            </ul>
+                        <div>
+                            <span>Maximum possible: </span>
+                            <strong>
+                                {error.maximumProteinPercentage.toFixed(2)}%
+                            </strong>
                         </div>
+                    </div>
+
+                    <div className="error-suggestion">
+                        <p>Try:</p>
+                        <ul>
+                            <li>Lowering your protein goal</li>
+                            <li>Adding a higher-protein ingredient</li>
+                        </ul>
+                    </div>
                     {/* </div> */}
                 </div>
             )}

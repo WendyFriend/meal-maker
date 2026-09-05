@@ -1,4 +1,4 @@
-import type { IngredientNutrition } from "../../src/features/meal-generator/types.ts";
+import type { IngredientNutrition } from '../../client/meal-generator/types.ts';
 
 export type ProteinFeasibilityResult =
     | {
@@ -8,7 +8,7 @@ export type ProteinFeasibilityResult =
           feasible: false;
           maximumProteinPercentage: number;
       };
-      
+
 export function checkProteinFeasibility(
     nutrition: IngredientNutrition[],
     proteinPercentage: number | undefined,

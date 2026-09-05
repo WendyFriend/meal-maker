@@ -1,12 +1,12 @@
 import type { AiClient } from '../ai/AiClient.ts';
-import { buildMealPrompt } from './buildMealPrompt.js';
+import { buildMealPrompt } from './buildMealPrompt.ts';
 import type {
     GeneratedMeal,
     GenerateMealInput,
-} from '../../src/features/meal-generator/types.js';
-import { isGeneratedMeal } from './validateGeneratedMeal.js';
+} from '../../client/meal-generator/types.ts';
+import { isGeneratedMeal } from './validateGeneratedMeal.ts';
 
-export async function generateMeal(
+export async function generateMealWithAI(
     input: GenerateMealInput,
     aiClient: AiClient,
 ): Promise<GeneratedMeal> {
