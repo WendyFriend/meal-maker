@@ -1,6 +1,15 @@
-// API input
+export type IngredientInfo = {
+    name: string;
+    caloriesPer100g?: number;
+    proteinPer100g?: number;
+    carbohydratePer100g?: number;
+    fatPer100g?: number;
+    saturatedFatPer100g?: number;
+    fiberPer100g?: number;
+};
+
 export type GenerateMealRequest = {
-    ingredients: string[];
+    ingredients: IngredientInfo[];
     requirements: MealRequirements;
 };
 

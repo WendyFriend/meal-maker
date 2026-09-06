@@ -7,11 +7,19 @@ describe('IngredientInput', () => {
     it('adds an ingredient when Enter is pressed', async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();
-        render(<IngredientInput ingredients={['Tofu']} onChange={onChange} />);
+        render(
+            <IngredientInput
+                ingredients={[{ name: 'Tofu' }]}
+                onChange={onChange}
+            />,
+        );
         const input = screen.getByPlaceholderText('Add an ingredient...');
         await user.type(input, 'Kale');
         await user.keyboard('{Enter}');
-        expect(onChange).toHaveBeenCalledWith(['Tofu', 'Kale']);
+        expect(onChange).toHaveBeenCalledWith([
+            { name: 'Tofu' },
+            { name: 'Kale' },
+        ]);
     });
 
     it('clears the input after adding an ingredient', async () => {
@@ -50,7 +58,7 @@ describe('IngredientInput', () => {
         const onChange = vi.fn();
         render(
             <IngredientInput
-                ingredients={['Tofu', 'Kale']}
+                ingredients={[{ name: 'Tofu' }, { name: 'Kale' }]}
                 onChange={onChange}
             />,
         );
@@ -69,7 +77,7 @@ describe('IngredientInput', () => {
         const input = screen.getByPlaceholderText('Add an ingredient...');
         await user.type(input, ' Kale ');
         await user.keyboard('{Enter}');
-        expect(onChange).toHaveBeenCalledWith(['Kale']);
+        expect(onChange).toHaveBeenCalledWith([{ name: 'Kale' }]);
     });
 
     it('does not add an ingredient when a non-Enter key is pressed', async () => {
@@ -87,7 +95,7 @@ describe('IngredientInput', () => {
         const onChange = vi.fn();
         render(
             <IngredientInput
-                ingredients={['Tofu', 'Kale']}
+                ingredients={[{ name: 'Tofu' }, { name: 'Kale' }]}
                 onChange={onChange}
             />,
         );
@@ -95,6 +103,52 @@ describe('IngredientInput', () => {
             name: 'Remove Kale',
         });
         await user.click(removeKaleButton);
-        expect(onChange).toHaveBeenCalledWith(['Tofu']);
+        expect(onChange).toHaveBeenCalledWith([{ name: 'Tofu' }]);
+    });
+
+    it('opens the nutrition dialog when an ingredient chip is clicked', async () => {
+        const user = userEvent.setup();
+        render(
+            <IngredientInput
+                ingredients={[{ name: 'Tofu' }]}
+                onChange={vi.fn()}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole('button', { name: 'Edit nutrition for Tofu' }),
+        );
+
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Nutrition per 100 g')).toBeInTheDocument();
+        expect(
+            screen.getByLabelText('Save to Ingredients'),
+        ).toBeInTheDocument();
+    });
+
+    it('updates an ingredient name when its edit field loses focus', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <IngredientInput
+                ingredients={[{ name: 'Tofu' }]}
+                onChange={onChange}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole('button', { name: 'Edit nutrition for Tofu' }),
+        );
+        await user.click(
+            screen.getByRole('button', { name: 'Edit ingredient name, Tofu' }),
+        );
+        await user.clear(screen.getByLabelText('Ingredient name'));
+        await user.type(
+            screen.getByLabelText('Ingredient name'),
+            'Smoked tofu',
+        );
+        await user.tab();
+
+        expect(onChange).toHaveBeenCalledWith([{ name: 'Smoked tofu' }]);
     });
 });

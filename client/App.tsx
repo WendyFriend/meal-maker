@@ -5,6 +5,7 @@ import type { AppError, ErrorResponse } from './meal-generator/types';
 import {
     type GenerateMealRequest,
     type GenerateMealResponse,
+    type IngredientInfo,
     type MealIngredient,
 } from '../shared/types/types';
 import IngredientInput from './meal-generator/components/IngredientInput';
@@ -21,7 +22,7 @@ function App() {
     const { user, loading, signOut } = useAuth();
     const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
-    const [ingredients, setIngredients] = useState<string[]>([]);
+    const [ingredients, setIngredients] = useState<IngredientInfo[]>([]);
 
     const [caloriesGoal, setCaloriesGoal] = useState<CaloriesGoal>(undefined);
     const [proteinGoal, setProteinGoal] = useState<ProteinGoal>(undefined);
@@ -112,7 +113,9 @@ function App() {
                         aria-haspopup="true"
                         aria-expanded={isAccountMenuOpen}
                         aria-controls="account-menu"
-                        onClick={() => setIsAccountMenuOpen((isOpen) => !isOpen)}
+                        onClick={() =>
+                            setIsAccountMenuOpen((isOpen) => !isOpen)
+                        }
                     >
                         <span className="menu-icon" aria-hidden="true">
                             <span />
