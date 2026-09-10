@@ -14,6 +14,7 @@
     border-radius: 12px;
     background: var(--surface);
     box-shadow: 0 12px 32px rgb(15 30 48 / 25%);
+    text-align: left;
 }
 
 .nutrition-dialog input:focus-visible,
@@ -55,7 +56,7 @@
 
 button.ingredient-name-heading {
     background: transparent;
-    cursor: pointer;
+    cursor: text;
 }
 
 button.ingredient-name-heading:hover {

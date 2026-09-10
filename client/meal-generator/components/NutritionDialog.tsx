@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { IngredientInfo as Ingredient } from '../../../shared/types/types';
+import type {
+    IngredientInfo,
+    UserIngredient,
+} from '../../../shared/types/types';
 import './NutritionDialog.css';
 
-type NutritionField = Exclude<keyof Ingredient, 'name' | 'saturatedFatPer100g'>;
+type NutritionField = Exclude<keyof IngredientInfo, 'name' | 'ingredientId'>;
 
 const nutritionFields: Array<{
     name: NutritionField;
@@ -13,37 +16,38 @@ const nutritionFields: Array<{
     { name: 'proteinPer100g', label: 'Protein', unit: 'g' },
     { name: 'carbohydratePer100g', label: 'Carbs', unit: 'g' },
     { name: 'fatPer100g', label: 'Fat', unit: 'g' },
+    { name: 'saturatedFatPer100g', label: 'Saturated Fat', unit: 'g' },
     { name: 'fiberPer100g', label: 'Fiber', unit: 'g' },
 ];
 
 type NutritionDialogProps = {
-    ingredient: Ingredient;
-    isSaved: boolean;
+    ingredientInfo: UserIngredient;
     onClose: () => void;
-    onIngredientNameChange: (ingredient: Ingredient) => void;
-    onDone: (ingredient: Ingredient, saveToIngredients: boolean) => void;
+    onSave: (
+        ingredient: UserIngredient,
+        saveToUserIngredients: boolean,
+    ) => void;
 };
 
 function NutritionDialog({
-    ingredient,
-    isSaved,
+    ingredientInfo,
     onClose,
-    onIngredientNameChange,
-    onDone,
+    onSave,
 }: NutritionDialogProps) {
-    const [ingredientName, setIngredientName] = useState(ingredient.name);
+    const [ingredientName, setIngredientName] = useState(ingredientInfo.name);
     const [isEditingIngredientName, setIsEditingIngredientName] =
         useState(false);
     const [nutritionValues, setNutritionValues] = useState<
         Record<NutritionField, string>
     >({
-        caloriesPer100g: String(ingredient.caloriesPer100g ?? ''),
-        proteinPer100g: String(ingredient.proteinPer100g ?? ''),
-        carbohydratePer100g: String(ingredient.carbohydratePer100g ?? ''),
-        fatPer100g: String(ingredient.fatPer100g ?? ''),
-        fiberPer100g: String(ingredient.fiberPer100g ?? ''),
+        caloriesPer100g: String(ingredientInfo?.caloriesPer100g ?? ''),
+        proteinPer100g: String(ingredientInfo?.proteinPer100g ?? ''),
+        carbohydratePer100g: String(ingredientInfo?.carbohydratePer100g ?? ''),
+        fatPer100g: String(ingredientInfo?.fatPer100g ?? ''),
+        saturatedFatPer100g: String(ingredientInfo?.saturatedFatPer100g ?? ''),
+        fiberPer100g: String(ingredientInfo?.fiberPer100g ?? ''),
     });
-    const [saveToIngredients, setSaveToIngredients] = useState(isSaved);
+    const [saveToUserIngredients, setSaveToUserIngredients] = useState(true);
 
     useEffect(() => {
         function closeOnEscape(event: KeyboardEvent) {
@@ -57,7 +61,7 @@ function NutritionDialog({
     }, [onClose]);
 
     function getUpdatedIngredient() {
-        const nutrition = nutritionFields.reduce<Partial<Ingredient>>(
+        const nutrition = nutritionFields.reduce<Partial<IngredientInfo>>(
             (current, field) => {
                 const rawValue = nutritionValues[field.name].trim();
                 const value = Number(rawValue);
@@ -72,24 +76,20 @@ function NutritionDialog({
         );
 
         return {
-            ...ingredient,
+            ...ingredientInfo,
             ...nutrition,
-            name: ingredientName.trim() || ingredient.name,
+            name: ingredientName.trim() || ingredientInfo.name,
         };
     }
 
     function saveIngredientName() {
-        const name = ingredientName.trim() || ingredient.name;
+        const name = ingredientName.trim() || ingredientInfo.name;
         setIngredientName(name);
         setIsEditingIngredientName(false);
-
-        if (name !== ingredient.name) {
-            onIngredientNameChange({ ...ingredient, name });
-        }
     }
 
     function handleDone() {
-        onDone(getUpdatedIngredient(), saveToIngredients);
+        onSave(getUpdatedIngredient(), saveToUserIngredients);
     }
 
     return (
@@ -141,7 +141,7 @@ function NutritionDialog({
                 <div className="nutrition-fields">
                     {nutritionFields.map((field) => (
                         <label key={field.name}>
-                            <span>{field.label} *</span>
+                            <span>{field.label}</span>
                             <span className="nutrition-field-input">
                                 <input
                                     type="number"
@@ -165,9 +165,9 @@ function NutritionDialog({
                 <label className="save-ingredient-option">
                     <input
                         type="checkbox"
-                        checked={saveToIngredients}
+                        checked={saveToUserIngredients}
                         onChange={(event) =>
-                            setSaveToIngredients(event.target.checked)
+                            setSaveToUserIngredients(event.target.checked)
                         }
                     />
                     Save to Ingredients
