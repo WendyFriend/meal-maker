@@ -31,6 +31,10 @@ export default function MyIngredients({
 
     const [isSaving, setIsSaving] = useState(false);
 
+    const [deletingIngredientId, setDeletingIngredientId] = useState<
+        string | null
+    >(null);
+
     /*
      * Timer used to detect a long press.
      *
@@ -141,6 +145,30 @@ export default function MyIngredients({
         }
     }
 
+    async function handleDelete() {
+        if (!actionMenuIngredient?.ingredientId) return;
+
+        const ingredient = actionMenuIngredient;
+        const ingredientId = ingredient.ingredientId;
+
+        setActionMenuIngredient(null);
+        setDeletingIngredientId(ingredientId!);
+
+        await new Promise((res) => setTimeout(res, 250));
+
+        try {
+            // setIsSaving(true);
+
+            await onDelete(actionMenuIngredient);
+
+            // setActionMenuIngredient(null);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setDeletingIngredientId(null);
+        }
+    }
+
     /*
      * Make sure we don't leave a timer running if the component
      * is removed from the page.
@@ -162,50 +190,45 @@ export default function MyIngredients({
                 aria-label="Search ingredients"
             />
 
-            {filteredIngredients.length === 0 ? (
-                <div className="empty-ingredients">
-                    {ingredients.length === 0
-                        ? 'You have no saved ingredients yet.'
-                        : 'No ingredients match your search.'}
-                </div>
-            ) : (
-                <div className="ingredients-list">
-                    {filteredIngredients.map((ingredient) => (
-                        <button
-                            type="button"
-                            className="ingredient-row"
-                            key={ingredient.ingredientId ?? ingredient.name}
-                            onPointerDown={() => handlePointerDown(ingredient)}
-                            onPointerUp={handlePointerUp}
-                            onPointerCancel={handlePointerUp}
-                            onPointerLeave={handlePointerUp}
-                            onClick={() => handleIngredientClick(ingredient)}
-                        >
-                            <span
-                                className="ingredient-icon"
-                                aria-hidden="true"
-                            >
-                                🥕
-                            </span>
+            {filteredIngredients.map((ingredient) => (
+                <div
+                    key={ingredient.ingredientId ?? ingredient.name}
+                    className={`ingredient-row-wrapper ${
+                        deletingIngredientId === ingredient.ingredientId
+                            ? 'ingredient-row-wrapper-deleting'
+                            : ''
+                    }`}
+                >
+                    <button
+                        type="button"
+                        className="ingredient-row"
+                        onPointerDown={() => handlePointerDown(ingredient)}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                        onPointerLeave={handlePointerUp}
+                        onClick={() => handleIngredientClick(ingredient)}
+                    >
+                        <span className="ingredient-icon" aria-hidden="true">
+                            🥕
+                        </span>
 
-                            <span className="ingredient-row-info">
-                                <strong>{ingredient.name}</strong>
+                        <span className="ingredient-row-info">
+                            <strong>{ingredient.name}</strong>
 
-                                <span>
-                                    {ingredient.caloriesPer100g !== undefined
-                                        ? `${ingredient.caloriesPer100g} kcal`
-                                        : 'Calories not set'}
-                                    {' · '}
-                                    {ingredient.proteinPer100g !== undefined
-                                        ? `${ingredient.proteinPer100g}g protein`
-                                        : 'Protein not set'}
-                                    {' / 100g'}
-                                </span>
+                            <span>
+                                {ingredient.caloriesPer100g !== undefined
+                                    ? `${ingredient.caloriesPer100g} kcal`
+                                    : 'Calories not set'}
+                                {' · '}
+                                {ingredient.proteinPer100g !== undefined
+                                    ? `${ingredient.proteinPer100g}g protein`
+                                    : 'Protein not set'}
+                                {' / 100g'}
                             </span>
-                        </button>
-                    ))}
+                        </span>
+                    </button>
                 </div>
-            )}
+            ))}
 
             <button
                 type="button"
@@ -234,9 +257,7 @@ export default function MyIngredients({
                         label: 'Delete',
                         icon: '🗑',
                         destructive: true,
-                        onClick: () => {
-                            setActionMenuIngredient(null);
-                        },
+                        onClick: handleDelete,
                     },
                 ]}
                 onClose={() => setActionMenuIngredient(null)}

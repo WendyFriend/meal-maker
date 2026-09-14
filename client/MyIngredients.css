@@ -125,4 +125,22 @@
     outline-offset: 3px;
 }
 
-/* Done button */
+/* Delete transition */
+.ingredient-row-wrapper {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    opacity: 1;
+    transition:
+        grid-template-rows 250ms ease,
+        opacity 200ms ease;
+}
+
+.ingredient-row-wrapper-deleting {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.ingredient-row {
+    min-height: 0;
+}
