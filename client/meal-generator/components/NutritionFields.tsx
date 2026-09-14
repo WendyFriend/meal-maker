@@ -71,14 +71,20 @@ function NutritionFields({ ingredient, onChange }: NutritionFieldsProps) {
                         <input
                             type="number"
                             min="0"
+                            step="0.01"
                             value={ingredient[field.id] ?? ''}
                             onChange={(e) => {
                                 const value = e.target.value;
 
-                                onChange(
-                                    field.id,
-                                    value === '' ? undefined : Number(value),
-                                );
+                                if (value === '') {
+                                    onChange(field.id, undefined);
+                                    return;
+                                }
+
+                                // Allow up to 2 decimal places.
+                                if (/^\d*\.?\d{0,2}$/.test(value)) {
+                                    onChange(field.id, Number(value));
+                                }
                             }}
                             required={field.required}
                         />
