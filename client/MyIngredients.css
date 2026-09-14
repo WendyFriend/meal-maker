@@ -144,3 +144,77 @@
 .ingredient-row {
     min-height: 0;
 }
+
+.ingredient-row-wrapper-selected .ingredient-row {
+    background: var(--accent-bg);
+}
+
+/* search box */
+.ingredient-search-field {
+    display: flex;
+    align-items: center;
+
+    margin: 0 var(--space-6) var(--space-5);
+}
+
+.ingredient-search-icon {
+    flex-shrink: 0;
+
+    margin-right: var(--space-2);
+
+    color: var(--text);
+    font-size: var(--font-size-md);
+}
+
+.ingredient-search-input {
+    position: relative;
+
+    flex: 1;
+    min-width: 0;
+    margin-right: var(--space-4);
+}
+
+.ingredient-search-input::after {
+    content: '';
+
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    height: 2px;
+
+    background: var(--accent);
+
+    transform: scaleX(0);
+    transform-origin: center;
+
+    transition: transform 200ms ease;
+}
+
+.ingredient-search-input:focus-within::after {
+    transform: scaleX(1);
+}
+
+.ingredient-search {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 8px 2px;
+
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+
+    background: transparent;
+    color: var(--text-h);
+
+    font: inherit;
+    font-size: var(--font-size-md);
+
+    outline: none;
+}
+
+.ingredient-search::placeholder {
+    color: var(--text);
+}

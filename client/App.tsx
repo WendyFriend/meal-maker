@@ -332,6 +332,7 @@ function App() {
                 ) : (
                     <button
                         type="button"
+
                         className="page-header-back"
                         onClick={() => navigateToPage('my-ingredients')}
                         aria-label="Back"
@@ -340,7 +341,7 @@ function App() {
                     </button>
                 )}
 
-                <h1>{config.title}</h1>
+                <h1> {config.title}</h1>
             </header>
 
             {/* Side Bar */}

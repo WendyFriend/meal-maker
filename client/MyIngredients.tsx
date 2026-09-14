@@ -181,14 +181,22 @@ export default function MyIngredients({
 
     return (
         <main className="my-ingredients">
-            <input
-                className="ingredient-search"
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search ingredients..."
-                aria-label="Search ingredients"
-            />
+            <div className="ingredient-search-field">
+                <span className="ingredient-search-icon" aria-hidden="true">
+                    🔍
+                </span>
+
+                <div className="ingredient-search-input">
+                    <input
+                        className="ingredient-search"
+                        type="search"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search ingredients..."
+                        aria-label="Search ingredients"
+                    />
+                </div>
+            </div>
 
             {filteredIngredients.map((ingredient) => (
                 <div
@@ -196,6 +204,11 @@ export default function MyIngredients({
                     className={`ingredient-row-wrapper ${
                         deletingIngredientId === ingredient.ingredientId
                             ? 'ingredient-row-wrapper-deleting'
+                            : ''
+                    } ${
+                        actionMenuIngredient?.ingredientId ===
+                        ingredient.ingredientId
+                            ? 'ingredient-row-wrapper-selected'
                             : ''
                     }`}
                 >
