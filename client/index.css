@@ -24,8 +24,52 @@
   --accent-border: #f4796c;
   --accent-green: #dce9e8;
 
+/* Semantic colors */
+  --text-muted: #7a7f84;
+  --danger: #d33;
+  --danger-bg: #fff7f7;
+
+  /* Typography */
   --sans: 'Manrope', sans-serif;
   --heading: 'Manrope', sans-serif;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --line-height-normal: 145%;
+  --line-height-tight: 118%;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+
+  /* Layout */
+  --header-height: 64px;
+  --content-width: 700px;
+
+  /* Shadows */
+  --shadow: 0 4px 12px rgb(15 30 48 / 16%);
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
@@ -51,7 +95,7 @@
 }
 
 h1 {
-  font-size: 32px;
+  font-size: var(--font-size-xl);
   letter-spacing: -1.68px;
   margin: 48px 0 32px;
 }

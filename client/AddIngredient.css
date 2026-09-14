@@ -1,0 +1,134 @@
+.add-ingredient {
+    --add-ingredient-width: 600px;
+
+    width: min(100%, var(--add-ingredient-width));
+    margin: 0 auto;
+
+    padding: var(--space-6);
+    box-sizing: border-box;
+
+    text-align: left;
+}
+
+.add-ingredient form {
+    display: flex;
+    flex-direction: column;
+}
+
+.add-ingredient-name {
+    display: grid;
+    gap: var(--space-1);
+
+    margin-bottom: var(--space-5);
+
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+}
+
+.name-field-input {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+}
+
+.name-field-input::after {
+    content: '';
+
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    height: 2px;
+
+    background: var(--accent);
+
+    transform: scaleX(0);
+    transform-origin: center;
+
+    transition: transform 200ms ease;
+}
+
+.name-field-input:focus-within::after {
+    transform: scaleX(1);
+}
+
+.name-field-input input {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 8px 2px;
+
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+
+    background: transparent;
+    color: var(--text-h);
+
+    font: inherit;
+    font-size: var(--font-size-md);
+
+    outline: none;
+}
+
+/* Done button */
+.add-ingredient-done {
+    position: fixed;
+    left: 50%;
+    bottom: var(--space-6);
+
+    width: min(calc(100% - (var(--space-6) * 2)),
+            calc(var(--add-ingredient-width) - (var(--space-6) * 2)));
+
+    padding: 10px;
+    transform: translateX(-50%);
+
+    border: 0;
+    border-radius: var(--radius-md);
+
+    background: var(--accent);
+    color: #fff;
+
+    font: inherit;
+    font-weight: var(--font-weight-semibold);
+
+    cursor: pointer;
+}
+
+.add-ingredient-done:hover {
+    background: #ed6d60;
+}
+
+.add-ingredient-done:active {
+    transform: translateX(-50%) scale(0.98);
+}
+
+.add-ingredient-done:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+.add-ingredient-done:disabled {
+    cursor: default;
+}
+
+/* Save success animation */
+.save-success {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    pointer-events: none;
+}
+
+.save-success-animation {
+    width: 250px;
+    height: 250px;
+    object-fit: contain;
+}

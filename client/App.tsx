@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './App.css';
+import './Sidebar.css';
 import '@ncdai/react-wheel-picker/style.css';
 import type { AppError, ErrorResponse } from './meal-generator/types';
 import {
@@ -9,6 +10,7 @@ import {
     type MealIngredient,
     type UserIngredient,
 } from '../shared/types/types';
+import MyIngredients from './MyIngredients';
 import IngredientInput from './meal-generator/components/IngredientInput';
 import Calories from './meal-generator/components/Calories';
 import Protein from './meal-generator/components/Protein';
@@ -19,15 +21,61 @@ import {
     getUserIngredients,
     saveUserIngredient as saveUserIngredientToDB,
     updateUserIngredient as updateUserIngredientInDB,
+    deleteUserIngredient as deleteUserIngredientInDB,
 } from './lib/supabase';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
+import AddIngredient from './AddIngredient';
 
 type CaloriesGoal = number | undefined;
 type ProteinGoal = number | undefined;
 
+type Page = keyof typeof pageConfig;
+
+const pageConfig = {
+    'meal-maker': {
+        type: 'main',
+        title: '🍲 Meal Maker',
+    },
+    'my-ingredients': {
+        type: 'main',
+        title: 'My Ingredients',
+    },
+    'food-log': {
+        type: 'main',
+        title: 'My Food Log',
+    },
+    'add-ingredient': {
+        type: 'sub',
+        title: 'Add Ingredient',
+    },
+} as const;
+
+const navigationItems: {
+    id: Page;
+    label: string;
+}[] = [
+    {
+        id: 'meal-maker',
+        label: '🍲 Meal Maker',
+    },
+    {
+        id: 'my-ingredients',
+        label: '🥕 My Ingredients',
+    },
+    {
+        id: 'food-log',
+        label: '📖 My Food Log',
+    },
+];
+
 function App() {
     const { user, loading, signOut } = useAuth();
-    const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const [currentPage, setCurrentPage] = useState<Page>('meal-maker');
+    const [pageDirection, setPageDirection] = useState<'none' | 'right'>(
+        'none',
+    );
 
     const [ingredients, setIngredients] = useState<string[]>([]);
     const [selectedIngredientIndex, setSelectedIngredientIndex] = useState<
@@ -51,6 +99,8 @@ function App() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<AppError>();
 
+    const config = pageConfig[currentPage];
+
     useEffect(() => {
         async function loadIngredients() {
             try {
@@ -63,6 +113,15 @@ function App() {
 
         loadIngredients();
     }, []);
+
+    function navigateToPage(page: Page) {
+        const isReturning =
+            currentPage === 'add-ingredient' && page === 'my-ingredients';
+
+        setPageDirection(isReturning ? 'right' : 'none');
+
+        setCurrentPage(page);
+    }
 
     function getUserIngredient(
         ingredientName: string,
@@ -116,6 +175,20 @@ function App() {
         const created = await saveUserIngredientToDB(ingredient);
         // update local copy of user ingredients
         setUserIngredients((userIngredients) => [...userIngredients, created]);
+    }
+
+    async function deleteUserIngredient(ingredient: UserIngredient) {
+        if (!('ingredientId' in ingredient)) return;
+        // to do: error handling
+        // remove user ingredient from database
+        const deleted = await deleteUserIngredientInDB(ingredient);
+        // remove local copy of user ingredient
+        setUserIngredients((userIngredients) =>
+            userIngredients.filter(
+                (ingredient) =>
+                    ingredient.ingredientId !== deleted.ingredientId,
+            ),
+        );
     }
 
     async function handleIngredientSave(
@@ -228,7 +301,7 @@ function App() {
     }
 
     async function handleSignOut() {
-        setIsAccountMenuOpen(false);
+        setIsSidebarOpen(false);
         await signOut();
     }
 
@@ -241,25 +314,14 @@ function App() {
     }
 
     return (
-        <main>
-            <header className="app-header">
-                <h1>🍲 Meal Maker</h1>
-
-                <div className="account-menu">
+        <div className="app">
+            <header className="page-header">
+                {config.type === 'main' ? (
                     <button
                         type="button"
-                        className="menu-trigger"
-                        aria-label={
-                            isAccountMenuOpen
-                                ? 'Close account menu'
-                                : 'Open account menu'
-                        }
-                        aria-haspopup="true"
-                        aria-expanded={isAccountMenuOpen}
-                        aria-controls="account-menu"
-                        onClick={() =>
-                            setIsAccountMenuOpen((isOpen) => !isOpen)
-                        }
+                        className="page-header-menu"
+                        onClick={() => setIsSidebarOpen(true)}
+                        aria-label="Open navigation menu"
                     >
                         <span className="menu-icon" aria-hidden="true">
                             <span />
@@ -267,103 +329,174 @@ function App() {
                             <span />
                         </span>
                     </button>
+                ) : (
+                    <button
+                        type="button"
+                        className="page-header-back"
+                        onClick={() => navigateToPage('my-ingredients')}
+                        aria-label="Back"
+                    >
+                        ‹
+                    </button>
+                )}
 
-                    {isAccountMenuOpen && (
-                        <div id="account-menu" className="menu-popover">
-                            <button
-                                type="button"
-                                className="logout-menu-item"
-                                onClick={handleSignOut}
-                            >
-                                Log out
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <h1>{config.title}</h1>
             </header>
 
-            <section>
-                <IngredientInput
-                    ingredients={ingredients}
-                    onChange={setIngredients}
-                    removeIngredient={removeIngredient}
-                    onIngredientClick={setSelectedIngredientIndex}
-                />
-            </section>
+            {/* Side Bar */}
+            <div
+                className={`sidebar-backdrop ${isSidebarOpen ? 'open' : ''}`}
+                onClick={() => setIsSidebarOpen(false)}
+                aria-hidden="true"
+            />
 
-            <section>
-                <Calories value={caloriesGoal} onChange={setCaloriesGoal} />
-            </section>
-
-            <section>
-                <Protein value={proteinGoal} onChange={setProteinGoal} />
-            </section>
-
-            <button
-                type="button"
-                className="create-button"
-                onClick={handleCreate}
+            <aside
+                id="sidebar"
+                className={`sidebar ${isSidebarOpen ? 'open' : ''}`}
             >
-                Create
-            </button>
+                <nav className="sidebar-nav">
+                    {navigationItems.map((item) => (
+                        <button
+                            key={item.id}
+                            type="button"
+                            className="sidebar-item"
+                            onClick={() => {
+                                navigateToPage(item.id);
+                                setIsSidebarOpen(false);
+                            }}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
+                </nav>
+                <button
+                    type="button"
+                    className="sidebar-item sidebar-logout"
+                    onClick={handleSignOut}
+                >
+                    Log out
+                </button>
+            </aside>
 
-            {selectedIngredientIndex !== null && (
-                <NutritionDialog
-                    ingredientInfo={getIngredientInfoFromStoredData(
-                        ingredients[selectedIngredientIndex],
-                    )}
-                    onClose={() => setSelectedIngredientIndex(null)}
-                    onSave={handleIngredientSave}
-                />
-            )}
+            <div
+                key={currentPage}
+                className={`page-transition page-transition-${pageDirection}`}
+            >
+                {currentPage === 'meal-maker' && (
+                    <>
+                        <section>
+                            <IngredientInput
+                                ingredients={ingredients}
+                                onChange={setIngredients}
+                                removeIngredient={removeIngredient}
+                                onIngredientClick={setSelectedIngredientIndex}
+                            />
+                        </section>
+                        <section>
+                            <Calories
+                                value={caloriesGoal}
+                                onChange={setCaloriesGoal}
+                            />
+                        </section>
+                        <section>
+                            <Protein
+                                value={proteinGoal}
+                                onChange={setProteinGoal}
+                            />
+                        </section>
+                        <button
+                            type="button"
+                            className="create-button"
+                            onClick={handleCreate}
+                        >
+                            Create
+                        </button>
 
-            {isGenerating && (
-                <p className="generating-message">Generating your meal...</p>
-            )}
+                        {selectedIngredientIndex !== null && (
+                            <NutritionDialog
+                                ingredientInfo={getIngredientInfoFromStoredData(
+                                    ingredients[selectedIngredientIndex],
+                                )}
+                                onClose={() => setSelectedIngredientIndex(null)}
+                                onSave={handleIngredientSave}
+                            />
+                        )}
 
-            {error?.code === 'REQUIREMENT_NOT_MET' && (
-                <div className="error-message" role="alert">
-                    {/* <div className="error-container"> */}
-                    <div className="error-title">⚠️ {error.message}</div>
+                        {isGenerating && (
+                            <p className="generating-message">
+                                Generating your meal...
+                            </p>
+                        )}
 
-                    <div className="error-stats">
-                        <div>
-                            <span>Your goal: </span>
-                            <strong>{error.proteinGoal}%</strong>
-                        </div>
+                        {error?.code === 'REQUIREMENT_NOT_MET' && (
+                            <div className="error-message" role="alert">
+                                {/* <div className="error-container"> */}
+                                <div className="error-title">
+                                    ⚠️ {error.message}
+                                </div>
 
-                        <div>
-                            <span>Maximum possible: </span>
-                            <strong>
-                                {error.maximumProteinPercentage.toFixed(2)}%
-                            </strong>
-                        </div>
-                    </div>
+                                <div className="error-stats">
+                                    <div>
+                                        <span>Your goal: </span>
+                                        <strong>{error.proteinGoal}%</strong>
+                                    </div>
 
-                    <div className="error-suggestion">
-                        <p>Try:</p>
-                        <ul>
-                            <li>Lowering your protein goal</li>
-                            <li>Adding a higher-protein ingredient</li>
-                        </ul>
-                    </div>
-                    {/* </div> */}
-                </div>
-            )}
+                                    <div>
+                                        <span>Maximum possible: </span>
+                                        <strong>
+                                            {error.maximumProteinPercentage.toFixed(
+                                                2,
+                                            )}
+                                            %
+                                        </strong>
+                                    </div>
+                                </div>
 
-            {error?.code === 'UNKNOWN_ERROR' && (
-                <div className="error-message" role="alert">
-                    {error.message}
-                </div>
-            )}
+                                <div className="error-suggestion">
+                                    <p>Try:</p>
+                                    <ul>
+                                        <li>Lowering your protein goal</li>
+                                        <li>
+                                            Adding a higher-protein ingredient
+                                        </li>
+                                    </ul>
+                                </div>
+                                {/* </div> */}
+                            </div>
+                        )}
 
-            {!isGenerating && mealIngredients.length > 0 && (
-                <MealResult
-                    ingredients={mealIngredients}
-                    onChange={setMealIngredients}
-                />
-            )}
-        </main>
+                        {error?.code === 'UNKNOWN_ERROR' && (
+                            <div className="error-message" role="alert">
+                                {error.message}
+                            </div>
+                        )}
+
+                        {!isGenerating && mealIngredients.length > 0 && (
+                            <MealResult
+                                ingredients={mealIngredients}
+                                onChange={setMealIngredients}
+                            />
+                        )}
+                    </>
+                )}
+
+                {currentPage === 'my-ingredients' && (
+                    <MyIngredients
+                        ingredients={userIngredients}
+                        onUpdate={updateUserIngredient}
+                        onDelete={deleteUserIngredient}
+                        onAdd={() => navigateToPage('add-ingredient')}
+                    />
+                )}
+
+                {currentPage === 'add-ingredient' && (
+                    <AddIngredient
+                        onBack={() => navigateToPage('my-ingredients')}
+                        onSave={createUserIngredient}
+                    />
+                )}
+            </div>
+        </div>
     );
 }
 

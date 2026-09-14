@@ -8,6 +8,10 @@ export type IngredientInfo = {
     fiberPer100g?: number;
 };
 
+export type UserIngredient = IngredientInfo & {
+    ingredientId?: string; // database id
+};
+
 export type GenerateMealRequest = {
     ingredients: IngredientInfo[];
     requirements: MealRequirements;

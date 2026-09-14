@@ -107,33 +107,27 @@ function NutritionDialog({
                 aria-label="Ingredient nutrition"
                 onMouseDown={(event) => event.stopPropagation()}
             >
-                {isEditingIngredientName ? (
-                    <input
-                        className="ingredient-name-heading"
-                        type="text"
-                        aria-label="Ingredient name"
-                        autoFocus
-                        value={ingredientName}
-                        onChange={(event) =>
-                            setIngredientName(event.target.value)
-                        }
-                        onBlur={saveIngredientName}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                                event.currentTarget.blur();
-                            }
-                        }}
-                    />
-                ) : (
-                    <button
-                        type="button"
-                        className="ingredient-name-heading"
-                        onClick={() => setIsEditingIngredientName(true)}
-                        aria-label={`Edit ingredient name, ${ingredientName}`}
-                    >
-                        {ingredientName}
-                    </button>
-                )}
+                <div className="nutrition-dialog-name">
+                    <label>
+                        <span className="name-field-input">
+                            <input
+                                className="ingredient-name-input"
+                                type="text"
+                                value={ingredientName}
+                                onChange={(event) =>
+                                    setIngredientName(event.target.value)
+                                }
+                                onBlur={saveIngredientName}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                        event.currentTarget.blur();
+                                    }
+                                }}
+                                aria-label="Ingredient name"
+                            />
+                        </span>
+                    </label>
+                </div>
                 <p className="nutrition-dialog-description">
                     Nutrition per 100 g
                 </p>

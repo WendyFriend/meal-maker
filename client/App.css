@@ -1,30 +1,53 @@
 @import "tailwindcss";
-.app-header {
-  position: relative;
-  width: 100%;
-  margin-bottom: 24px;
-  text-align: center;
-}
 
-.app-header h1 {
-  margin: 40px;
-}
+/* =========================
+   App header
+   ========================= */
 
-.account-menu {
-  position: absolute;
+.page-header {
+  position: sticky;
   top: 0;
-  right: 20px;
+  z-index: 90;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  height: var(--header-height);
+  box-sizing: border-box;
+  padding: 0 var(--space-6);
+
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
-.menu-trigger {
+.page-header h1,
+.page-header h2 {
+  margin: 0;
+
+  color: var(--text-h);
+  font-family: var(--heading);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.24px;
+}
+
+.page-header-menu,
+.page-header-back {
+  position: absolute;
+  left: var(--space-4);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   width: 40px;
   height: 40px;
   padding: 0;
 
-  border: 1px solid color-mix(in srgb,
-      var(--text-h) 25%,
-      var(--border));
-  border-radius: 7px;
+  border: none;
+  border-radius: var(--radius-sm);
 
   background: transparent;
   color: var(--text-h);
@@ -33,268 +56,61 @@
 
   transition:
     background 150ms ease,
-    border-color 150ms ease;
+    color 150ms ease;
 }
 
-.menu-trigger:hover {
-  background: var(--social-bg);
-  border-color: var(--accent);
+.page-header-menu:hover,
+.page-header-back:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
-.menu-trigger:focus-visible,
-.logout-menu-item:focus-visible {
+.page-header-menu:focus-visible,
+.page-header-back:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
+
+/* =========================
+   Hamburger icon
+   ========================= */
+
 .menu-icon {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   align-items: center;
+  gap: var(--space-1);
 }
 
 .menu-icon span {
   display: block;
+
   width: 18px;
   height: 2px;
+
   border-radius: 1px;
-  background: var(--text-h);
+  background: currentColor;
 }
 
-.menu-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  min-width: 120px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow, 0 4px 12px rgb(15 30 48 / 16%));
-  text-align: left;
-  z-index: 1;
-}
 
-.logout-menu-item {
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--text-h);
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-}
+/* =========================
+   Meal Maker
+   ========================= */
 
-.logout-menu-item:hover {
-  background: var(--social-bg);
-}
-
-@media (max-width: 600px) {
-  .account-menu {
-    right: 12px;
-  }
-}
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
-
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-}
-
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
-}
-
-#center {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  align-items: flex-start;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
-}
-
-#next-steps {
-  display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
-}
-
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
-
-.ticks {
-  position: relative;
-  width: 100%;
-
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
-
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
-  }
-}
 .create-button {
   width: 33%;
-  margin: 24px auto 40px;
-  padding: 14px 24px;
+  margin: var(--space-6) auto var(--space-10);
+  padding: 14px var(--space-6);
 
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 
   background: var(--accent);
   color: #ffffff;
 
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   font-size: 17px;
 
   cursor: pointer;
@@ -325,41 +141,52 @@
   border-color: var(--accent);
 }
 
+
+/* =========================
+   Error message
+   ========================= */
+
 .error-message {
-  width: min(100%, 600px);
-  margin: 20px auto;
-  padding: 18px 20px;
+  width: min(600px, calc(100% - 32px));
+  margin: var(--space-5) auto;
+  padding: 18px var(--space-5);
+
   box-sizing: border-box;
 
   border: 1px solid #e5b8b8;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
 
-  background: #fff7f7;
+  background: var(--danger-bg);
   color: #5f2929;
 
   text-align: left;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .error-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
+
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
 }
 
 .error-stats {
   display: flex;
-  gap: 24px;
-  margin-bottom: 16px;
+  gap: var(--space-10);
+  margin-bottom: var(--space-4);
 }
 
 .error-stats>div {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .error-stats span {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   color: #7a5555;
 }
 
@@ -369,7 +196,7 @@
 
 .error-suggestion p {
   margin: 0 0 6px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .error-suggestion ul {
@@ -379,30 +206,27 @@
 }
 
 .error-suggestion li {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
-.error-message {
-  width: min(600px, calc(100% - 32px));
-  width: 62%;
-  margin: 20px auto;
-  padding: 18px 20px;
-  box-sizing: border-box;
-
-  border: 1px solid #e5b8b8;
-  border-radius: 10px;
-
-  background: #fff7f7;
-  color: #5f2929;
-
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* =========================
+   Page transition
+   ========================= */
+.page-transition {
+  position: relative;
+  width: 100%;
 }
 
-.error-stats {
-  display: flex;
-  gap: 40px;
-  margin-bottom: 16px;
+.page-transition-right {
+  animation: page-slide-in-right 300ms ease-out both;
+}
+
+@keyframes page-slide-in-right {
+  from {
+    left: -100px;
+  }
+
+  to {
+    left: 0;
+  }
 }

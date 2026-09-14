@@ -82,6 +82,21 @@ export async function updateUserIngredient(
     return toUserIngredient(data as UserIngredientRow);
 }
 
+export async function deleteUserIngredient(ingredient: UserIngredient) {
+    const { data, error } = await supabase
+        .from('user_ingredients')
+        .delete()
+        .eq('id', ingredient.ingredientId)
+        .select()
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return toUserIngredient(data as UserIngredientRow);
+}
+
 export function toUserIngredient(row: UserIngredientRow): UserIngredient {
     return {
         ingredientId: row.id,
@@ -94,3 +109,5 @@ export function toUserIngredient(row: UserIngredientRow): UserIngredient {
         fiberPer100g: row.fiber_per_100g ?? undefined,
     };
 }
+
+// To Do: make a function to convert UserIngredient to UserIngredientRow
