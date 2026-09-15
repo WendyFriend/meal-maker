@@ -318,6 +318,7 @@ function App() {
             <header className="page-header">
                 {config.type === 'main' ? (
                     <button
+                        key="menu"
                         type="button"
                         className="page-header-menu"
                         onClick={() => setIsSidebarOpen(true)}
@@ -331,8 +332,8 @@ function App() {
                     </button>
                 ) : (
                     <button
+                        key="back"
                         type="button"
-
                         className="page-header-back"
                         onClick={() => navigateToPage('my-ingredients')}
                         aria-label="Back"
