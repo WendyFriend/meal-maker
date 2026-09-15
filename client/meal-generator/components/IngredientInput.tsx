@@ -65,14 +65,16 @@ function IngredientInput({
                 ))}
             </div>
 
-            <input
-                type="text"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={handleKeyDown}
-                enterKeyHint="done"
-                placeholder="Add an ingredient..."
-            />
+            <div className="ingredient-input-field">
+                <input
+                    type="text"
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={handleKeyDown}
+                    enterKeyHint="done"
+                    placeholder="Add an ingredient..."
+                />
+            </div>
         </div>
     );
 }

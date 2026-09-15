@@ -218,3 +218,12 @@
 .ingredient-search::placeholder {
     color: var(--text);
 }
+
+.ingredient-search::placeholder {
+    color: var(--text);
+    transition: color 200ms ease;
+}
+
+.ingredient-search:focus::placeholder {
+    color: transparent;
+}

@@ -1,7 +1,10 @@
 /* IngredientInput */
+
 .ingredient-input {
-    width: 62%;
-    margin: 1em auto;
+    width: 100%;
+    margin: var(--space-5) 0;
+    padding: 0 var(--space-6);
+    box-sizing: border-box;
     text-align: left;
 }
 
@@ -9,7 +12,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
 }
 
 .ingredient-chip {
@@ -48,12 +51,54 @@
     outline-offset: 2px;
 }
 
+/* Material-style ingredient input */
+.ingredient-input-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.ingredient-input-field::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 200ms ease;
+}
+
+.ingredient-input-field:focus-within::after {
+    transform: scaleX(1);
+}
+
 .ingredient-input input {
     width: 100%;
     box-sizing: border-box;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #aaa;
-    font-size: 16px;
-    border: 1.5px solid color-mix(in srgb, var(--text-h) 35%, var(--border));
+    padding: 8px 2px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-md);
+    outline: none;
+}
+
+.ingredient-input input::placeholder {
+    color: var(--text);
+    transition: color 200ms ease;
+}
+
+.ingredient-input input:focus::placeholder {
+    color: transparent;
+}
+
+.ingredient-input input:focus,
+.ingredient-input input:focus-visible {
+    outline: none;
 }
