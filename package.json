@@ -14,7 +14,6 @@
     "server": "tsx --env-file=.env server/server.ts"
   },
   "dependencies": {
-    "@google/genai": "^2.18.0",
     "@ncdai/react-wheel-picker": "^1.2.2",
     "@supabase/supabase-js": "^2.115.0",
     "@tailwindcss/vite": "^4.3.3",

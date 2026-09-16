@@ -8,45 +8,116 @@
     text-align: left;
 }
 
+/* Ingredient chips */
 .ingredient-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: var(--space-3);
+    padding-top: 24px;
+}
+
+.ingredient-chips-empty {
+    margin-bottom: 0;
+    padding-top: 0;
+}
+
+.ingredient-chip-wrapper {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    width: max-content;
+    opacity: 1;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: pan-y;
+    /* if width or opacity changes, animate the change over 200ms */
+    transition:
+        width 200ms ease,
+        opacity 200ms ease;
+}
+
+.ingredient-chip-label {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.ingredient-chip-wrapper-deleting {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
 }
 
 .ingredient-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
+    gap: var(--space-2);
+    flex-shrink: 0;
+
+    padding: var(--space-2) var(--space-3);
     border-radius: 8px;
+
     background: var(--accent-green);
     color: var(--text-h);
-    font-size: 16px;
+
+    font-size: var(--font-size-md);
+
+    transition:
+        background 150ms ease,
+        color 150ms ease;
 }
 
-.ingredient-chip button {
-    border: none;
-    background: none;
+.ingredient-chip-wrapper-selected .ingredient-chip {
+    background: var(--accent-bg);
+    color: var(--accent);
+}
+
+.ingredient-chip-delete {
+    position: absolute;
+    top: -34px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
     padding: 0;
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface);
     color: var(--text-h);
+    cursor: pointer;
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.10),
+        0 6px 16px rgba(0, 0, 0, 0.08);
+    transform: translateX(-50%) scale(0.7);
+    opacity: 0;
+    animation: ingredient-delete-in 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.ingredient-chip .ingredient-chip-label {
-    font: inherit;
-    font-size: inherit;
-    color: inherit;
+@keyframes ingredient-delete-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.7);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
 }
 
-.ingredient-chip-label:hover {
-    text-decoration: underline;
+.ingredient-chip-delete svg {
+    width: 19px;
+    height: 19px;
 }
 
-.ingredient-chip button:focus-visible {
+.ingredient-chip-delete:hover {
+    background: var(--accent-bg);
+    color: var(--accent);
+}
+
+.ingredient-chip-delete:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -101,4 +172,86 @@
 .ingredient-input input:focus,
 .ingredient-input input:focus-visible {
     outline: none;
+}
+
+/* Duplicate message */
+.ingredient-duplicate-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 100;
+
+    width: max-content;
+    max-width: calc(100vw - 48px);
+    padding: 14px 20px;
+
+    box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--text-h);
+
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-normal);
+    text-align: center;
+
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.08),
+        0 12px 32px rgba(0, 0, 0, 0.08);
+
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.88);
+    pointer-events: none;
+}
+
+.ingredient-duplicate-message-visible {
+    animation: duplicate-message-in 250ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ingredient-duplicate-message-hiding {
+    animation: duplicate-message-out 250ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes duplicate-message-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.88);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes duplicate-message-out {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.94);
+    }
+}
+
+/* duplicate message backdrop */
+.ingredient-duplicate-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+
+    background: rgba(0, 0, 0, 0.25);
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 200ms ease;
+}
+
+.ingredient-duplicate-backdrop-visible {
+    opacity: 1;
 }
