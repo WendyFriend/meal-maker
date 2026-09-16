@@ -16,67 +16,32 @@ function IngredientInput({
     onIngredientClick,
 }: IngredientInputProps) {
     const [input, setInput] = useState('');
-    // ingredient selected for showing the delete button
+
+    // Ingredient currently in delete mode.
     const [selectedIngredient, setSelectedIngredient] = useState<string | null>(
         null,
     );
-    // ingredient currently playing the deletion animation
+
+    // Ingredient currently playing the deletion animation.
     const [deletingIngredient, setDeletingIngredient] = useState<string | null>(
         null,
     );
 
-    // timer that is waiting to see whether the user is doing a long press
+    // Timer used only to detect a long press.
     const longPressTimer = useRef<number | null>(null);
 
-    // timer for waiting before actually removing the ingredient
-    // delete workflow: hide delete button -> mark ingredient as deleting 
-    // -> start deleteTimer -> CSS animation for 200ms -> actually remove it
-    const deleteTimer = useRef<number | null>(null);
-
-    // Whether the current pointer interaction become a long press
-    // (user does a long press -> releases finger -> browser saw a click event -> trigger onClick callback
-    // we don't want the onClick callback to be triggered if it's a long press
+    // Prevents the click that follows a long press from opening
+    // the nutrition dialog.
     const didLongPress = useRef(false);
 
-    useEffect(() => {
-        function handleDocumentPointerDown(event: PointerEvent) {
-            if (!selectedIngredient) {
-                // if there's nothing to close, then stop
-                return;
-            }
-
-            // find the element that was pressed
-            const target = event.target as HTMLElement;
-
-            // check if user pressed inside the selected ingredient
-            if (target.closest('.ingredient-chip-wrapper-selected')) {
-                return;
-            }
-            // remove the delete button
-            setSelectedIngredient(null);
-        }
-        // whenever the user presses anywhere on the document, call handleDocumentPointerDown
-        document.addEventListener('pointerdown', handleDocumentPointerDown);
-
-        return () => {
-            // remove listener when the component is cleaned up
-            // so that we don't keep adding document listeners
-            document.removeEventListener(
-                'pointerdown',
-                handleDocumentPointerDown,
-            );
-        };
-        // install the listener whenever selectedIngredient changes
-    }, [selectedIngredient]);
+    // Prevents a click from opening the nutrition dialog when
+    // that click is being used to exit delete mode.
+    const dismissingDeleteMode = useRef(false);
 
     useEffect(() => {
         return () => {
             if (longPressTimer.current !== null) {
                 window.clearTimeout(longPressTimer.current);
-            }
-
-            if (deleteTimer.current !== null) {
-                window.clearTimeout(deleteTimer.current);
             }
         };
     }, []);
@@ -90,10 +55,17 @@ function IngredientInput({
 
     function handlePointerDown(ingredient: string) {
         clearLongPressTimer();
+
         didLongPress.current = false;
 
-        // start a 500ms count down, if user releases before 500ms, 
-        // calls handlePointerUp() to clear longPressTimer
+        // If we're already in delete mode, tapping an ingredient
+        // simply exits delete mode.
+        if (selectedIngredient !== null) {
+            dismissingDeleteMode.current = true;
+            setSelectedIngredient(null);
+            return;
+        }
+
         longPressTimer.current = window.setTimeout(() => {
             didLongPress.current = true;
             setSelectedIngredient(ingredient);
@@ -105,20 +77,74 @@ function IngredientInput({
         clearLongPressTimer();
     }
 
+    function handleIngredientClick(index: number) {
+        // A long press can still produce a click event.
+        // Do not open the nutrition dialog in that case.
+        if (didLongPress.current) {
+            didLongPress.current = false;
+            return;
+        }
+
+        // This click happened because the user tapped an ingredient
+        // while delete mode was active. It was only meant to dismiss
+        // delete mode.
+        if (dismissingDeleteMode.current) {
+            dismissingDeleteMode.current = false;
+            return;
+        }
+
+        onIngredientClick(index);
+    }
+
     function handleDeleteIngredient(ingredient: string) {
         setSelectedIngredient(null);
         setDeletingIngredient(ingredient);
+    }
 
-        if (deleteTimer.current !== null) {
-            window.clearTimeout(deleteTimer.current);
+    function handleDeleteTransitionEnd(
+        event: React.TransitionEvent<HTMLDivElement>,
+        ingredient: string,
+    ) {
+        if (
+            event.propertyName !== 'width' ||
+            deletingIngredient !== ingredient
+        ) {
+            return;
         }
 
-        deleteTimer.current = window.setTimeout(() => {
-            removeIngredient(ingredient);
-            setDeletingIngredient(null);
-            deleteTimer.current = null;
-        }, 200);
+        removeIngredient(ingredient);
+        setDeletingIngredient(null);
     }
+
+    function handleDocumentPointerDown(event: PointerEvent) {
+        if (selectedIngredient === null) {
+            return;
+        }
+
+        const target = event.target as HTMLElement;
+
+        // The delete button handles its own interaction.
+        if (target.closest('.ingredient-chip-delete')) {
+            return;
+        }
+
+        // Tapping anywhere outside the ingredient chip area
+        // exits delete mode.
+        if (!target.closest('.ingredient-chip-wrapper')) {
+            setSelectedIngredient(null);
+        }
+    }
+
+    useEffect(() => {
+        document.addEventListener('pointerdown', handleDocumentPointerDown);
+
+        return () => {
+            document.removeEventListener(
+                'pointerdown',
+                handleDocumentPointerDown,
+            );
+        };
+    }, [selectedIngredient]);
 
     function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
         if (event.key !== 'Enter') {
@@ -157,7 +183,6 @@ function IngredientInput({
             >
                 {ingredients.map((ingredient, index) => {
                     const isSelected = selectedIngredient === ingredient;
-
                     const isDeleting = deletingIngredient === ingredient;
 
                     return (
@@ -172,9 +197,14 @@ function IngredientInput({
                                     ? 'ingredient-chip-wrapper-deleting'
                                     : ''
                             }`}
-                            onPointerDown={() => handlePointerDown(ingredient)}
+                            onPointerDown={() =>
+                                handlePointerDown(ingredient)
+                            }
                             onPointerUp={handlePointerUp}
                             onPointerCancel={handlePointerUp}
+                            onTransitionEnd={(event) =>
+                                handleDeleteTransitionEnd(event, ingredient)
+                            }
                         >
                             {isSelected && (
                                 <button
@@ -201,14 +231,9 @@ function IngredientInput({
                                 <button
                                     type="button"
                                     className="ingredient-chip-label"
-                                    onClick={() => {
-                                        if (didLongPress.current) {
-                                            didLongPress.current = false;
-                                            return;
-                                        }
-                                        // it's a normal tap, not a long press
-                                        onIngredientClick(index);
-                                    }}
+                                    onClick={() =>
+                                        handleIngredientClick(index)
+                                    }
                                     aria-label={`Edit nutrition for ${ingredient}`}
                                 >
                                     {ingredient}
