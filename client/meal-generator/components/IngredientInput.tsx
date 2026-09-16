@@ -37,14 +37,55 @@ function IngredientInput({
     // Prevents a click from opening the nutrition dialog when
     // that click is being used to exit delete mode.
     const dismissingDeleteMode = useRef(false);
-    
+
+    // duplicate ingredient message
+    const [duplicateMessage, setDuplicateMessage] = useState<string | null>(
+        null,
+    );
+    const [isDuplicateMessageHiding, setIsDuplicateMessageHiding] =
+        useState(false);
+
+    const duplicateMessageTimer = useRef<number | null>(null);
+    const duplicateMessageHideTimer = useRef<number | null>(null);
+
     useEffect(() => {
         return () => {
             if (longPressTimer.current !== null) {
                 window.clearTimeout(longPressTimer.current);
             }
+
+            if (duplicateMessageTimer.current !== null) {
+                window.clearTimeout(duplicateMessageTimer.current);
+            }
+
+            if (duplicateMessageHideTimer.current !== null) {
+                window.clearTimeout(duplicateMessageHideTimer.current);
+            }
         };
     }, []);
+
+    function showDuplicateMessage(ingredient: string) {
+        if (duplicateMessageTimer.current !== null) {
+            window.clearTimeout(duplicateMessageTimer.current);
+        }
+
+        if (duplicateMessageHideTimer.current !== null) {
+            window.clearTimeout(duplicateMessageHideTimer.current);
+        }
+
+        setDuplicateMessage(`"${ingredient}" is already in your ingredients.`);
+        setIsDuplicateMessageHiding(false);
+
+        duplicateMessageTimer.current = window.setTimeout(() => {
+            setIsDuplicateMessageHiding(true);
+
+            duplicateMessageHideTimer.current = window.setTimeout(() => {
+                setDuplicateMessage(null);
+                setIsDuplicateMessageHiding(false);
+                duplicateMessageHideTimer.current = null;
+            }, 250);
+        }, 1500);
+    }
 
     function clearLongPressTimer() {
         if (longPressTimer.current !== null) {
@@ -165,6 +206,7 @@ function IngredientInput({
 
         if (isDuplicate) {
             setInput('');
+            showDuplicateMessage(ingredient);
             return;
         }
 
@@ -250,6 +292,28 @@ function IngredientInput({
                     placeholder="Add an ingredient..."
                 />
             </div>
+
+            {duplicateMessage && (
+                <>
+                    <div
+                        className={`ingredient-duplicate-backdrop ${
+                            isDuplicateMessageHiding
+                                ? ''
+                                : 'ingredient-duplicate-backdrop-visible'
+                        }`}
+                    />
+
+                    <div
+                        className={`ingredient-duplicate-message ${
+                            isDuplicateMessageHiding
+                                ? 'ingredient-duplicate-message-hiding'
+                                : 'ingredient-duplicate-message-visible'
+                        }`}
+                    >
+                        {duplicateMessage}
+                    </div>
+                </>
+            )}
         </div>
     );
 }

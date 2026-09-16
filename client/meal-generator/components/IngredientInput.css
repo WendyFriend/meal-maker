@@ -257,7 +257,7 @@
     opacity: 0;
     pointer-events: none;
 
-    transition: opacity 200ms ease;
+    transition: opacity 250ms ease;
 }
 
 .ingredient-duplicate-backdrop-visible {
