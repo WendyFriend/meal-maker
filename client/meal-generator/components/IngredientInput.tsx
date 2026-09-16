@@ -37,7 +37,7 @@ function IngredientInput({
     // Prevents a click from opening the nutrition dialog when
     // that click is being used to exit delete mode.
     const dismissingDeleteMode = useRef(false);
-
+    
     useEffect(() => {
         return () => {
             if (longPressTimer.current !== null) {
@@ -101,12 +101,12 @@ function IngredientInput({
         setDeletingIngredient(ingredient);
     }
 
-    function handleDeleteTransitionEnd(
-        event: React.TransitionEvent<HTMLDivElement>,
+    function handleDeleteAnimationEnd(
+        event: React.AnimationEvent<HTMLDivElement>,
         ingredient: string,
     ) {
         if (
-            event.propertyName !== 'width' ||
+            event.animationName !== 'ingredient-chip-delete-out' ||
             deletingIngredient !== ingredient
         ) {
             return;
@@ -197,13 +197,11 @@ function IngredientInput({
                                     ? 'ingredient-chip-wrapper-deleting'
                                     : ''
                             }`}
-                            onPointerDown={() =>
-                                handlePointerDown(ingredient)
-                            }
+                            onPointerDown={() => handlePointerDown(ingredient)}
                             onPointerUp={handlePointerUp}
                             onPointerCancel={handlePointerUp}
-                            onTransitionEnd={(event) =>
-                                handleDeleteTransitionEnd(event, ingredient)
+                            onAnimationEnd={(event) =>
+                                handleDeleteAnimationEnd(event, ingredient)
                             }
                         >
                             {isSelected && (
@@ -231,9 +229,7 @@ function IngredientInput({
                                 <button
                                     type="button"
                                     className="ingredient-chip-label"
-                                    onClick={() =>
-                                        handleIngredientClick(index)
-                                    }
+                                    onClick={() => handleIngredientClick(index)}
                                     aria-label={`Edit nutrition for ${ingredient}`}
                                 >
                                     {ingredient}

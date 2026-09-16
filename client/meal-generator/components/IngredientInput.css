@@ -24,17 +24,14 @@
 
 .ingredient-chip-wrapper {
     position: relative;
-    display: flex;
-    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 1fr;
     width: max-content;
+    flex-shrink: 0;
     opacity: 1;
     user-select: none;
     -webkit-user-select: none;
     touch-action: pan-y;
-    /* if width or opacity changes, animate the change over 200ms */
-    transition:
-        width 200ms ease,
-        opacity 200ms ease;
 }
 
 .ingredient-chip-label {
@@ -43,9 +40,20 @@
 }
 
 .ingredient-chip-wrapper-deleting {
-    width: 0;
-    opacity: 0;
-    overflow: hidden;
+    animation: ingredient-chip-delete-out 200ms ease forwards;
+    pointer-events: none;
+}
+
+@keyframes ingredient-chip-delete-out {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.7);
+    }
 }
 
 .ingredient-chip {
