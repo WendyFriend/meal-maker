@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import './IngredientInput.css';
 import deleteIcon from '../../assets/icons/delete.svg';
+import type { UserIngredient } from '../../../shared/types/types';
 
 type IngredientInputProps = {
     ingredients: string[];
+    savedIngredients: UserIngredient[];
     onChange: (ingredients: string[]) => void;
     removeIngredient: (ingredient: string) => void;
     onIngredientClick: (index: number) => void;
@@ -11,6 +13,7 @@ type IngredientInputProps = {
 
 function IngredientInput({
     ingredients,
+    savedIngredients,
     onChange,
     removeIngredient,
     onIngredientClick,
@@ -38,15 +41,32 @@ function IngredientInput({
     // that click is being used to exit delete mode.
     const dismissingDeleteMode = useRef(false);
 
-    // duplicate ingredient message
+    // Duplicate ingredient message.
     const [duplicateMessage, setDuplicateMessage] = useState<string | null>(
         null,
     );
+
     const [isDuplicateMessageHiding, setIsDuplicateMessageHiding] =
         useState(false);
 
     const duplicateMessageTimer = useRef<number | null>(null);
     const duplicateMessageHideTimer = useRef<number | null>(null);
+
+    /*
+     * Ingredients matching the current input.
+     *
+     * We only show suggestions when the user has typed something.
+     */
+    const suggestions =
+        input.trim().length === 0
+            ? []
+            : savedIngredients
+                  .filter((ingredient) =>
+                      ingredient.name
+                          .toLowerCase()
+                          .includes(input.trim().toLowerCase()),
+                  )
+                  .slice(0, 6);
 
     useEffect(() => {
         return () => {
@@ -187,14 +207,17 @@ function IngredientInput({
         };
     }, [selectedIngredient]);
 
-    function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        if (event.key !== 'Enter') {
-            return;
-        }
-
-        event.preventDefault();
-
-        const ingredient = input.trim();
+    /*
+     * Adds an ingredient to the chip list.
+     *
+     * This is used by both:
+     *   1. pressing Enter
+     *   2. clicking an autosuggestion
+     *
+     * The chip only stores the ingredient name.
+     */
+    function addIngredient(name: string) {
+        const ingredient = name.trim();
 
         if (!ingredient) {
             return;
@@ -212,6 +235,26 @@ function IngredientInput({
 
         onChange([...ingredients, ingredient]);
         setInput('');
+    }
+
+    function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+
+        /*
+         * Enter always adds exactly what the user typed.
+         *
+         * If they wanted a saved ingredient, they can click
+         * the suggestion instead.
+         */
+        addIngredient(input);
+    }
+
+    function handleSuggestionClick(name: string) {
+        addIngredient(name);
     }
 
     return (
@@ -291,6 +334,23 @@ function IngredientInput({
                     enterKeyHint="done"
                     placeholder="Add an ingredient..."
                 />
+
+                {suggestions.length > 0 && (
+                    <div className="ingredient-suggestions">
+                        {suggestions.map((ingredient) => (
+                            <button
+                                key={ingredient.ingredientId}
+                                type="button"
+                                className="ingredient-suggestion"
+                                onClick={() =>
+                                    handleSuggestionClick(ingredient.name)
+                                }
+                            >
+                                {ingredient.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {duplicateMessage && (

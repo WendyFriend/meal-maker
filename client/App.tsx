@@ -389,6 +389,7 @@ function App() {
                         <section>
                             <IngredientInput
                                 ingredients={ingredients}
+                                savedIngredients={userIngredients}
                                 onChange={setIngredients}
                                 removeIngredient={removeIngredient}
                                 onIngredientClick={setSelectedIngredientIndex}
