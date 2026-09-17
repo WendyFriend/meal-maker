@@ -116,7 +116,12 @@ function AddIngredient({ onBack, onSave }: AddIngredientProps) {
         <main className="add-ingredient">
             <form onSubmit={handleDone}>
                 <label className="add-ingredient-name">
-                    <span>Name</span>
+                    <span>
+                        Name{' '}
+                        <span className="required-marker" aria-hidden="true">
+                            *
+                        </span>
+                    </span>
 
                     <div className="name-field-input">
                         <input

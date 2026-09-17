@@ -73,6 +73,11 @@
     outline: none;
 }
 
+/* Required field */
+.add-ingredient-name .required-marker {
+    color: #dc2626;
+}
+
 /* Done button */
 .add-ingredient-done {
     position: fixed;
