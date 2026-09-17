@@ -38,8 +38,8 @@ export type IngredientNutrition = {
     proteinPer100g: number;
     carbohydratePer100g: number;
     fatPer100g: number;
-    saturatedFatPer100g: number;
-    fiberPer100g: number;
+    saturatedFatPer100g?: number;
+    fiberPer100g?: number;
 };
 
 export type MealIngredient = IngredientNutrition & {

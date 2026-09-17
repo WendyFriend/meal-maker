@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MealIngredient } from '../types';
+import type { MealIngredient } from '../../../shared/types/types';
 
 type NutritionTableProps = {
     ingredients: MealIngredient[];

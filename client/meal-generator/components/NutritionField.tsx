@@ -1,0 +1,69 @@
+import "./NutritionField.css";
+
+export type NutritionFieldId =
+    | 'caloriesPer100g'
+    | 'proteinPer100g'
+    | 'carbohydratePer100g'
+    | 'fatPer100g'
+    | 'saturatedFatPer100g'
+    | 'fiberPer100g';
+
+export type NutritionFieldConfig = {
+    label: string;
+    id: NutritionFieldId;
+    unit: string;
+    required: boolean;
+};
+
+type NutritionFieldProps = {
+    fieldId: NutritionFieldId;
+    fieldLabel: string;
+    fieldValue: string;
+    unit: string;
+    required?: boolean;
+    onChange: (field: NutritionFieldId, value: string) => void;
+};
+
+export function NutritionField({
+    fieldId,
+    fieldLabel,
+    fieldValue,
+    unit,
+    required = false,
+    onChange,
+}: NutritionFieldProps) {
+    const handleChange = (value: string) => {
+        // 2 decimal places
+        if (/^\d*\.?\d{0,2}$/.test(value)) {
+            onChange(fieldId, value);
+        }
+    };
+
+    return (
+        <label className="nutrition-field">
+            <span className="nutrition-field-label">
+                {fieldLabel} / 100g
+                {required && (
+                    <span className="required-marker" aria-hidden="true">
+                        {' '}
+                        *
+                    </span>
+                )}
+            </span>
+
+            <div className="nutrition-field-input">
+                <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={fieldValue}
+                    onChange={(event) => handleChange(event.target.value)}
+                    required={required}
+                />
+
+                <span>{unit}</span>
+            </div>
+        </label>
+    );
+}

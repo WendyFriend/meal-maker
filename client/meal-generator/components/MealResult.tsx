@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import './MealResult.css';
-// import type { MealIngredient } from '../types';
 import NutritionTable from './NutritionTable';
 import MealTable from './MealTable';
 import type { MealIngredient } from '../../../shared/types/types';

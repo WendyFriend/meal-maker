@@ -1,0 +1,71 @@
+/* Nutrition field */
+
+.nutrition-field {
+    display: grid;
+    gap: var(--space-1);
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+}
+
+.nutrition-field:focus-within {
+    color: var(--accent);
+}
+
+.nutrition-field-label {
+    display: inline;
+}
+
+.required-marker {
+    color: #dc2626;
+}
+
+/* Input */
+
+.nutrition-field-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.nutrition-field-input::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 200ms ease;
+}
+
+.nutrition-field-input:focus-within::after {
+    transform: scaleX(1);
+}
+
+.nutrition-field-input input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 8px 2px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-md);
+    outline: none;
+}
+
+.nutrition-field-input input::placeholder {
+    color: var(--text);
+}
+
+.nutrition-field-input span {
+    flex-shrink: 0;
+    margin-left: var(--space-1);
+    color: var(--text);
+    font-size: var(--font-size-sm);
+}
