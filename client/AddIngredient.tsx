@@ -2,7 +2,11 @@ import { useState } from 'react';
 import './AddIngredient.css';
 import type { IngredientInfo } from '../shared/types/types';
 import checkmarkAnimation from './assets/animations/checkmark.svg';
-import { NutritionField, type NutritionFieldConfig, type NutritionFieldId } from './meal-generator/components/NutritionField';
+import {
+    NutritionField,
+    type NutritionFieldConfig,
+    type NutritionFieldId,
+} from './meal-generator/components/NutritionField';
 
 type NutritionValues = Record<NutritionFieldId, string>;
 
@@ -48,9 +52,14 @@ const nutritionFields: NutritionFieldConfig[] = [
 type AddIngredientProps = {
     onBack: () => void;
     onSave: (ingredient: IngredientInfo) => Promise<void>;
+    findExistingIngredient: (name: string) => string | undefined;
 };
 
-function AddIngredient({ onBack, onSave }: AddIngredientProps) {
+function AddIngredient({
+    onBack,
+    onSave,
+    findExistingIngredient,
+}: AddIngredientProps) {
     const [isSaved, setIsSaved] = useState(false);
 
     const [ingredientName, setIngredientName] = useState('');
@@ -112,6 +121,8 @@ function AddIngredient({ onBack, onSave }: AddIngredientProps) {
         }, 920);
     }
 
+    const existingIngredientName = findExistingIngredient(ingredientName);
+
     return (
         <main className="add-ingredient">
             <form onSubmit={handleDone}>
@@ -134,6 +145,13 @@ function AddIngredient({ onBack, onSave }: AddIngredientProps) {
                             autoFocus
                         />
                     </div>
+                    
+                    {existingIngredientName && (
+                        <p className="duplicate-message" role="alert">
+                            {existingIngredientName} is already in your
+                            Ingredients
+                        </p>
+                    )}
                 </label>
 
                 <div className="nutrition-fields">

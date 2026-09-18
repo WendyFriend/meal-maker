@@ -305,6 +305,15 @@ function App() {
         await signOut();
     }
 
+    function findExistingIngredient(name: string): string | undefined {
+        const normalizedName = name.trim().toLowerCase();
+
+        return userIngredients.find(
+            (ingredient) =>
+                ingredient.name.trim().toLowerCase() === normalizedName,
+        )?.name;
+    }
+
     if (loading) {
         return <p>Loading...</p>;
     }
@@ -496,6 +505,7 @@ function App() {
                     <AddIngredient
                         onBack={() => navigateToPage('my-ingredients')}
                         onSave={createUserIngredient}
+                        findExistingIngredient={findExistingIngredient}
                     />
                 )}
             </div>

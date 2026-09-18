@@ -137,3 +137,25 @@
     height: 250px;
     object-fit: contain;
 }
+
+/* Duplicate Ingredient message */
+
+.duplicate-message {
+    margin: var(--space-1) 0 0;
+    color: #dc2626;
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    animation: duplicate-message-in 180ms ease-out;
+}
+
+@keyframes duplicate-message-in {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
