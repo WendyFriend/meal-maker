@@ -25,6 +25,7 @@ import {
 } from './lib/supabase';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
+import { isUserIngredient } from './utils/Ingredient';
 
 type CaloriesGoal = number | undefined;
 type ProteinGoal = number | undefined;
@@ -125,7 +126,7 @@ function App() {
 
     function getUserIngredient(
         ingredientName: string,
-    ): IngredientInfo | undefined {
+    ): UserIngredient | undefined {
         return userIngredients.find(
             (ingredient) =>
                 ingredient.name.toLowerCase() === ingredientName.toLowerCase(),
@@ -143,7 +144,7 @@ function App() {
 
     function getIngredientInfoFromStoredData(
         ingredientName: string,
-    ): IngredientInfo {
+    ): IngredientInfo | UserIngredient {
         return (
             getThisMealIngredient(ingredientName) ??
             getUserIngredient(ingredientName) ?? { name: ingredientName }
@@ -152,7 +153,7 @@ function App() {
 
     async function updateUserIngredient(
         ingredientId: string,
-        updatedIngredient: IngredientInfo,
+        updatedIngredient: UserIngredient,
     ) {
         // update database user ingredients
         const updated = await updateUserIngredientInDB(
@@ -192,37 +193,39 @@ function App() {
     }
 
     async function handleIngredientSave(
-        savedIngredient: UserIngredient,
+        savedIngredient: UserIngredient | IngredientInfo,
         saveToUserIngredients: boolean,
     ) {
         if (selectedIngredientIndex === null) return;
 
         try {
-            const ingredientId = savedIngredient.ingredientId;
-
             // if user checks save to db
             if (saveToUserIngredients) {
-                if (ingredientId) {
-                    await updateUserIngredient(ingredientId, savedIngredient);
+                if (isUserIngredient(savedIngredient)) {
+                    await updateUserIngredient(
+                        savedIngredient.ingredientId,
+                        savedIngredient,
+                    );
                 } else {
                     await createUserIngredient(savedIngredient);
                 }
+            } else {
+                // save ingredient nutritional info to use for this meal
+                setThisMealIngredients((current) => {
+                    const exists = current.some(
+                        (ingredient) =>
+                            ingredient.name === savedIngredient.name,
+                    );
+
+                    return exists
+                        ? current.map((ingredient) =>
+                              ingredient.name === savedIngredient.name
+                                  ? savedIngredient
+                                  : ingredient,
+                          )
+                        : [...current, savedIngredient];
+                });
             }
-
-            // save ingredient nutritional info to use for this meal
-            setThisMealIngredients((current) => {
-                const exists = current.some(
-                    (ingredient) => ingredient.name === savedIngredient.name,
-                );
-
-                return exists
-                    ? current.map((ingredient) =>
-                          ingredient.name === savedIngredient.name
-                              ? savedIngredient
-                              : ingredient,
-                      )
-                    : [...current, savedIngredient];
-            });
 
             // Always update the current meal ingredient
             setIngredients((ingredientNames) =>

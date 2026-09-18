@@ -3,6 +3,7 @@ import type { UserIngredient } from '../shared/types/types';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import ActionMenu from './meal-generator/components/ActionMenu';
 import './MyIngredients.css';
+import { isUserIngredient } from './utils/Ingredient';
 
 type MyIngredientsProps = {
     ingredients: UserIngredient[];
@@ -28,8 +29,6 @@ export default function MyIngredients({
     // Ingredient whose long-press action menu is currently open.
     const [actionMenuIngredient, setActionMenuIngredient] =
         useState<UserIngredient | null>(null);
-
-    const [isSaving, setIsSaving] = useState(false);
 
     const [deletingIngredientId, setDeletingIngredientId] = useState<
         string | null
@@ -133,15 +132,13 @@ export default function MyIngredients({
         if (!updatedIngredient.ingredientId) return;
 
         try {
-            setIsSaving(true);
-
             await onUpdate(updatedIngredient.ingredientId, updatedIngredient);
 
             setSelectedIngredient(null);
         } catch (error) {
             console.error(error);
         } finally {
-            setIsSaving(false);
+            // show error message
         }
     }
 
@@ -257,7 +254,11 @@ export default function MyIngredients({
                 <NutritionDialog
                     ingredientInfo={selectedIngredient}
                     onClose={() => setSelectedIngredient(null)}
-                    onSave={handleSave}
+                    onSave={async (ingredient) => {
+                        if (isUserIngredient(ingredient)) {
+                            await handleSave(ingredient);
+                        }
+                    }}
                     // showSaveOption={false}
                     // disabled={isSaving}
                 />

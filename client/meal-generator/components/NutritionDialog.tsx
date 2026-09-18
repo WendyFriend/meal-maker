@@ -48,12 +48,12 @@ const nutritionFields: NutritionFieldConfig[] = [
 ];
 
 type NutritionDialogProps = {
-    ingredientInfo: UserIngredient;
+    ingredientInfo: UserIngredient | IngredientInfo;
     onClose: () => void;
     onSave: (
-        ingredient: UserIngredient,
+        ingredient: UserIngredient | IngredientInfo,
         saveToUserIngredients: boolean,
-    ) => void;
+    ) => Promise<void>;
 };
 
 function NutritionDialog({
@@ -85,7 +85,7 @@ function NutritionDialog({
         return () => window.removeEventListener('keydown', closeOnEscape);
     }, [onClose]);
 
-    function getUpdatedIngredient(): IngredientInfo {
+    function getUpdatedIngredient(): IngredientInfo | UserIngredient {
         const nutrition = nutritionFields.reduce<Partial<IngredientInfo>>(
             (current, field) => {
                 const rawValue = nutritionValues[field.id].trim();

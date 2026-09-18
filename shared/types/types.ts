@@ -8,8 +8,15 @@ export type IngredientInfo = {
     fiberPer100g?: number;
 };
 
-export type UserIngredient = IngredientInfo & {
-    ingredientId?: string; // database id
+export type UserIngredient = {
+    ingredientId: string; // database id
+    name: string;
+    caloriesPer100g: number;
+    proteinPer100g: number;
+    carbohydratePer100g: number;
+    fatPer100g: number;
+    saturatedFatPer100g?: number;
+    fiberPer100g?: number;
 };
 
 export type GenerateMealRequest = {

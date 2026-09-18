@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { UserIngredient } from '../../shared/types/types';
+import type { IngredientInfo, UserIngredient } from '../../shared/types/types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -8,10 +8,10 @@ export type UserIngredientRow = {
     id: string;
     user_id: string;
     name: string;
-    calories_per_100g: number | null;
-    protein_per_100g: number | null;
-    carbohydrate_per_100g: number | null;
-    fat_per_100g: number | null;
+    calories_per_100g: number;
+    protein_per_100g: number;
+    carbohydrate_per_100g: number;
+    fat_per_100g: number;
     saturated_fat_per_100g: number | null;
     fiber_per_100g: number | null;
     created_at: string;
@@ -20,7 +20,7 @@ export type UserIngredientRow = {
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey);
 
-export async function saveUserIngredient(ingredient: UserIngredient) {
+export async function saveUserIngredient(ingredient: IngredientInfo) {
     const { data, error } = await supabase
         .from('user_ingredients')
         .insert({
@@ -101,8 +101,8 @@ export function toUserIngredient(row: UserIngredientRow): UserIngredient {
     return {
         ingredientId: row.id,
         name: row.name,
-        caloriesPer100g: row.calories_per_100g ?? undefined,
-        proteinPer100g: row.protein_per_100g ?? undefined,
+        caloriesPer100g: row.calories_per_100g,
+        proteinPer100g: row.protein_per_100g,
         carbohydratePer100g: row.carbohydrate_per_100g ?? undefined,
         fatPer100g: row.fat_per_100g ?? undefined,
         saturatedFatPer100g: row.saturated_fat_per_100g ?? undefined,
