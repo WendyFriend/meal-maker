@@ -110,7 +110,11 @@ function AddIngredient({
     async function handleDone(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        // validation/save logic...
+        const existingIngredientName = findExistingIngredient(ingredientName);
+
+        if (existingIngredientName) {
+            return;
+        }
 
         await onSave(getIngredient());
 
@@ -118,7 +122,7 @@ function AddIngredient({
 
         window.setTimeout(() => {
             onBack();
-        }, 920);
+        }, 950);
     }
 
     const existingIngredientName = findExistingIngredient(ingredientName);
@@ -145,8 +149,9 @@ function AddIngredient({
                             autoFocus
                         />
                     </div>
-                    
-                    {existingIngredientName && (
+
+                    {/* !isSaved prevents duplicate message from showing while save success animation is playing */}
+                    {existingIngredientName && !isSaved && (
                         <p className="duplicate-message" role="alert">
                             {existingIngredientName} is already in your
                             Ingredients
