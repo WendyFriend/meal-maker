@@ -73,6 +73,10 @@ function NutritionDialog({
     });
 
     const [saveToUserIngredients, setSaveToUserIngredients] = useState(true);
+    const [hasSubmitted, setHasSubmitted] = useState(false);
+
+    const isFieldMissing = (field: NutritionFieldConfig) =>
+        field.required && nutritionValues[field.id].trim() === '';
 
     useEffect(() => {
         function closeOnEscape(event: KeyboardEvent) {
@@ -119,6 +123,13 @@ function NutritionDialog({
     }
 
     function handleDone() {
+        setHasSubmitted(true);
+
+        const hasErrors = nutritionFields.some(isFieldMissing);
+
+        if (hasErrors) {
+            return;
+        }
         onSave(getUpdatedIngredient(), saveToUserIngredients);
     }
 
@@ -172,6 +183,7 @@ function NutritionDialog({
                             fieldValue={nutritionValues[field.id]}
                             unit={field.unit}
                             required={field.required}
+                            error={hasSubmitted && isFieldMissing(field)}
                             onChange={(fieldId, value) =>
                                 setNutritionValues((values) => ({
                                     ...values,

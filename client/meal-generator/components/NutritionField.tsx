@@ -21,6 +21,7 @@ type NutritionFieldProps = {
     fieldValue: string;
     unit: string;
     required?: boolean;
+    error?: boolean;
     onChange: (field: NutritionFieldId, value: string) => void;
 };
 
@@ -30,6 +31,7 @@ export function NutritionField({
     fieldValue,
     unit,
     required = false,
+    error = false,
     onChange,
 }: NutritionFieldProps) {
     const handleChange = (value: string) => {
@@ -40,7 +42,9 @@ export function NutritionField({
     };
 
     return (
-        <label className="nutrition-field">
+        <label
+            className={`nutrition-field ${error ? 'nutrition-field-error' : ''}`}
+        >
             <span className="nutrition-field-label">
                 {fieldLabel} / 100g
                 {required && (
@@ -60,6 +64,7 @@ export function NutritionField({
                     value={fieldValue}
                     onChange={(event) => handleChange(event.target.value)}
                     required={required}
+                    aria-invalid={error}
                 />
 
                 <span>{unit}</span>
