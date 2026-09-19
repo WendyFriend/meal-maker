@@ -1,18 +1,8 @@
 import type {
-    GenerateMealResponse,
+    IngredientNutrition,
     MealIngredient,
     MealRequirements,
 } from '../../../shared/types/types.ts';
-
-export type IngredientNutrition = {
-    name: string;
-    caloriesPer100g: number;
-    proteinPer100g: number;
-    carbohydratePer100g: number;
-    fatPer100g: number;
-    saturatedFatPer100g: number;
-    fiberPer100g: number;
-};
 
 export type IngredientRole = {
     isNonStarchyVegetable: boolean;
@@ -63,7 +53,7 @@ export function generateMeal(
         targetProteinGrams - proteinGramsSoFar,
     );
     const proteinSources = classifiedIngredients.filter(
-        (i) => i.isProteinSource,
+        (i) => i.isProteinSource && !i.isNonStarchyVegetable,
     );
     const proteinSourcesWithWeight = getProteinSourcesWithWeight(
         proteinGramsNeeded,
@@ -88,8 +78,7 @@ export function generateMeal(
         unusedIngredients,
     );
     meal.push(...otherIngredientsWithWeight);
-    const consolidatedMeal = consolidateIngredients(meal);
-    return consolidatedMeal;
+    return meal;
 }
 
 export function consolidateIngredients(
