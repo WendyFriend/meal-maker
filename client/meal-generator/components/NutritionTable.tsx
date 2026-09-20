@@ -6,10 +6,7 @@ type NutritionTableProps = {
     onChange: (ingredients: MealIngredient[]) => void;
 };
 
-function NutritionTable({
-    ingredients,
-    onChange,
-}: NutritionTableProps) {
+function NutritionTable({ ingredients, onChange }: NutritionTableProps) {
     const [ingredientNutritionInput, setIngredientNutritionInput] = useState(
         ingredients.map((ingredient) => ({
             name: ingredient.name,
@@ -56,7 +53,6 @@ function NutritionTable({
             rawValue.trim() !== '' && Number.isFinite(value) && value >= 0;
 
         if (!isValid) {
-            // Restore the input to the last valid value
             setIngredientNutritionInput((currentInputs) =>
                 currentInputs.map((ingredient) =>
                     ingredient.name === name
@@ -67,10 +63,10 @@ function NutritionTable({
                         : ingredient,
                 ),
             );
+
             return;
         }
 
-        // No change — don't notify the parent
         if (value === current[field]) {
             setIngredientNutritionInput((currentInputs) =>
                 currentInputs.map((ingredient) =>
@@ -82,10 +78,10 @@ function NutritionTable({
                         : ingredient,
                 ),
             );
+
             return;
         }
 
-        // Commit the valid value
         onChange(
             ingredients.map((ingredient) =>
                 ingredient.name === name
@@ -97,7 +93,6 @@ function NutritionTable({
             ),
         );
 
-        // Normalize the displayed value
         setIngredientNutritionInput((currentInputs) =>
             currentInputs.map((ingredient) =>
                 ingredient.name === name
@@ -113,85 +108,104 @@ function NutritionTable({
     return (
         <section className="meal-section">
             <h2>Ingredients</h2>
+
             <div className="table-scroll">
                 <div className="nutrition-table">
+                    {/* Header */}
+
                     <div className="nutrition-row nutrition-header">
-                        <span>Ingredient</span>
-                        <span>kcal/100g</span>
-                        <span>Protein/100g</span>
+                        <div className="nutrition-cell nutrition-ingredient-cell">
+                            Ingredient
+                        </div>
+
+                        <div className="nutrition-cell">kcal/100g</div>
+
+                        <div className="nutrition-cell">Protein/100g</div>
                     </div>
+
+                    {/* Ingredients */}
 
                     {ingredientNutritionInput.map((ingredient) => (
                         <div className="nutrition-row" key={ingredient.name}>
-                            <span>{ingredient.name}</span>
+                            <div className="nutrition-cell nutrition-ingredient-cell">
+                                {ingredient.name}
+                            </div>
 
-                            <span className="nutrition-value">
-                                <input
-                                    className="nutrition-input"
-                                    type="text"
-                                    inputMode="decimal"
-                                    enterKeyHint="done"
-                                    value={ingredient.caloriesPer100g}
-                                    onChange={(event) =>
-                                        updateNutritionInput(
-                                            ingredient.name,
-                                            'caloriesPer100g',
-                                            event.target.value,
-                                        )
-                                    }
-                                    onBlur={() =>
-                                        commitNutrition(
-                                            ingredient.name,
-                                            'caloriesPer100g',
-                                        )
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter') {
-                                            event.preventDefault();
+                            <div className="nutrition-cell">
+                                <span className="nutrition-value">
+                                    <input
+                                        className="nutrition-input"
+                                        type="text"
+                                        inputMode="decimal"
+                                        enterKeyHint="done"
+                                        value={ingredient.caloriesPer100g}
+                                        onChange={(event) =>
+                                            updateNutritionInput(
+                                                ingredient.name,
+                                                'caloriesPer100g',
+                                                event.target.value,
+                                            )
+                                        }
+                                        onBlur={() =>
                                             commitNutrition(
                                                 ingredient.name,
                                                 'caloriesPer100g',
-                                            );
-                                            event.currentTarget.blur();
+                                            )
                                         }
-                                    }}
-                                />
-                                kcal
-                            </span>
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
 
-                            <span className="nutrition-value">
-                                <input
-                                    className="nutrition-input"
-                                    value={ingredient.proteinPer100g}
-                                    type="text"
-                                    inputMode="decimal"
-                                    enterKeyHint="done"
-                                    onChange={(event) =>
-                                        updateNutritionInput(
-                                            ingredient.name,
-                                            'proteinPer100g',
-                                            event.target.value,
-                                        )
-                                    }
-                                    onBlur={() =>
-                                        commitNutrition(
-                                            ingredient.name,
-                                            'proteinPer100g',
-                                        )
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter') {
-                                            event.preventDefault();
+                                                commitNutrition(
+                                                    ingredient.name,
+                                                    'caloriesPer100g',
+                                                );
+
+                                                event.currentTarget.blur();
+                                            }
+                                        }}
+                                    />
+                                    kcal
+                                </span>
+                            </div>
+
+                            <div className="nutrition-cell">
+                                <span className="nutrition-value">
+                                    <input
+                                        className="nutrition-input"
+                                        type="text"
+                                        inputMode="decimal"
+                                        enterKeyHint="done"
+                                        value={ingredient.proteinPer100g}
+                                        onChange={(event) =>
+                                            updateNutritionInput(
+                                                ingredient.name,
+                                                'proteinPer100g',
+                                                event.target.value,
+                                            )
+                                        }
+                                        onBlur={() =>
                                             commitNutrition(
                                                 ingredient.name,
                                                 'proteinPer100g',
-                                            );
-                                            event.currentTarget.blur();
+                                            )
                                         }
-                                    }}
-                                />
-                                g
-                            </span>
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+
+                                                commitNutrition(
+                                                    ingredient.name,
+                                                    'proteinPer100g',
+                                                );
+
+                                                event.currentTarget.blur();
+                                            }
+                                        }}
+                                    />
+                                    g
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>

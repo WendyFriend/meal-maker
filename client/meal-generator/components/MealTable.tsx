@@ -143,7 +143,7 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
 
                     {calculatedIngredients.map((ingredient) => (
                         <div className="meal-row" key={ingredient.name}>
-                            <span>{ingredient.name}</span>
+                            <span className="meal-food">{ingredient.name}</span>
                             <span className="meal-weight">
                                 <input
                                     className="meal-weight-input"

@@ -45,14 +45,19 @@
     font-weight: 600;
 }
 
-/* Horizontal scrolling */
+
+/* =========================================================
+   Horizontal scrolling
+   ========================================================= */
 
 .table-scroll {
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    min-width: 0;
 
-    /* Hide scrollbar */
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
 
@@ -60,28 +65,50 @@
     display: none;
 }
 
-/* Shared table styles */
+
+/* =========================================================
+   Shared table styles
+   ========================================================= */
 
 .nutrition-table,
 .meal-table {
     display: grid;
-    width: max-content;
-    min-width: 100%;
 }
 
-/* Ingredients table */
+
+/* =========================================================
+   Nutrition table
+   ========================================================= */
 
 .nutrition-table {
-    grid-template-columns: max-content max-content max-content;
+    width: max-content;
+    min-width: 348px;
+}
+
+
+/* =========================================================
+   Nutrition rows
+   ========================================================= */
+
+.nutrition-row {
+    display: grid;
+
+    grid-template-columns:
+        128px 100px 100px;
+
     column-gap: 20px;
 }
 
-.nutrition-row {
-    display: contents;
-}
 
-.nutrition-row>span {
+/* =========================================================
+   Nutrition cells
+   ========================================================= */
+
+.nutrition-cell {
     min-height: 42px;
+    padding: 8px 0;
+
+    box-sizing: border-box;
 
     display: flex;
     align-items: center;
@@ -92,15 +119,59 @@
     white-space: nowrap;
 }
 
-.nutrition-header>span {
+
+/* =========================================================
+   Sticky ingredient column
+   ========================================================= */
+
+.nutrition-ingredient-cell {
+    position: sticky;
+    left: 0;
+
+    width: 128px;
+    min-width: 128px;
+    max-width: 128px;
+
+    box-sizing: border-box;
+    padding-right: 8px;
+
+    background: #dce8e9;
+
+    /*
+     * Long ingredient names wrap instead of overflowing.
+     */
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+
+    box-shadow:
+        4px 0 8px rgba(15, 30, 48, 0.04);
+
+    z-index: 1;
+}
+
+
+/* =========================================================
+   Header
+   ========================================================= */
+
+.nutrition-header .nutrition-cell {
     min-height: 36px;
 
     font-size: 13px;
     font-weight: 600;
+
     color: rgba(15, 30, 48, 0.6);
 }
 
-/* Editable nutrition values */
+.nutrition-header .nutrition-ingredient-cell {
+    z-index: 2;
+}
+
+
+/* =========================================================
+   Editable nutrition values
+   ========================================================= */
 
 .nutrition-value {
     display: flex;
@@ -136,15 +207,26 @@
 
 .nutrition-input:focus {
     outline: none;
+
     background: var(--surface);
     border-color: var(--accent);
 }
-
-/* Meal table */
+/* =========================================================
+   Meal table
+   ========================================================= */
 
 .meal-table {
+    /*
+     * The table is deliberately wider than the visible
+     * container so that .table-scroll can scroll horizontally.
+     */
+    width: 460px;
+    min-width: 460px;
+
+    --food-column-width: 128px;
+
     grid-template-columns:
-        max-content max-content max-content max-content;
+        var(--food-column-width) 80px 100px 90px;
 
     column-gap: 20px;
 }
@@ -155,14 +237,48 @@
 
 .meal-row>span {
     min-height: 42px;
+    padding-top: 8px;
+    padding-bottom: 8px;
 
     display: flex;
     align-items: center;
 
+    box-sizing: border-box;
+
     border-bottom: 1px solid rgba(15, 30, 48, 0.08);
 
     font-size: 15px;
-    white-space: nowrap;
+}
+
+
+/* =========================================================
+   Sticky food column
+   ========================================================= */
+
+.meal-row>span:first-child {
+    position: sticky;
+    left: 0;
+
+    width: var(--food-column-width);
+    min-width: var(--food-column-width);
+    max-width: var(--food-column-width);
+
+    box-sizing: border-box;
+    padding-right: 8px;
+
+    background: #dce8e9;
+
+    box-shadow:
+        4px 0 8px rgba(15, 30, 48, 0.04);
+
+    /*
+     * Allow long ingredient names to wrap.
+     */
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+
+    z-index: 1;
 }
 
 .meal-header>span {
@@ -173,7 +289,14 @@
     color: rgba(15, 30, 48, 0.6);
 }
 
-/* Editable meal weight */
+.meal-header>span:first-child {
+    z-index: 2;
+}
+
+
+/* =========================================================
+   Editable meal weight
+   ========================================================= */
 
 .meal-weight {
     display: flex;
@@ -213,7 +336,10 @@
     border-color: var(--accent);
 }
 
-/* Total */
+
+/* =========================================================
+   Total
+   ========================================================= */
 
 .meal-total-row>span {
     min-height: 44px;
@@ -224,6 +350,10 @@
     border-bottom: none;
 }
 
+.meal-total-row>span:first-child {
+    z-index: 2;
+}
+
 .protein-percentage {
     margin-top: 8px;
 
@@ -232,10 +362,14 @@
     color: var(--accent);
 }
 
-/* Total update animation */
+
+/* =========================================================
+   Total update animation
+   ========================================================= */
 
 .total-value-updated {
     border-radius: 6px;
+
     animation: total-value-flash 2500ms ease-in-out;
 }
 
