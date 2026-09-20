@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import './IngredientInput.css';
 import deleteIcon from '../../assets/icons/delete.svg';
@@ -19,13 +20,12 @@ function IngredientInput({
     onIngredientClick,
 }: IngredientInputProps) {
     const [input, setInput] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
-    // Ingredient currently in delete mode.
-    const [selectedIngredient, setSelectedIngredient] = useState<string | null>(
-        null,
-    );
-
-    // Ingredient currently playing the deletion animation.
+    // Delete mode
+    const [deleteModeIngredient, setDeleteModeIngredient] = useState<
+        string | null
+    >(null);
     const [deletingIngredient, setDeletingIngredient] = useState<string | null>(
         null,
     );
@@ -41,57 +41,86 @@ function IngredientInput({
     // that click is being used to exit delete mode.
     const dismissingDeleteMode = useRef(false);
 
-    // Duplicate ingredient message.
+    // Duplicate message
     const [duplicateMessage, setDuplicateMessage] = useState<string | null>(
         null,
     );
-
     const [isDuplicateMessageHiding, setIsDuplicateMessageHiding] =
         useState(false);
 
     const duplicateMessageTimer = useRef<number | null>(null);
     const duplicateMessageHideTimer = useRef<number | null>(null);
 
-    /*
-     * Ingredients matching the current input.
-     *
-     * We only show suggestions when the user has typed something.
-     */
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const normalizedInput = input.trim().toLowerCase();
+
     const suggestions =
-        input.trim().length === 0
+        normalizedInput.length === 0
             ? []
             : savedIngredients
                   .filter((ingredient) =>
-                      ingredient.name
-                          .toLowerCase()
-                          .includes(input.trim().toLowerCase()),
+                      ingredient.name.toLowerCase().includes(normalizedInput),
                   )
                   .slice(0, 6);
 
     useEffect(() => {
         return () => {
-            if (longPressTimer.current !== null) {
-                window.clearTimeout(longPressTimer.current);
-            }
-
-            if (duplicateMessageTimer.current !== null) {
-                window.clearTimeout(duplicateMessageTimer.current);
-            }
-
-            if (duplicateMessageHideTimer.current !== null) {
-                window.clearTimeout(duplicateMessageHideTimer.current);
-            }
+            clearLongPressTimer();
+            clearDuplicateMessageTimers();
         };
     }, []);
 
-    function showDuplicateMessage(ingredient: string) {
+    useEffect(() => {
+        function handleDocumentPointerDown(event: PointerEvent) {
+            if (deleteModeIngredient === null) {
+                return;
+            }
+
+            const target = event.target as HTMLElement;
+
+            if (target.closest('.ingredient-chip-delete')) {
+                return;
+            }
+
+            if (!target.closest('.ingredient-chip-wrapper')) {
+                setDeleteModeIngredient(null);
+            }
+        }
+
+        document.addEventListener('pointerdown', handleDocumentPointerDown);
+
+        return () => {
+            document.removeEventListener(
+                'pointerdown',
+                handleDocumentPointerDown,
+            );
+        };
+    }, [deleteModeIngredient]);
+
+    function clearLongPressTimer() {
+        if (longPressTimer.current === null) {
+            return;
+        }
+
+        window.clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+    }
+
+    function clearDuplicateMessageTimers() {
         if (duplicateMessageTimer.current !== null) {
             window.clearTimeout(duplicateMessageTimer.current);
+            duplicateMessageTimer.current = null;
         }
 
         if (duplicateMessageHideTimer.current !== null) {
             window.clearTimeout(duplicateMessageHideTimer.current);
+            duplicateMessageHideTimer.current = null;
         }
+    }
+
+    function showDuplicateMessage(ingredient: string) {
+        clearDuplicateMessageTimers();
 
         setDuplicateMessage(`"${ingredient}" is already in your ingredients.`);
         setIsDuplicateMessageHiding(false);
@@ -107,29 +136,78 @@ function IngredientInput({
         }, 1500);
     }
 
-    function clearLongPressTimer() {
-        if (longPressTimer.current !== null) {
-            window.clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
+    function isDuplicate(ingredient: string) {
+        const normalizedIngredient = ingredient.trim().toLowerCase();
+
+        return ingredients.some(
+            (current) => current.toLowerCase() === normalizedIngredient,
+        );
+    }
+
+    function showDuplicateFeedback(ingredient: string) {
+        setInput('');
+        setShowSuggestions(false);
+        inputRef.current?.blur();
+
+        showDuplicateMessage(ingredient);
+    }
+
+    function addIngredient(name: string) {
+        const ingredient = name.trim();
+
+        if (!ingredient) {
+            return;
         }
+
+        if (isDuplicate(ingredient)) {
+            showDuplicateFeedback(ingredient);
+            return;
+        }
+
+        setInput('');
+        setShowSuggestions(false);
+        onChange([...ingredients, ingredient]);
+    }
+
+    function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        addIngredient(input);
+    }
+
+    function handleSuggestionPointerDown(
+        event: React.PointerEvent<HTMLDivElement>,
+        name: string,
+    ) {
+        event.preventDefault();
+
+        if (isDuplicate(name)) {
+            showDuplicateFeedback(name);
+            return;
+        }
+
+        setInput('');
+        setShowSuggestions(false);
+        onChange([...ingredients, name]);
     }
 
     function handlePointerDown(ingredient: string) {
         clearLongPressTimer();
-
         didLongPress.current = false;
 
-        // If we're already in delete mode, tapping an ingredient
-        // simply exits delete mode.
-        if (selectedIngredient !== null) {
+        // Tapping another ingredient while in delete mode exits delete mode.
+        if (deleteModeIngredient !== null) {
             dismissingDeleteMode.current = true;
-            setSelectedIngredient(null);
+            setDeleteModeIngredient(null);
             return;
         }
 
         longPressTimer.current = window.setTimeout(() => {
             didLongPress.current = true;
-            setSelectedIngredient(ingredient);
+            setDeleteModeIngredient(ingredient);
             longPressTimer.current = null;
         }, 500);
     }
@@ -158,7 +236,7 @@ function IngredientInput({
     }
 
     function handleDeleteIngredient(ingredient: string) {
-        setSelectedIngredient(null);
+        setDeleteModeIngredient(null);
         setDeletingIngredient(ingredient);
     }
 
@@ -177,97 +255,16 @@ function IngredientInput({
         setDeletingIngredient(null);
     }
 
-    function handleDocumentPointerDown(event: PointerEvent) {
-        if (selectedIngredient === null) {
-            return;
-        }
-
-        const target = event.target as HTMLElement;
-
-        // The delete button handles its own interaction.
-        if (target.closest('.ingredient-chip-delete')) {
-            return;
-        }
-
-        // Tapping anywhere outside the ingredient chip area
-        // exits delete mode.
-        if (!target.closest('.ingredient-chip-wrapper')) {
-            setSelectedIngredient(null);
-        }
-    }
-
-    useEffect(() => {
-        document.addEventListener('pointerdown', handleDocumentPointerDown);
-
-        return () => {
-            document.removeEventListener(
-                'pointerdown',
-                handleDocumentPointerDown,
-            );
-        };
-    }, [selectedIngredient]);
-
-    /*
-     * Adds an ingredient to the chip list.
-     *
-     * This is used by both:
-     *   1. pressing Enter
-     *   2. clicking an autosuggestion
-     *
-     * The chip only stores the ingredient name.
-     */
-    function addIngredient(name: string) {
-        const ingredient = name.trim();
-
-        if (!ingredient) {
-            return;
-        }
-
-        const isDuplicate = ingredients.some(
-            (current) => current.toLowerCase() === ingredient.toLowerCase(),
-        );
-
-        if (isDuplicate) {
-            setInput('');
-            showDuplicateMessage(ingredient);
-            return;
-        }
-
-        onChange([...ingredients, ingredient]);
-        setInput('');
-    }
-
-    function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        if (event.key !== 'Enter') {
-            return;
-        }
-
-        event.preventDefault();
-
-        /*
-         * Enter always adds exactly what the user typed.
-         *
-         * If they wanted a saved ingredient, they can click
-         * the suggestion instead.
-         */
-        addIngredient(input);
-    }
-
-    function handleSuggestionClick(name: string) {
-        addIngredient(name);
-    }
-
     return (
         <div className="ingredient-input">
             <h2>Ingredients</h2>
-
             <div
                 className={`ingredient-chips ${
                     ingredients.length === 0 ? 'ingredient-chips-empty' : ''
                 }`}
             >
                 {ingredients.map((ingredient, index) => {
-                    const isSelected = selectedIngredient === ingredient;
+                    const isSelected = deleteModeIngredient === ingredient;
                     const isDeleting = deletingIngredient === ingredient;
 
                     return (
@@ -325,55 +322,72 @@ function IngredientInput({
                 })}
             </div>
 
-            <div className="ingredient-input-field">
+            <div
+                className={`ingredient-input-field ${
+                    duplicateMessage ? 'ingredient-input-field-dimmed' : ''
+                }`}
+            >
                 <input
+                    ref={inputRef}
                     type="text"
                     value={input}
-                    onChange={(event) => setInput(event.target.value)}
+                    onChange={(event) => {
+                        setInput(event.target.value);
+                        setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => {
+                        window.setTimeout(() => {
+                            setShowSuggestions(false);
+                        }, 150);
+                    }}
                     onKeyDown={handleKeyDown}
                     enterKeyHint="done"
                     placeholder="Add an ingredient..."
                 />
 
-                {suggestions.length > 0 && (
-                    <div className="ingredient-suggestions">
+                {showSuggestions && suggestions.length > 0 && (
+                    <div className="ingredient-suggestions" role="listbox">
                         {suggestions.map((ingredient) => (
-                            <button
+                            <div
                                 key={ingredient.ingredientId}
-                                type="button"
                                 className="ingredient-suggestion"
-                                onClick={() =>
-                                    handleSuggestionClick(ingredient.name)
+                                role="option"
+                                onPointerDown={(event) =>
+                                    handleSuggestionPointerDown(
+                                        event,
+                                        ingredient.name,
+                                    )
                                 }
                             >
                                 {ingredient.name}
-                            </button>
+                            </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {duplicateMessage && (
-                <>
+            {duplicateMessage &&
+                createPortal(
                     <div
-                        className={`ingredient-duplicate-backdrop ${
+                        className={`ingredient-duplicate-overlay ${
                             isDuplicateMessageHiding
                                 ? ''
-                                : 'ingredient-duplicate-backdrop-visible'
-                        }`}
-                    />
-
-                    <div
-                        className={`ingredient-duplicate-message ${
-                            isDuplicateMessageHiding
-                                ? 'ingredient-duplicate-message-hiding'
-                                : 'ingredient-duplicate-message-visible'
+                                : 'ingredient-duplicate-overlay-visible'
                         }`}
                     >
-                        {duplicateMessage}
-                    </div>
-                </>
-            )}
+                        <div
+                            className={`ingredient-duplicate-message ${
+                                isDuplicateMessageHiding
+                                    ? 'ingredient-duplicate-message-hiding'
+                                    : 'ingredient-duplicate-message-visible'
+                            }`}
+                        >
+                            {duplicateMessage}
+                        </div>
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 }
