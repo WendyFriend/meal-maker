@@ -8,7 +8,6 @@ import {
     type WheelPickerOption,
 } from '@ncdai/react-wheel-picker';
 import BottomSheet from './BottomSheet';
-import Picker from './Picker';
 
 type ProteinProps = {
     value: number | undefined;
@@ -17,6 +16,7 @@ type ProteinProps = {
 
 function Protein({ value, onChange }: ProteinProps) {
     const [isOpen, setIsOpen] = useState(false);
+
     const proteinOptions: WheelPickerOption[] = [
         { label: 'No preference', value: 'none' },
         { label: '0%', value: '0' },
@@ -31,26 +31,39 @@ function Protein({ value, onChange }: ProteinProps) {
         { label: '90%', value: '90' },
         { label: '100%', value: '100' },
     ];
-    
+
     const selectedValue = value === undefined ? 'none' : String(value);
+
     const selectedLabel = proteinOptions.find(
-        (op) => op.value === selectedValue,
+        (option) => option.value === selectedValue,
     )?.label;
 
     function onValueChange(value: string) {
         if (value === 'none') {
-            return onChange(undefined);
+            onChange(undefined);
         } else {
             onChange(Number(value));
         }
     }
+
     return (
         <div className="protein">
             <h2>Protein</h2>
-            <Picker
-                value={selectedLabel}
+
+            <button
+                type="button"
+                className="protein-field"
                 onClick={() => setIsOpen(true)}
-            ></Picker>
+            >
+                <span className="protein-field-content">
+                    <span className="protein-field-value">{selectedLabel}</span>
+
+                    <span
+                        className="protein-field-chevron"
+                        aria-hidden="true"
+                    />
+                </span>
+            </button>
 
             <BottomSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
                 <WheelPickerWrapper className="w-56 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">

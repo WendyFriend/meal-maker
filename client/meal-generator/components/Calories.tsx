@@ -8,7 +8,6 @@ import {
     type WheelPickerOption,
 } from '@ncdai/react-wheel-picker';
 import BottomSheet from './BottomSheet';
-import Picker from './Picker';
 
 type CaloriesProps = {
     value: number | undefined;
@@ -17,6 +16,7 @@ type CaloriesProps = {
 
 function Calories({ value, onChange }: CaloriesProps) {
     const [isOpen, setIsOpen] = useState(false);
+
     const caloriesOptions: WheelPickerOption[] = [
         { label: 'No preference', value: 'none' },
         { label: '200 kcal', value: '200' },
@@ -41,7 +41,7 @@ function Calories({ value, onChange }: CaloriesProps) {
     const selectedValue = value === undefined ? 'none' : String(value);
 
     const selectedLabel = caloriesOptions.find(
-        (op) => op.value === selectedValue,
+        (option) => option.value === selectedValue,
     )?.label;
 
     function onValueChange(value: string) {
@@ -55,10 +55,24 @@ function Calories({ value, onChange }: CaloriesProps) {
     return (
         <div className="calories">
             <h2>Calories</h2>
-            <Picker
-                value={selectedLabel}
+
+            <button
+                type="button"
+                className="calories-field"
                 onClick={() => setIsOpen(true)}
-            ></Picker>
+            >
+                <span className="calories-field-content">
+                    <span className="calories-field-value">
+                        {selectedLabel}
+                    </span>
+
+                    <span
+                        className="calories-field-chevron"
+                        aria-hidden="true"
+                    />
+                </span>
+            </button>
+
             <BottomSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
                 <WheelPickerWrapper className="w-56 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
                     <WheelPicker

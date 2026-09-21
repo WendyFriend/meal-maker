@@ -1,11 +1,85 @@
 .protein {
-  /* width: min(100%, 400px); */
-  width: 62%;
-  margin: 1em auto;
-
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
+  width: 100%;
+  margin: var(--space-5) 0;
+  padding: 0 var(--space-6);
+  box-sizing: border-box;
   text-align: left;
 }
+
+.protein-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+  min-height: 0;
+  padding: 8px 2px;
+
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+
+  background: transparent;
+  color: var(--text-h);
+
+  font: inherit;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-regular);
+  text-align: left;
+
+  cursor: pointer;
+  outline: none;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+.protein-field-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.protein-field::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+
+  background: var(--accent);
+
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 200ms ease;
+}
+
+.protein-field:focus-visible::after,
+.protein-field:focus::after {
+  transform: scaleX(1);
+}
+
+.protein-field-value {
+  color: var(--text-h);
+}
+
+.protein-field-chevron {
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+
+  border-top: 1.5px solid var(--text);
+  border-right: 1.5px solid var(--text);
+
+  transform: rotate(45deg);
+
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.protein-field:hover .protein-field-chevron {
+  border-color: var(--text-h);
+  transform: translateX(2px) rotate(45deg);
+}
+
