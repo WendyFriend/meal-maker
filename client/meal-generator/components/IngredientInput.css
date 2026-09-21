@@ -16,7 +16,7 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: var(--space-3);
-    padding-top: 24px;
+    padding-top: 8px;
 }
 
 .ingredient-chips-empty {

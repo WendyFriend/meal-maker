@@ -54,7 +54,7 @@ function Calories({ value, onChange }: CaloriesProps) {
 
     return (
         <div className="calories">
-            <h2>Calories</h2>
+            <h3>Calories</h3>
 
             <button
                 type="button"

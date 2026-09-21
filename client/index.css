@@ -115,6 +115,16 @@ h2 {
   }
 }
 
+h3 {
+  font-family: var(--heading);
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 17px;
+  line-height: 140%;
+  letter-spacing: 0;
+  margin: 0 0 8px;
+}
+
 body {
   font-weight: 400;
 }

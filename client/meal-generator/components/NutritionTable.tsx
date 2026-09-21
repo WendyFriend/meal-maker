@@ -107,7 +107,7 @@ function NutritionTable({ ingredients, onChange }: NutritionTableProps) {
 
     return (
         <section className="meal-section">
-            <h2>Ingredients</h2>
+            <h3>Ingredients</h3>
 
             <div className="table-scroll">
                 <div className="nutrition-table">

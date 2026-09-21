@@ -130,7 +130,7 @@ function MealTable({ ingredients, onChange, isTotalUpdated }: MealTableProps) {
 
     return (
         <section className="meal-section">
-            <h2>Meal</h2>
+            <h3>Meal</h3>
 
             <div className="table-scroll">
                 <div className="meal-table">

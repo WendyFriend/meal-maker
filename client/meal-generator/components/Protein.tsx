@@ -48,7 +48,7 @@ function Protein({ value, onChange }: ProteinProps) {
 
     return (
         <div className="protein">
-            <h2>Protein</h2>
+            <h3>Protein</h3>
 
             <button
                 type="button"

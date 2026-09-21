@@ -257,7 +257,7 @@ function IngredientInput({
 
     return (
         <div className="ingredient-input">
-            <h2>Ingredients</h2>
+            <h3>Ingredients</h3>
             <div
                 className={`ingredient-chips ${
                     ingredients.length === 0 ? 'ingredient-chips-empty' : ''
