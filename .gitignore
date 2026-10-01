@@ -25,6 +25,9 @@ dist-ssr
 
 # Local HTTPS certificates
 *.pem
+certs/
 
 # Environment variables
 .env
+.vercel
+.env*

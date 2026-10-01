@@ -1,4 +1,3 @@
-
 import type { USDASearchResponse } from './types.ts';
 
 const USDA_API_KEY = process.env.USDA_API_KEY;

@@ -1,7 +1,7 @@
 // import type { IngredientNutrition } from './types.ts';
 import type { IngredientNutrition } from '../../shared/types/types.ts';
-import { searchFoods } from './usda/client.ts';
-import { mapUSDAFoodToIngredientNutrition } from './usda/mapper.ts';
+import { searchFoods } from './usda/client.js';
+import { mapUSDAFoodToIngredientNutrition } from './usda/mapper.js';
 import type { IngredientInfo } from '../../shared/types/types.ts';
 
 type CompleteNutrition = Pick<
