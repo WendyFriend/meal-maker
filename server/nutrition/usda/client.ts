@@ -1,6 +1,10 @@
-import type { USDASearchResponse } from './types.ts';
+import type { USDASearchResponse } from './types.js';
 
 const USDA_API_KEY = process.env.USDA_API_KEY;
+
+if (!USDA_API_KEY) {
+    throw new Error('USDA_API_KEY environment variable is not set');
+}
 
 type FoodSearchParams = {
     query: string;
