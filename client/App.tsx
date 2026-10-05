@@ -282,15 +282,23 @@ function App() {
 
             const payload = await response.json();
 
+            console.log('generate-meal status:', response.status);
+            console.log('generate-meal payload:', payload);
+
             if (response.status === 422) {
                 setError((payload as ErrorResponse).error);
                 return;
             }
             if (!response.ok) throw new Error('Failed to generate meal');
 
-            setMealIngredients(
-                (payload as GenerateMealResponse).mealIngredients,
-            );
+            const mealResponse = payload as GenerateMealResponse;
+
+            if (!Array.isArray(mealResponse.ingredients)) {
+                console.error('Unexpected generate-meal response:', payload);
+                throw new Error('Invalid meal response');
+            }
+
+            setMealIngredients(mealResponse.ingredients);
         } catch (error) {
             console.error(error);
             setError({
@@ -486,7 +494,7 @@ function App() {
                             </div>
                         )}
 
-                        {!isGenerating && mealIngredients.length > 0 && (
+                        {!isGenerating && mealIngredients?.length > 0 && (
                             <MealResult
                                 ingredients={mealIngredients}
                                 onChange={setMealIngredients}

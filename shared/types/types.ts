@@ -25,8 +25,17 @@ export type GenerateMealRequest = {
 };
 
 export type GenerateMealResponse = {
-    mealIngredients: MealIngredient[];
-    unresolvedIngredients: UnresolvedIngredient[];
+    mealName: string;
+    ingredients: {
+        name: string;
+        weight: number;
+        caloriesPer100g: number;
+        proteinPer100g: number;
+        carbohydratePer100g: number;
+        fatPer100g: number;
+        nutritionSource: 'provided' | 'ai_lookup' | 'ai_estimate';
+    }[];
+    instructions: string[];
 };
 
 export type UnresolvedIngredient = {

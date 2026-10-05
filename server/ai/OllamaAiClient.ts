@@ -1,4 +1,4 @@
-import type { AiClient } from './AiClient.ts';
+import type { AiClient } from './AiClient.js';
 
 type OllamaChatResponse = {
     choices: {
@@ -17,7 +17,11 @@ export class OllamaAiClient implements AiClient {
         this.model = model;
     }
 
-    async generate(prompt: string): Promise<string> {
+    async generate(
+        systemPrompt: string,
+        userPrompt: string,
+        responseFormat?: 'json',
+    ): Promise<string> {
         const response = await fetch('https://ollama.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -28,10 +32,19 @@ export class OllamaAiClient implements AiClient {
                 model: this.model,
                 messages: [
                     {
+                        role: 'system',
+                        content: systemPrompt,
+                    },
+                    {
                         role: 'user',
-                        content: prompt,
+                        content: userPrompt,
                     },
                 ],
+                ...(responseFormat && {
+                    response_format: {
+                        type: responseFormat,
+                    },
+                }),
             }),
         });
 

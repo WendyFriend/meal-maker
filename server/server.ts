@@ -1,6 +1,6 @@
 import { createServer, ServerResponse } from 'node:http';
-import { handleGenerateMeal } from './handleGenerateMeal.js';
 import type { GenerateMealRequest } from '../shared/types/types.ts';
+import { handleGenerateMealOllama } from './meal-generator/algorithms/generateMealOllama.ts';
 
 const server = createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/generate-meal') {
@@ -8,7 +8,7 @@ const server = createServer(async (req, res) => {
             const body = await readRequestBody(req);
             const input = JSON.parse(body) as GenerateMealRequest;
 
-            const result = await handleGenerateMeal(input);
+            const result = await handleGenerateMealOllama(input);
 
             sendJson(res, result.status, result.body);
         } catch (error) {

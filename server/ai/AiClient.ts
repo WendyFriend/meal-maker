@@ -1,3 +1,3 @@
 export type AiClient = {
-    generate: (prompt: string) => Promise<string>;
+    generate: (systemPrompt: string, userPrompt: string) => Promise<string>;
 };
