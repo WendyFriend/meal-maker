@@ -59,6 +59,16 @@
     margin-top: auto;
 }
 
+.app-version {
+    margin-top: 6px;
+
+    color: var(--text);
+    opacity: 0.5;
+
+    font-size: 11px;
+    text-align: center;
+}
+
 .sidebar-backdrop {
     position: fixed;
     inset: 0;

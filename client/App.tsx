@@ -26,6 +26,7 @@ import {
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
 import { isUserIngredient } from './utils/Ingredient';
+import { APP_VERSION } from './version';
 
 type CaloriesGoal = number | undefined;
 type ProteinGoal = number | undefined;
@@ -398,6 +399,7 @@ function App() {
                 >
                     Log out
                 </button>
+                <div className="app-version">v{APP_VERSION}</div>
             </aside>
 
             <div
