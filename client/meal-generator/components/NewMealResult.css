@@ -1,0 +1,983 @@
+/* =========================
+   Meal result
+   ========================= */
+
+.meal-result {
+    width: 100%;
+    color: var(--text);
+    box-sizing: border-box;
+    /* margin-top: var(--space-8); */
+}
+
+.meal-result *,
+.meal-result *::before,
+.meal-result *::after {
+    box-sizing: border-box;
+}
+
+
+/* =========================
+   Consistent left alignment
+   ========================= */
+
+.meal-result {
+    text-align: left;
+}
+
+.meal-result-header h2,
+.meal-section-header h3,
+.meal-instructions h3,
+.meal-nutrition>h3 {
+    text-align: left;
+}
+
+.meal-ingredient,
+.ingredient-info,
+.ingredient-name,
+.meal-instructions li {
+    text-align: left;
+}
+
+/* Keep calories on the right side of the meal header */
+.meal-result-header {
+    text-align: left;
+}
+
+.meal-total-calories {
+    margin-left: auto;
+    text-align: right;
+}
+
+/* Ensure the nutrition section and expandable summaries align left */
+.meal-nutrition,
+.key-nutrients,
+.nutrition-information {
+    text-align: left;
+}
+
+.key-nutrients summary,
+.nutrition-information summary {
+    text-align: left;
+}
+
+/* =========================
+   Meal header
+   ========================= */
+
+.meal-result-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+}
+
+.meal-result-header h2 {
+    margin: 0;
+    color: var(--text-h);
+    font-family: var(--heading);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    letter-spacing: -0.3px;
+}
+
+.meal-total-calories {
+    flex-shrink: 0;
+    color: var(--text-h);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    white-space: nowrap;
+}
+
+/* =========================
+   Section headings
+   ========================= */
+
+.meal-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.meal-section-header h3,
+.meal-nutrition h3,
+.meal-instructions h3 {
+    margin: 0;
+    color: var(--text-h);
+    font-family: var(--heading);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+}
+
+/* =========================
+   Ingredients
+   ========================= */
+
+.meal-ingredients {
+    margin-bottom: var(--space-10);
+}
+
+.ingredient-list {
+    width: 100%;
+    border-top: 1px solid rgb(170 170 170 / 35%);
+    border-bottom: 1px solid rgb(170 170 170 / 35%);
+}
+
+.meal-ingredient {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 64px;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid rgb(170 170 170 / 25%);
+}
+
+.meal-ingredient:last-child {
+    border-bottom: none;
+}
+
+.ingredient-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.ingredient-name {
+    color: var(--text-h);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    overflow-wrap: anywhere;
+}
+
+.ingredient-calories {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-normal);
+}
+
+/* Ingredient weight controls */
+
+.ingredient-weight-control {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: var(--space-1);
+    min-height: 40px;
+}
+
+.ingredient-weight-control button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+
+    border: 1px solid rgb(170 170 170 / 45%);
+    border-radius: var(--radius-md);
+
+    background: var(--surface);
+    color: var(--text-h);
+
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: var(--font-weight-normal);
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition:
+        background 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+}
+
+/* Hover effect only on devices that support hover */
+@media (hover: hover) and (pointer: fine) {
+    .ingredient-weight-control button:hover {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+        color: var(--accent);
+    }
+}
+
+/* Brief highlight while pressing */
+.ingredient-weight-control button:active {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+    transform: scale(0.96);
+}
+
+.ingredient-weight-control button:active {
+    transform: scale(0.96);
+}
+
+.ingredient-weight-control button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.ingredient-weight-control input {
+    width: 48px;
+    height: 36px;
+    padding: 0 2px;
+
+    border: none;
+    border-radius: var(--radius-sm);
+
+    background: transparent;
+    color: var(--text-h);
+
+    font-family: inherit;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    text-align: center;
+
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.ingredient-weight-control input::-webkit-inner-spin-button,
+.ingredient-weight-control input::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+.ingredient-weight-control input:focus {
+    outline: 1px solid var(--accent);
+    background: var(--accent-bg);
+}
+
+.ingredient-weight-control>span {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* Reset button */
+.meal-reset-button {
+    padding: 5px 10px;
+
+    border: 1px solid rgb(170 170 170 / 45%);
+    border-radius: var(--radius-md);
+
+    background: transparent;
+    color: var(--text);
+
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+
+    cursor: pointer;
+
+    transition:
+        background 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease,
+        transform 150ms ease;
+}
+
+/* Hover effect on desktop */
+@media (hover: hover) and (pointer: fine) {
+    .meal-reset-button:hover:not(:disabled) {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+        color: var(--accent);
+    }
+}
+
+/* Brief feedback while pressing */
+.meal-reset-button:active:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+    transform: scale(0.98);
+}
+
+/* Keyboard accessibility */
+.meal-reset-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.meal-reset-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* =========================
+   How to make it
+   ========================= */
+
+.meal-instructions {
+    /* margin-bottom: var(--space-10); */
+    padding-bottom: var(--space-10);
+    /* border-bottom: 1px solid rgb(170 170 170 / 45%); */
+}
+
+.meal-instructions h3 {
+    margin-bottom: var(--space-4);
+}
+
+.meal-instructions ol {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: instruction;
+}
+
+.meal-instructions li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-4) 0;
+
+    color: var(--text);
+    font-size: var(--font-size-md);
+    line-height: var(--line-height-normal);
+
+    border-bottom: 1px solid rgb(170 170 170 / 25%);
+    counter-increment: instruction;
+}
+
+.meal-instructions li:first-child {
+    padding-top: var(--space-2);
+}
+
+.meal-instructions li:last-child {
+    padding-bottom: var(--space-2);
+    border-bottom: none;
+}
+
+.meal-instructions li::before {
+    content: counter(instruction);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 24px;
+    height: 24px;
+    margin-top: 1px;
+
+    border-radius: 50%;
+    background: var(--accent-bg);
+    color: var(--accent);
+
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+}
+
+/* =========================
+   Nutrition
+   ========================= */
+
+.meal-nutrition {
+    margin-bottom: var(--space-8);
+}
+
+.meal-nutrition>h3 {
+    margin-bottom: var(--space-3);
+}
+
+/* =========================
+   Macro donut chart
+   ========================= */
+
+.macro-chart {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    width: 100%;
+    margin: 0 auto var(--space-8);
+    padding: var(--space-2) 0;
+}
+
+.macro-donut {
+    position: relative;
+    flex: 0 0 170px;
+    width: 170px;
+    height: 170px;
+}
+
+.macro-donut svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    transform: rotate(-90deg);
+}
+
+.macro-donut-track,
+.macro-donut-segment {
+    fill: none;
+    stroke-width: 13;
+}
+
+.macro-donut-track {
+    stroke: var(--disabled-bg);
+}
+
+.macro-donut-segment {
+    stroke-linecap: butt;
+    transition:
+        stroke-dasharray 250ms ease,
+        stroke-dashoffset 250ms ease;
+}
+
+.macro-donut-carbs {
+    stroke: #7f9fbd;
+}
+
+.macro-donut-protein {
+    stroke: #f4796c;
+}
+
+.macro-donut-fat {
+    stroke: #d4a85f;
+}
+
+.macro-donut-center {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    pointer-events: none;
+}
+
+.macro-donut-center strong {
+    color: var(--text-h);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    letter-spacing: -0.4px;
+}
+
+.macro-donut-center span {
+    margin-top: var(--space-1);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* Macro legend */
+
+.macro-legend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 120px;
+}
+
+.macro-legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.macro-legend-item>span {
+    color: var(--text);
+    font-size: var(--font-size-sm);
+}
+
+.macro-legend-item strong {
+    margin-left: auto;
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.macro-dot {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.macro-dot-carbs {
+    background: #7f9fbd;
+}
+
+.macro-dot-protein {
+    background: #f4796c;
+}
+
+.macro-dot-fat {
+    background: #d4a85f;
+}
+
+.macro-legend-text {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* =========================
+   Nutrition table
+   ========================= */
+.nutrition-table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.nutrition-table-wrapper table {
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+    text-align: left;
+}
+
+/* Ingredient column */
+.nutrition-table-wrapper th:first-child,
+.nutrition-table-wrapper td:first-child {
+    width: 35%;
+    padding-left: 0;
+    padding-right: 4px;
+    overflow-wrap: anywhere;
+}
+
+/* Narrower ingredient column for the 5-column nutrition table,
+   so all columns fit without horizontal scrolling on small screens */
+.nutrition-table th:first-child,
+.nutrition-table td:first-child {
+    width: 28%;
+}
+
+/* Compact numeric columns */
+.nutrition-table-wrapper th:not(:first-child),
+.nutrition-table-wrapper td:not(:first-child) {
+    width: auto;
+    padding-left: 3px;
+    padding-right: 3px;
+    white-space: nowrap;
+}
+
+.nutrition-table-wrapper th {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+
+    border-bottom: 1px solid rgb(170 170 170 / 55%);
+}
+
+.nutrition-table-wrapper td {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+
+    color: var(--text);
+    border-bottom: 1px solid rgb(170 170 170 / 25%);
+}
+
+.nutrition-table-wrapper th:last-child,
+.nutrition-table-wrapper td:last-child {
+    padding-right: 0;
+}
+
+.nutrition-table-wrapper tbody tr:last-child td {
+    border-bottom: 1px solid rgb(170 170 170 / 35%);
+}
+
+.nutrition-table-wrapper tfoot th {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+
+    border-top: 1px solid rgb(170 170 170 / 45%);
+    border-bottom: none;
+}
+
+/* =========================
+   Key nutrients
+   ========================= */
+
+.key-nutrients {
+    margin-bottom: 0;
+    border-bottom: 1px solid rgb(170 170 170 / 35%);
+}
+
+.key-nutrients summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 52px;
+
+    color: var(--text-h);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+
+    cursor: pointer;
+    list-style: none;
+}
+
+.key-nutrients summary::-webkit-details-marker {
+    display: none;
+}
+
+.key-nutrients summary::after {
+    content: '›';
+
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 22px;
+    font-weight: var(--font-weight-normal);
+
+    transform: rotate(90deg);
+    transition: transform 150ms ease;
+}
+
+.key-nutrients[open] summary::after {
+    transform: rotate(-90deg);
+}
+
+.key-nutrients summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+}
+
+.key-nutrients-description {
+    margin: 0 0 var(--space-5);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-normal);
+}
+
+.nutrient-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding-bottom: var(--space-5);
+}
+
+.nutrient-item {
+    width: 100%;
+}
+
+.nutrient-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-2);
+}
+
+.nutrient-name {
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.nutrient-value {
+    color: var(--text);
+    font-size: var(--font-size-sm);
+    text-align: right;
+}
+
+.nutrient-unavailable {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-style: italic;
+}
+
+.nutrient-progress-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.nutrient-progress {
+    flex: 1;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--disabled-bg);
+}
+
+.nutrient-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent-green);
+    transition: width 300ms ease;
+}
+
+.nutrient-percentage {
+    width: 34px;
+    flex-shrink: 0;
+
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    text-align: right;
+}
+
+/* =========================
+   Nutrition information
+   ========================= */
+
+.nutrition-information {
+    margin-bottom: var(--space-8);
+    border-top: none;
+    border-bottom: 1px solid rgb(170 170 170 / 45%);
+}
+
+.nutrition-information summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 52px;
+
+    color: var(--text);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+
+    cursor: pointer;
+    list-style: none;
+}
+
+.nutrition-information summary::-webkit-details-marker {
+    display: none;
+}
+
+.nutrition-information summary::after {
+    content: '›';
+
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 22px;
+    font-weight: var(--font-weight-normal);
+
+    transform: rotate(90deg);
+    transition: transform 150ms ease;
+}
+
+.nutrition-information[open] summary::after {
+    transform: rotate(-90deg);
+}
+
+.nutrition-information summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+}
+
+.nutrition-information>p {
+    margin: 0 0 var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+}
+
+/* =========================
+   Responsive
+   ========================= */
+
+@media (max-width: 600px) {
+    .meal-result-header {
+        gap: var(--space-3);
+        margin-bottom: var(--space-6);
+    }
+
+    .meal-result-header h2 {
+        font-size: var(--font-size-lg);
+    }
+
+    .meal-total-calories {
+        font-size: var(--font-size-md);
+    }
+
+    .meal-ingredients{
+        margin-bottom: var(--space-8);
+    }
+
+    .meal-instructions {
+        padding-bottom: var(--space-8);
+    }
+
+    .macro-chart {
+        gap: var(--space-6);
+        margin-bottom: var(--space-6);
+    }
+
+    .macro-donut {
+        flex-basis: 150px;
+        width: 150px;
+        height: 150px;
+    }
+
+    .macro-legend {
+        gap: var(--space-3);
+    }
+
+    .nutrition-table-wrapper table {
+        min-width: 450px;
+        font-size: var(--font-size-xs);
+    }
+
+    /* The 5-column nutrition table fits without the forced min-width */
+    .nutrition-table-wrapper table.nutrition-table {
+        min-width: 0;
+    }
+
+    .nutrition-table-wrapper th,
+    .nutrition-table-wrapper td {
+        padding: var(--space-2);
+    }
+}
+
+@media (max-width: 440px) {
+    .meal-ingredient {
+        gap: var(--space-2);
+    }
+
+    .ingredient-name {
+        font-size: var(--font-size-sm);
+    }
+
+    .ingredient-weight-control {
+        gap: 2px;
+    }
+
+    .ingredient-weight-control button {
+        width: 30px;
+        height: 34px;
+    }
+
+    .ingredient-weight-control input {
+        width: 38px;
+        font-size: var(--font-size-sm);
+    }
+
+    .macro-chart {
+        flex-direction: column;
+        gap: var(--space-5);
+    }
+
+    .macro-donut {
+        flex-basis: 140px;
+        width: 140px;
+        height: 140px;
+    }
+
+    .macro-legend {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-2);
+        width: 100%;
+        min-width: 0;
+    }
+
+    .macro-legend-item {
+        gap: 5px;
+        min-width: 0;
+    }
+
+    .macro-legend-item>span,
+    .macro-legend-item strong {
+        font-size: var(--font-size-xs);
+    }
+
+    .macro-legend-item strong {
+        margin-left: 0;
+    }
+
+    .macro-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .nutrient-header {
+        gap: var(--space-2);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .ingredient-weight-control button,
+    .meal-reset-button,
+    .macro-donut-segment,
+    .nutrient-progress-fill,
+    .key-nutrients summary::after,
+    .nutrition-information summary::after {
+        transition: none;
+    }
+}
+
+/* Shared collapsible section summary styles */
+.key-nutrients summary,
+.nutrition-information summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 52px;
+
+    color: var(--text);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+
+    cursor: pointer;
+    list-style: none;
+}
+
+.key-nutrients summary::-webkit-details-marker,
+.nutrition-information summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Shared chevron */
+.key-nutrients summary::after,
+.nutrition-information summary::after {
+    content: '›';
+
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 22px;
+    font-weight: var(--font-weight-normal);
+
+    transform: rotate(90deg);
+    transition: transform 150ms ease;
+}
+
+/* Rotate chevron when expanded */
+.key-nutrients[open] summary::after,
+.nutrition-information[open] summary::after {
+    transform: rotate(-90deg);
+}
+
+/* Shared keyboard focus style */
+.key-nutrients summary:focus-visible,
+.nutrition-information summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+}

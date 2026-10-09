@@ -1,7 +1,6 @@
 .calories {
   width: 100%;
   margin: var(--space-5) 0;
-  padding: 0 var(--space-6);
   box-sizing: border-box;
   text-align: left;
 }

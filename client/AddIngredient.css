@@ -4,7 +4,7 @@
     width: min(100%, var(--add-ingredient-width));
     margin: 0 auto;
 
-    padding: var(--space-6);
+    padding: var(--space-6) 0;
     box-sizing: border-box;
 
     text-align: left;
