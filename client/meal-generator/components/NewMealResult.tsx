@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 // import type { GenerateMealResponse } from '../../shared/types/types.ts';
 import './NewMealResult.css';
 import type { GenerateMealResponse } from '../../../shared/types/types';
+import { IngredientWeightInput } from './IngredientWeightInput';
 
 type MealResultProps = {
     meal: GenerateMealResponse;
@@ -156,6 +157,10 @@ export default function MealResult({
         });
     }, [meal.ingredients]);
 
+    const [weightDrafts, setWeightDrafts] = useState<Record<number, string>>(
+        {},
+    );
+
     function updateWeight(index: number, weight: number) {
         const ingredients = meal.ingredients.map(
             (ingredient, ingredientIndex) =>
@@ -177,11 +182,52 @@ export default function MealResult({
 
         const newWeight = Math.max(0, ingredient.weight + amount);
 
+        // Discard any unfinished draft when using +/-.
+        setWeightDrafts((drafts) => {
+            const next = { ...drafts };
+            delete next[index];
+            return next;
+        });
+
         updateWeight(index, newWeight);
+    }
+
+    function handleWeightInputChange(index: number, text: string) {
+        setWeightDrafts((drafts) => ({
+            ...drafts,
+            [index]: text,
+        }));
+
+        // An empty string is allowed while editing.
+        if (text === '') {
+            updateWeight(index, 0);
+            return;
+        }
+
+        const value = Number(text);
+
+        if (Number.isFinite(value) && value >= 0) {
+            updateWeight(index, value);
+        }
+    }
+
+    function handleWeightInputBlur(index: number) {
+        const text = weightDrafts[index];
+
+        if (text === '') {
+            updateWeight(index, 0);
+        }
+
+        setWeightDrafts((drafts) => {
+            const next = { ...drafts };
+            delete next[index];
+            return next;
+        });
     }
 
     function resetWeights() {
         if (!originalMeal) return;
+        setWeightDrafts({});
 
         onChange({
             ...originalMeal,
@@ -244,22 +290,16 @@ export default function MealResult({
                                 >
                                     −
                                 </button>
-
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="5"
-                                    value={ingredient.weight}
-                                    onChange={(event) => {
-                                        const value = Number(
-                                            event.target.value,
-                                        );
-
-                                        if (!Number.isNaN(value)) {
-                                            updateWeight(index, value);
-                                        }
-                                    }}
-                                    aria-label={`${ingredient.name} weight in grams`}
+                                <IngredientWeightInput
+                                    value={
+                                        weightDrafts[index] ??
+                                        String(ingredient.weight)
+                                    }
+                                    name={ingredient.name}
+                                    onChange={(text) =>
+                                        handleWeightInputChange(index, text)
+                                    }
+                                    onBlur={() => handleWeightInputBlur(index)}
                                 />
 
                                 <span>g</span>
