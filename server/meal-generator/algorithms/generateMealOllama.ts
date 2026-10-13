@@ -11,21 +11,25 @@ import { OllamaAiClient } from "../../ai/OllamaAiClient.js";
 const MEAL_GENERATION_SYSTEM_PROMPT = `
 You are MealMaker, a meal-planning assistant.
 
-Create one realistic, balanced meal using all provided ingredients.
+Create one realistic, balanced meal from the provided ingredients.
 
-Requirements:
-- Aim for the provided total calories.
-- Prioritise achieving the target calories goal, and aim for 55% of energy from carbs, 15% from protein, 30% from fat.
-- Use all of and only the provided ingredients.
-- Use sensible portion sizes and round ingredient weights to the nearest 5 or 10 g.
-- Use provided nutrition data exactly; do not change it.
-- For ingredients with missing nutrition, use a reliable lookup if available; otherwise estimate it.
+Priorities, in order:
+1. Use all and only the provided ingredients.
+2. Get as close as reasonably possible to the target calories.
+3. Keep ingredient portions realistic and practical.
+4. Aim for approximately 55% carbs, 15% protein, and 30% fat by energy.
+
+Rules:
+- Exact calories and macro percentages are not required.
+- Use sensible portion sizes.
+- Round ingredient weights to the nearest 5 or 10 g.
+- Use provided nutrition data exactly; never change it.
+- For missing nutrition, look it up if possible; otherwise estimate it.
 - Return nutrition per 100 g for every ingredient.
-- Mark each nutrition source as provided, ai_lookup, or ai_estimate.
+- Mark nutrition source as provided, ai_lookup, or ai_estimate.
 - Return only valid JSON. Do not use Markdown code fences.
 
 Response shape:
-
 {
   "mealName": "string",
   "ingredients": [
@@ -41,6 +45,8 @@ Response shape:
   ],
   "instructions": ["string"]
 }
+
+Do not return meal-level nutrition totals.
 `;
 
 export async function generateMealWithOllama(

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 // import type { GenerateMealResponse } from '../../shared/types/types.ts';
 import './NewMealResult.css';
 import type { GenerateMealResponse } from '../../../shared/types/types';
@@ -60,6 +60,36 @@ const NUTRIENTS: NutrientDefinition[] = [
         unit: 'g',
         dailyReference: 1.1,
         decimals: 1,
+    },
+];
+
+type MacroKey = 'carbohydrate' | 'protein' | 'fat';
+
+type MacroConfig = {
+    key: MacroKey;
+    label: string;
+    segmentClassName: string;
+    dotClassName: string;
+};
+
+const MACROS: MacroConfig[] = [
+    {
+        key: 'carbohydrate',
+        label: 'Carbs',
+        segmentClassName: 'macro-donut-carbs',
+        dotClassName: 'macro-dot-carbs',
+    },
+    {
+        key: 'protein',
+        label: 'Protein',
+        segmentClassName: 'macro-donut-protein',
+        dotClassName: 'macro-dot-protein',
+    },
+    {
+        key: 'fat',
+        label: 'Fat',
+        segmentClassName: 'macro-donut-fat',
+        dotClassName: 'macro-dot-fat',
     },
 ];
 
@@ -161,6 +191,37 @@ export default function MealResult({
         {},
     );
 
+    const [highlightedMacro, setHighlightedMacro] = useState<MacroKey | null>(
+        null,
+    );
+
+    // Tapping outside the visible part of the donut (the ring segments, the
+    // track, or a legend item) clears the highlight. The donut hole, the
+    // corners of the donut box, and chart whitespace all deselect.
+    useEffect(() => {
+        if (!highlightedMacro) return;
+
+        function handlePointerDown(event: PointerEvent) {
+            const target = event.target;
+
+            const isOnVisibleDonut =
+                target instanceof Element &&
+                target.closest(
+                    '.macro-donut-segment, .macro-donut-track, .macro-legend-item',
+                ) !== null;
+
+            if (!isOnVisibleDonut) {
+                setHighlightedMacro(null);
+            }
+        }
+
+        document.addEventListener('pointerdown', handlePointerDown);
+
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+        };
+    }, [highlightedMacro]);
+
     function updateWeight(index: number, weight: number) {
         const ingredients = meal.ingredients.map(
             (ingredient, ingredientIndex) =>
@@ -235,6 +296,26 @@ export default function MealResult({
                 ...ingredient,
             })),
         });
+    }
+
+    const highlightedMacroConfig = highlightedMacro
+        ? MACROS.find((macro) => macro.key === highlightedMacro)
+        : undefined;
+
+    function toggleMacro(macro: MacroKey) {
+        setHighlightedMacro((current) => (current === macro ? null : macro));
+    }
+
+    function getSegmentClassName(macro: MacroConfig): string {
+        const classes = ['macro-donut-segment', macro.segmentClassName];
+
+        if (highlightedMacro === macro.key) {
+            classes.push('macro-donut-segment-highlighted');
+        } else if (highlightedMacro) {
+            classes.push('macro-donut-segment-dimmed');
+        }
+
+        return classes.join(' ');
     }
 
     return (
@@ -338,80 +419,87 @@ export default function MealResult({
                                 className="macro-donut-track"
                                 cx="60"
                                 cy="60"
-                                r="46"
+                                r="44"
                             />
 
-                            <circle
-                                className="macro-donut-segment macro-donut-carbs"
-                                cx="60"
-                                cy="60"
-                                r="46"
-                                pathLength="100"
-                                style={{
-                                    strokeDasharray: `${macroPercentages.carbohydrate} ${
-                                        100 - macroPercentages.carbohydrate
-                                    }`,
-                                    strokeDashoffset: 0,
-                                }}
-                            />
+                            {MACROS.map((macro, index) => {
+                                const percentage = macroPercentages[macro.key];
 
-                            <circle
-                                className="macro-donut-segment macro-donut-protein"
-                                cx="60"
-                                cy="60"
-                                r="46"
-                                pathLength="100"
-                                style={{
-                                    strokeDasharray: `${macroPercentages.protein} ${
-                                        100 - macroPercentages.protein
-                                    }`,
-                                    strokeDashoffset:
-                                        -macroPercentages.carbohydrate,
-                                }}
-                            />
+                                const segmentOffset = MACROS.slice(
+                                    0,
+                                    index,
+                                ).reduce(
+                                    (offset, previous) =>
+                                        offset + macroPercentages[previous.key],
+                                    0,
+                                );
 
-                            <circle
-                                className="macro-donut-segment macro-donut-fat"
-                                cx="60"
-                                cy="60"
-                                r="46"
-                                pathLength="100"
-                                style={{
-                                    strokeDasharray: `${macroPercentages.fat} ${
-                                        100 - macroPercentages.fat
-                                    }`,
-                                    strokeDashoffset: -(
-                                        macroPercentages.carbohydrate +
-                                        macroPercentages.protein
-                                    ),
-                                }}
-                            />
+                                return (
+                                    <circle
+                                        key={macro.key}
+                                        className={getSegmentClassName(macro)}
+                                        cx="60"
+                                        cy="60"
+                                        r="44"
+                                        pathLength="100"
+                                        style={{
+                                            strokeDasharray: `${percentage} ${
+                                                100 - percentage
+                                            }`,
+                                            strokeDashoffset: -segmentOffset,
+                                        }}
+                                        onClick={() => toggleMacro(macro.key)}
+                                    >
+                                        <title>{`${macro.label}: ${Math.round(
+                                            percentage,
+                                        )}% of calories`}</title>
+                                    </circle>
+                                );
+                            })}
                         </svg>
 
                         <div className="macro-donut-center">
-                            <strong>{Math.round(nutrition.calories)}</strong>
-                            <span>kcal</span>
+                            {highlightedMacroConfig ? (
+                                <>
+                                    <strong>
+                                        {Math.round(
+                                            macroPercentages[
+                                                highlightedMacroConfig.key
+                                            ],
+                                        )}
+                                        %
+                                    </strong>
+                                    <span>
+                                        {highlightedMacroConfig.label} ·{' '}
+                                        {Math.round(
+                                            nutrition[
+                                                highlightedMacroConfig.key
+                                            ],
+                                        )}
+                                        g
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <strong>
+                                        {Math.round(nutrition.calories)}
+                                    </strong>
+                                    <span>kcal</span>
+                                </>
+                            )}
                         </div>
                     </div>
 
                     <div className="macro-legend">
-                        <MacroLegendItem
-                            className="macro-dot-carbs"
-                            label="Carbs"
-                            percentage={macroPercentages.carbohydrate}
-                        />
-
-                        <MacroLegendItem
-                            className="macro-dot-protein"
-                            label="Protein"
-                            percentage={macroPercentages.protein}
-                        />
-
-                        <MacroLegendItem
-                            className="macro-dot-fat"
-                            label="Fat"
-                            percentage={macroPercentages.fat}
-                        />
+                        {MACROS.map((macro) => (
+                            <MacroLegendItem
+                                key={macro.key}
+                                macro={macro}
+                                percentage={macroPercentages[macro.key]}
+                                isActive={highlightedMacro === macro.key}
+                                onSelect={() => toggleMacro(macro.key)}
+                            />
+                        ))}
                     </div>
                 </div>
 
@@ -546,7 +634,7 @@ export default function MealResult({
             </details>
 
             <details className="nutrition-information">
-                <summary>Ingredient Nutrition information</summary>
+                <summary>Ingredient Nutrition Information</summary>
 
                 <p>Nutrition values per 100g of each ingredient.</p>
 
@@ -589,25 +677,39 @@ export default function MealResult({
     );
 }
 
-function MacroLegendItem({
-    className,
-    label,
-    percentage,
-}: {
-    className: string;
-    label: string;
+type MacroLegendItemProps = {
+    macro: MacroConfig;
     percentage: number;
-}) {
-    return (
-        <div className="macro-legend-item">
-            <span className={`macro-dot ${className}`} />
+    isActive: boolean;
+    onSelect: () => void;
+};
 
-            <div className="macro-legend-text">
-                <span className="macro-label">{label}</span>
+function MacroLegendItem({
+    macro,
+    percentage,
+    isActive,
+    onSelect,
+}: MacroLegendItemProps) {
+    return (
+        <button
+            type="button"
+            className={`macro-legend-item${
+                isActive ? ' macro-legend-item-active' : ''
+            }`}
+            onClick={onSelect}
+            aria-pressed={isActive}
+        >
+            <span
+                className={`macro-dot ${macro.dotClassName}`}
+                aria-hidden="true"
+            />
+
+            <span className="macro-legend-text">
+                <span className="macro-label">{macro.label}</span>
 
                 <strong>{Math.round(percentage)}%</strong>
-            </div>
-        </div>
+            </span>
+        </button>
     );
 }
 

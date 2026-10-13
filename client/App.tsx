@@ -25,6 +25,7 @@ import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
 import { isUserIngredient } from './utils/Ingredient';
 import { APP_VERSION } from './version';
+import cookingLoader from './assets/animations/cooking-loader.svg';
 
 type CaloriesGoal = number | undefined;
 
@@ -33,7 +34,7 @@ type Page = keyof typeof pageConfig;
 const pageConfig = {
     'meal-maker': {
         type: 'main',
-        title: '🍲 Meal Maker',
+        title: 'MealMaker',
     },
     'my-ingredients': {
         type: 'main',
@@ -92,7 +93,9 @@ function App() {
     const [caloriesGoal, setCaloriesGoal] = useState<CaloriesGoal>(undefined);
 
     const [meal, setMeal] = useState<GenerateMealResponse | undefined>();
-    const [originalMeal, setOriginalMeal] = useState<GenerateMealResponse | undefined>();
+    const [originalMeal, setOriginalMeal] = useState<
+        GenerateMealResponse | undefined
+    >();
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<AppError>();
 
@@ -408,7 +411,7 @@ function App() {
                 className={`page-transition page-transition-${pageDirection}`}
             >
                 <main className="page-content">
-                    {currentPage === 'meal-maker' && (
+                    {/* {currentPage === 'meal-maker' && (
                         <>
                             <section>
                                 <IngredientInput
@@ -469,6 +472,93 @@ function App() {
                                 />
                             )}
                         </>
+                    )} */}
+
+                    {currentPage === 'meal-maker' && (
+                        <div className="meal-maker-screen">
+                            <div className="meal-maker-intro">
+                                <h2>Create your meal</h2>
+                                <p>
+                                    Use what you have. We'll work out the recipe
+                                    ✔
+                                </p>
+                            </div>
+
+                            <div className="meal-maker-form">
+                                <IngredientInput
+                                    ingredients={ingredients}
+                                    savedIngredients={userIngredients}
+                                    onChange={setIngredients}
+                                    removeIngredient={removeIngredient}
+                                    onIngredientClick={
+                                        setSelectedIngredientIndex
+                                    }
+                                />
+
+                                <section className="meal-maker-calories">
+                                    <Calories
+                                        value={caloriesGoal}
+                                        onChange={setCaloriesGoal}
+                                    />
+                                </section>
+
+                                <button
+                                    type="button"
+                                    className="create-button meal-maker-create-button"
+                                    onClick={handleCreate}
+                                    disabled={
+                                        isGenerating || ingredients.length === 0
+                                    }
+                                >
+                                    {isGenerating
+                                        ? 'Creating your meal...'
+                                        : 'Create my meal'}
+                                </button>
+                            </div>
+
+                            {selectedIngredientIndex !== null && (
+                                <NutritionDialog
+                                    ingredientInfo={getIngredientInfoFromStoredData(
+                                        ingredients[selectedIngredientIndex],
+                                    )}
+                                    onClose={() =>
+                                        setSelectedIngredientIndex(null)
+                                    }
+                                    onSave={handleIngredientSave}
+                                />
+                            )}
+
+                            {isGenerating && (
+                                <div
+                                    className="generating-indicator"
+                                    role="status"
+                                    aria-live="polite"
+                                >
+                                    <img
+                                        src={cookingLoader}
+                                        alt=""
+                                        className="generating-loader"
+                                    />
+                                    <p className="generating-message">
+                                        Creating your meal...
+                                    </p>
+                                </div>
+                            )}
+
+                            {error?.code === 'UNKNOWN_ERROR' && (
+                                <div className="error-message" role="alert">
+                                    {error.message}
+                                </div>
+                            )}
+
+                            {!isGenerating && meal && originalMeal && (
+                                <MealResult
+                                    meal={meal}
+                                    originalMeal={originalMeal}
+                                    onChange={setMeal}
+                                />
+                            )}
+                        </div>
                     )}
 
                     {currentPage === 'my-ingredients' && (

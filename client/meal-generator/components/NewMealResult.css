@@ -181,7 +181,7 @@
     height: 36px;
     padding: 0;
 
-    border: 1px solid rgb(170 170 170 / 45%);
+    border: none;
     border-radius: var(--radius-md);
 
     background: var(--surface);
@@ -196,14 +196,12 @@
 
     transition:
         background 150ms ease,
-        border-color 150ms ease,
         color 150ms ease;
 }
 
 /* Hover effect only on devices that support hover */
 @media (hover: hover) and (pointer: fine) {
     .ingredient-weight-control button:hover {
-        border-color: var(--accent);
         background: var(--accent-bg);
         color: var(--accent);
     }
@@ -211,13 +209,8 @@
 
 /* Brief highlight while pressing */
 .ingredient-weight-control button:active {
-    border-color: var(--accent);
     background: var(--accent-bg);
     color: var(--accent);
-    transform: scale(0.96);
-}
-
-.ingredient-weight-control button:active {
     transform: scale(0.96);
 }
 
@@ -266,7 +259,7 @@
 .meal-reset-button {
     padding: 5px 10px;
 
-    border: 1px solid rgb(170 170 170 / 45%);
+    border: none;
     border-radius: var(--radius-md);
 
     background: transparent;
@@ -280,7 +273,6 @@
 
     transition:
         background 150ms ease,
-        border-color 150ms ease,
         color 150ms ease,
         transform 150ms ease;
 }
@@ -288,7 +280,6 @@
 /* Hover effect on desktop */
 @media (hover: hover) and (pointer: fine) {
     .meal-reset-button:hover:not(:disabled) {
-        border-color: var(--accent);
         background: var(--accent-bg);
         color: var(--accent);
     }
@@ -296,7 +287,6 @@
 
 /* Brief feedback while pressing */
 .meal-reset-button:active:not(:disabled) {
-    border-color: var(--accent);
     background: var(--accent-bg);
     color: var(--accent);
     transform: scale(0.98);
@@ -408,9 +398,9 @@
 
 .macro-donut {
     position: relative;
-    flex: 0 0 170px;
-    width: 170px;
-    height: 170px;
+    flex: 0 0 240px;
+    width: 240px;
+    height: 240px;
 }
 
 .macro-donut svg {
@@ -424,7 +414,7 @@
 .macro-donut-track,
 .macro-donut-segment {
     fill: none;
-    stroke-width: 13;
+    stroke-width: 26;
 }
 
 .macro-donut-track {
@@ -433,9 +423,20 @@
 
 .macro-donut-segment {
     stroke-linecap: butt;
+    cursor: pointer;
     transition:
         stroke-dasharray 250ms ease,
-        stroke-dashoffset 250ms ease;
+        stroke-dashoffset 250ms ease,
+        stroke-width 150ms ease,
+        opacity 150ms ease;
+}
+
+.macro-donut-segment-highlighted {
+    stroke-width: 30;
+}
+
+.macro-donut-segment-dimmed {
+    opacity: 0.3;
 }
 
 .macro-donut-carbs {
@@ -489,6 +490,40 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+
+    width: 100%;
+    padding: 6px var(--space-2);
+
+    border: none;
+    border-radius: var(--radius-sm);
+
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background 150ms ease,
+        color 150ms ease;
+}
+
+.macro-legend-item-active {
+    background: var(--accent-bg);
+}
+
+.macro-legend-item-active .macro-label {
+    color: var(--text-h);
+}
+
+.macro-legend-item-active strong {
+    color: var(--accent);
+}
+
+.macro-legend-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .macro-legend-item>span {
@@ -544,7 +579,7 @@
     min-width: 0;
     table-layout: auto;
     border-collapse: collapse;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
     text-align: left;
 }
 
@@ -564,6 +599,13 @@
     width: 28%;
 }
 
+/* Slightly narrower ingredient column for the 6-column
+   "Ingredient Nutrition Information" table */
+.nutrition-information table th:first-child,
+.nutrition-information table td:first-child {
+    width: 30%;
+}
+
 /* Compact numeric columns */
 .nutrition-table-wrapper th:not(:first-child),
 .nutrition-table-wrapper td:not(:first-child) {
@@ -577,9 +619,9 @@
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
 
-    color: var(--text-muted);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
     white-space: nowrap;
 
     border-bottom: 1px solid rgb(170 170 170 / 55%);
@@ -607,7 +649,7 @@
     padding-bottom: var(--space-3);
 
     color: var(--text-h);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
     font-weight: var(--font-weight-semibold);
 
     border-top: 1px solid rgb(170 170 170 / 45%);
@@ -829,9 +871,9 @@
     }
 
     .macro-donut {
-        flex-basis: 150px;
-        width: 150px;
-        height: 150px;
+        flex-basis: 200px;
+        width: 200px;
+        height: 200px;
     }
 
     .macro-legend {
@@ -840,7 +882,7 @@
 
     .nutrition-table-wrapper table {
         min-width: 450px;
-        font-size: var(--font-size-xs);
+        font-size: var(--font-size-sm);
     }
 
     /* The 5-column nutrition table fits without the forced min-width */
@@ -883,9 +925,9 @@
     }
 
     .macro-donut {
-        flex-basis: 140px;
-        width: 140px;
-        height: 140px;
+        flex-basis: 190px;
+        width: 190px;
+        height: 190px;
     }
 
     .macro-legend {
@@ -925,6 +967,7 @@
     .ingredient-weight-control button,
     .meal-reset-button,
     .macro-donut-segment,
+    .macro-legend-item,
     .nutrient-progress-fill,
     .key-nutrients summary::after,
     .nutrition-information summary::after {

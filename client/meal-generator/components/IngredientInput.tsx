@@ -1,7 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import './IngredientInput.css';
-import deleteIcon from '../../assets/icons/delete.svg';
 import type { UserIngredient } from '../../../shared/types/types';
 
 type IngredientInputProps = {
@@ -21,39 +20,34 @@ function IngredientInput({
 }: IngredientInputProps) {
     const [input, setInput] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
-
-    // Delete mode
-    const [deleteModeIngredient, setDeleteModeIngredient] = useState<
-        string | null
-    >(null);
     const [deletingIngredient, setDeletingIngredient] = useState<string | null>(
         null,
     );
 
-    // Timer used only to detect a long press.
-    const longPressTimer = useRef<number | null>(null);
-
-    // Prevents the click that follows a long press from opening
-    // the nutrition dialog.
-    const didLongPress = useRef(false);
-
-    // Prevents a click from opening the nutrition dialog when
-    // that click is being used to exit delete mode.
-    const dismissingDeleteMode = useRef(false);
-
-    // Duplicate message
     const [duplicateMessage, setDuplicateMessage] = useState<string | null>(
         null,
     );
     const [isDuplicateMessageHiding, setIsDuplicateMessageHiding] =
         useState(false);
 
+    // Keyboard navigation: index of the highlighted row in the dropdown,
+    // or -1 when nothing is highlighted. Rows are the suggestions, followed
+    // by the custom "+ add" row when it is shown.
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
     const duplicateMessageTimer = useRef<number | null>(null);
     const duplicateMessageHideTimer = useRef<number | null>(null);
-
     const inputRef = useRef<HTMLInputElement>(null);
 
     const normalizedInput = input.trim().toLowerCase();
+
+    function isDuplicate(name: string) {
+        const normalizedName = name.trim().toLowerCase();
+
+        return ingredients.some(
+            (current) => current.trim().toLowerCase() === normalizedName,
+        );
+    }
 
     const suggestions =
         normalizedInput.length === 0
@@ -64,48 +58,41 @@ function IngredientInput({
                   )
                   .slice(0, 6);
 
+    const exactMatch = savedIngredients.find(
+        (ingredient) =>
+            ingredient.name.trim().toLowerCase() === normalizedInput,
+    );
+
+    const canAddCustom =
+        normalizedInput.length > 0 && !exactMatch && !isDuplicate(input);
+
+    // The dropdown rows the keyboard navigates through: saved suggestions,
+    // plus the custom "+ add" row when it is visible.
+    const suggestionRows: { key: string; name: string }[] = [
+        ...suggestions.map((ingredient) => ({
+            key: ingredient.ingredientId,
+            name: ingredient.name,
+        })),
+        ...(canAddCustom ? [{ key: '__custom__', name: input }] : []),
+    ];
+
+    // Clamp the highlight inside the list as the query changes; derived
+    // during render so a shorter list immediately deselects stale indexes
+    // without needing an effect.
+    const activeHighlightedIndex =
+        highlightedIndex < suggestionRows.length ? highlightedIndex : -1;
+
     useEffect(() => {
         return () => {
-            clearLongPressTimer();
-            clearDuplicateMessageTimers();
+            if (duplicateMessageTimer.current !== null) {
+                window.clearTimeout(duplicateMessageTimer.current);
+            }
+
+            if (duplicateMessageHideTimer.current !== null) {
+                window.clearTimeout(duplicateMessageHideTimer.current);
+            }
         };
     }, []);
-
-    useEffect(() => {
-        function handleDocumentPointerDown(event: PointerEvent) {
-            if (deleteModeIngredient === null) {
-                return;
-            }
-
-            const target = event.target as HTMLElement;
-
-            if (target.closest('.ingredient-chip-delete')) {
-                return;
-            }
-
-            if (!target.closest('.ingredient-chip-wrapper')) {
-                setDeleteModeIngredient(null);
-            }
-        }
-
-        document.addEventListener('pointerdown', handleDocumentPointerDown);
-
-        return () => {
-            document.removeEventListener(
-                'pointerdown',
-                handleDocumentPointerDown,
-            );
-        };
-    }, [deleteModeIngredient]);
-
-    function clearLongPressTimer() {
-        if (longPressTimer.current === null) {
-            return;
-        }
-
-        window.clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
-    }
 
     function clearDuplicateMessageTimers() {
         if (duplicateMessageTimer.current !== null) {
@@ -136,14 +123,6 @@ function IngredientInput({
         }, 1500);
     }
 
-    function isDuplicate(ingredient: string) {
-        const normalizedIngredient = ingredient.trim().toLowerCase();
-
-        return ingredients.some(
-            (current) => current.toLowerCase() === normalizedIngredient,
-        );
-    }
-
     function showDuplicateFeedback(ingredient: string) {
         setInput('');
         setShowSuggestions(false);
@@ -155,9 +134,7 @@ function IngredientInput({
     function addIngredient(name: string) {
         const ingredient = name.trim();
 
-        if (!ingredient) {
-            return;
-        }
+        if (!ingredient) return;
 
         if (isDuplicate(ingredient)) {
             showDuplicateFeedback(ingredient);
@@ -167,77 +144,93 @@ function IngredientInput({
         setInput('');
         setShowSuggestions(false);
         onChange([...ingredients, ingredient]);
+
+        // Keep the field ready for the next ingredient.
+        window.requestAnimationFrame(() => inputRef.current?.focus());
+    }
+
+    function highlightSuggestion(index: number) {
+        setHighlightedIndex(index);
+
+        // Keep the highlighted row visible when navigating with the keyboard.
+        const rows = document.querySelectorAll('.ingredient-suggestion');
+        rows[index]?.scrollIntoView({ block: 'nearest' });
     }
 
     function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        if (event.key !== 'Enter') {
+        if (event.key === 'Escape') {
+            setShowSuggestions(false);
+            setHighlightedIndex(-1);
             return;
         }
+
+        if (showSuggestions && normalizedInput.length > 0) {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                highlightSuggestion(
+                    Math.min(
+                        activeHighlightedIndex + 1,
+                        suggestionRows.length - 1,
+                    ),
+                );
+                return;
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                highlightSuggestion(Math.max(activeHighlightedIndex - 1, -1));
+                return;
+            }
+        }
+
+        if (event.key !== 'Enter') return;
 
         event.preventDefault();
-        addIngredient(input);
-    }
 
-    function handleSuggestionPointerDown(
-        event: React.PointerEvent<HTMLDivElement>,
-        name: string,
-    ) {
-        event.preventDefault();
+        // If a row is highlighted, Enter commits that exact row — including
+        // already-added suggestions, so picking one shows the duplicate
+        // feedback instead of silently adding the next addable item.
+        const highlightedRow = suggestionRows[activeHighlightedIndex];
 
-        if (isDuplicate(name)) {
-            showDuplicateFeedback(name);
+        if (highlightedRow) {
+            addIngredient(highlightedRow.name);
             return;
         }
 
-        setInput('');
-        setShowSuggestions(false);
-        onChange([...ingredients, name]);
-    }
-
-    function handlePointerDown(ingredient: string) {
-        clearLongPressTimer();
-        didLongPress.current = false;
-
-        // Tapping another ingredient while in delete mode exits delete mode.
-        if (deleteModeIngredient !== null) {
-            dismissingDeleteMode.current = true;
-            setDeleteModeIngredient(null);
+        if (exactMatch && !isDuplicate(exactMatch.name)) {
+            addIngredient(exactMatch.name);
             return;
         }
 
-        longPressTimer.current = window.setTimeout(() => {
-            didLongPress.current = true;
-            setDeleteModeIngredient(ingredient);
-            longPressTimer.current = null;
-        }, 500);
-    }
+        // Prefer the first suggestion that has not been added yet; pressing
+        // Enter on an already-added one shows the duplicate feedback instead
+        // of re-adding it.
+        const addableSuggestion = suggestions.find(
+            (suggestion) => !isDuplicate(suggestion.name),
+        );
 
-    function handlePointerUp() {
-        clearLongPressTimer();
-    }
-
-    function handleIngredientClick(index: number) {
-        // A long press can still produce a click event.
-        // Do not open the nutrition dialog in that case.
-        if (didLongPress.current) {
-            didLongPress.current = false;
+        if (addableSuggestion) {
+            addIngredient(addableSuggestion.name);
             return;
         }
 
-        // This click happened because the user tapped an ingredient
-        // while delete mode was active. It was only meant to dismiss
-        // delete mode.
-        if (dismissingDeleteMode.current) {
-            dismissingDeleteMode.current = false;
+        if (canAddCustom) {
+            addIngredient(input);
             return;
         }
 
-        onIngredientClick(index);
+        if (normalizedInput && isDuplicate(input)) {
+            showDuplicateFeedback(input);
+        }
     }
 
     function handleDeleteIngredient(ingredient: string) {
-        setDeleteModeIngredient(null);
         setDeletingIngredient(ingredient);
+    }
+
+    function handleClearAll() {
+        setDeletingIngredient(null);
+        onChange([]);
     }
 
     function handleDeleteAnimationEnd(
@@ -257,64 +250,67 @@ function IngredientInput({
 
     return (
         <div className="ingredient-input">
-            <h3>Ingredients</h3>
+            <div className="ingredient-input-header">
+                <h3>1. Choose your ingredients</h3>
+
+                {ingredients.length > 0 && (
+                    <button
+                        type="button"
+                        className="ingredient-clear-all-button"
+                        onClick={handleClearAll}
+                    >
+                        Clear all
+                    </button>
+                )}
+            </div>
+
             <div
                 className={`ingredient-chips ${
                     ingredients.length === 0 ? 'ingredient-chips-empty' : ''
                 }`}
             >
                 {ingredients.map((ingredient, index) => {
-                    const isSelected = deleteModeIngredient === ingredient;
                     const isDeleting = deletingIngredient === ingredient;
 
                     return (
                         <div
                             key={ingredient}
                             className={`ingredient-chip-wrapper ${
-                                isSelected
-                                    ? 'ingredient-chip-wrapper-selected'
-                                    : ''
-                            } ${
                                 isDeleting
                                     ? 'ingredient-chip-wrapper-deleting'
                                     : ''
                             }`}
-                            onPointerDown={() => handlePointerDown(ingredient)}
-                            onPointerUp={handlePointerUp}
-                            onPointerCancel={handlePointerUp}
                             onAnimationEnd={(event) =>
                                 handleDeleteAnimationEnd(event, ingredient)
                             }
                         >
-                            {isSelected && (
-                                <button
-                                    type="button"
-                                    className="ingredient-chip-delete"
-                                    onPointerDown={(event) =>
-                                        event.stopPropagation()
-                                    }
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        handleDeleteIngredient(ingredient);
-                                    }}
-                                    aria-label={`Remove ${ingredient}`}
-                                >
-                                    <img
-                                        src={deleteIcon}
-                                        alt=""
-                                        aria-hidden="true"
-                                    />
-                                </button>
-                            )}
-
                             <span className="ingredient-chip">
                                 <button
                                     type="button"
                                     className="ingredient-chip-label"
-                                    onClick={() => handleIngredientClick(index)}
+                                    onClick={() => onIngredientClick(index)}
                                     aria-label={`Edit nutrition for ${ingredient}`}
+                                    disabled={isDeleting}
                                 >
                                     {ingredient}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="ingredient-chip-delete"
+                                    onClick={() =>
+                                        handleDeleteIngredient(ingredient)
+                                    }
+                                    aria-label={`Remove ${ingredient}`}
+                                    disabled={isDeleting}
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        aria-hidden="true"
+                                        focusable="false"
+                                    >
+                                        <path d="M6 6l12 12M18 6L6 18" />
+                                    </svg>
                                 </button>
                             </span>
                         </div>
@@ -327,45 +323,129 @@ function IngredientInput({
                     duplicateMessage ? 'ingredient-input-field-dimmed' : ''
                 }`}
             >
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(event) => {
-                        setInput(event.target.value);
-                        setShowSuggestions(true);
-                    }}
-                    onFocus={() => setShowSuggestions(true)}
-                    onBlur={() => {
-                        window.setTimeout(() => {
-                            setShowSuggestions(false);
-                        }, 150);
-                    }}
-                    onKeyDown={handleKeyDown}
-                    enterKeyHint="done"
-                    placeholder="Add an ingredient..."
-                />
+                <div className="ingredient-input-control">
+                    <span className="ingredient-search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M16.5 16.5L21 21" />
+                        </svg>
+                    </span>
 
-                {showSuggestions && suggestions.length > 0 && (
-                    <div className="ingredient-suggestions" role="listbox">
-                        {suggestions.map((ingredient) => (
-                            <div
-                                key={ingredient.ingredientId}
-                                className="ingredient-suggestion"
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={input}
+                        onChange={(event) => {
+                            setInput(event.target.value);
+                            setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onBlur={() => {
+                            window.setTimeout(() => {
+                                setShowSuggestions(false);
+                            }, 150);
+                        }}
+                        onKeyDown={handleKeyDown}
+                        enterKeyHint="done"
+                        placeholder="Search or add an ingredient..."
+                        aria-label="Search or add an ingredient"
+                        role="combobox"
+                        aria-expanded={
+                            showSuggestions && normalizedInput.length > 0
+                        }
+                        aria-autocomplete="list"
+                        aria-controls="ingredient-suggestions-listbox"
+                        aria-activedescendant={
+                            activeHighlightedIndex >= 0 &&
+                            suggestionRows[activeHighlightedIndex]
+                                ? `ingredient-option-${
+                                      suggestionRows[activeHighlightedIndex].key
+                                  }`
+                                : undefined
+                        }
+                    />
+                </div>
+
+                {showSuggestions && normalizedInput.length > 0 && (
+                    <div
+                        className="ingredient-suggestions"
+                        role="listbox"
+                        id="ingredient-suggestions-listbox"
+                    >
+                        {suggestions.map((ingredient, index) => {
+                            const added = isDuplicate(ingredient.name);
+                            const highlighted =
+                                index === activeHighlightedIndex;
+
+                            return (
+                                <button
+                                    key={ingredient.ingredientId}
+                                    id={`ingredient-option-${ingredient.ingredientId}`}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={highlighted}
+                                    className={`ingredient-suggestion ${
+                                        added
+                                            ? 'ingredient-suggestion-added'
+                                            : ''
+                                    } ${
+                                        highlighted
+                                            ? 'ingredient-suggestion-highlighted'
+                                            : ''
+                                    }`}
+                                    onPointerDown={(event) => {
+                                        event.preventDefault();
+                                        addIngredient(ingredient.name);
+                                    }}
+                                >
+                                    {ingredient.name}
+
+                                    {added && (
+                                        <span className="ingredient-suggestion-added-badge">
+                                            Added
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+
+                        {canAddCustom && (
+                            <button
+                                type="button"
+                                id="ingredient-option-custom"
                                 role="option"
-                                onPointerDown={(event) =>
-                                    handleSuggestionPointerDown(
-                                        event,
-                                        ingredient.name,
-                                    )
+                                aria-selected={
+                                    activeHighlightedIndex ===
+                                    suggestionRows.length - 1
                                 }
+                                className={`ingredient-suggestion ingredient-suggestion-custom ${
+                                    activeHighlightedIndex ===
+                                    suggestionRows.length - 1
+                                        ? 'ingredient-suggestion-highlighted'
+                                        : ''
+                                }`}
+                                onPointerDown={(event) => {
+                                    event.preventDefault();
+                                    addIngredient(input);
+                                }}
                             >
-                                {ingredient.name}
+                                <span>+ {input.trim()}</span>
+                                <span className="ingredient-enter-hint">↵</span>
+                            </button>
+                        )}
+
+                        {suggestions.length === 0 && !canAddCustom && (
+                            <div className="ingredient-suggestion-empty">
+                                Already added
                             </div>
-                        ))}
+                        )}
                     </div>
                 )}
             </div>
+
+            {/* <p className="ingredient-input-hint">
+                Select a suggestion or press Enter to add.
+            </p> */}
 
             {duplicateMessage &&
                 createPortal(

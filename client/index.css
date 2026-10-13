@@ -99,7 +99,7 @@
 h1 {
   font-size: var(--font-size-xl);
   letter-spacing: -1.68px;
-  margin: 48px 0 32px;
+  margin: var(--space-12) 0 var(--space-8);
 }
 
 h2 {

@@ -9,13 +9,65 @@
     text-align: left;
 }
 
+.ingredient-input h3 {
+    margin-top: 0;
+    text-align: left;
+}
+
+/* Heading row with the clear-all action */
+
+.ingredient-input-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.ingredient-input-header h3 {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.ingredient-clear-all-button {
+    padding: var(--space-1) var(--space-2);
+
+    border: none;
+    background: transparent;
+
+    color: var(--accent);
+
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-regular);
+
+    cursor: pointer;
+
+    /* Apple-style press feedback dims the text; no scale or fill change */
+    transition: opacity 100ms ease;
+}
+
+.ingredient-clear-all-button:hover {
+    opacity: 0.75;
+}
+
+.ingredient-clear-all-button:active {
+    opacity: 0.4;
+}
+
+.ingredient-clear-all-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
 /* Ingredient chips */
+
 .ingredient-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-2);
     margin-bottom: var(--space-3);
-    padding-top: 8px;
+    padding-top: var(--space-2);
 }
 
 .ingredient-chips-empty {
@@ -25,19 +77,11 @@
 
 .ingredient-chip-wrapper {
     position: relative;
-    display: grid;
-    grid-template-columns: 1fr;
+    display: inline-flex;
     width: max-content;
+    max-width: 100%;
     flex-shrink: 0;
     opacity: 1;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: pan-y;
-}
-
-.ingredient-chip-label {
-    user-select: none;
-    -webkit-user-select: none;
 }
 
 .ingredient-chip-wrapper-deleting {
@@ -60,65 +104,72 @@
 .ingredient-chip {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-1);
+    min-width: 0;
     flex-shrink: 0;
-
-    padding: var(--space-2) var(--space-3);
-    border-radius: 8px;
-
+    padding: var(--space-1) 5px var(--space-1) var(--space-3);
+    border-radius: 999px;
     background: var(--accent-green);
     color: var(--text-h);
-
     font-size: var(--font-size-md);
-
     transition:
         background 150ms ease,
         color 150ms ease;
 }
 
-.ingredient-chip-wrapper-selected .ingredient-chip {
-    background: var(--accent-bg);
-    color: var(--accent);
+.ingredient-chip-label {
+    min-width: 0;
+    padding: var(--space-1) 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
 }
+
+.ingredient-chip-label:disabled {
+    cursor: default;
+}
+
+.ingredient-chip-label:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+/* Always-visible remove button */
 
 .ingredient-chip-delete {
-    position: absolute;
-    top: -34px;
-    left: 50%;
-    display: flex;
+    display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 28px;
+    height: 28px;
     padding: 0;
-    border: 1px solid var(--border);
+    box-sizing: border-box;
+    border: 0;
     border-radius: 50%;
-    background: var(--surface);
-    color: var(--text-h);
+    background: transparent;
+    color: var(--text-muted, var(--text-h));
     cursor: pointer;
-    box-shadow:
-        0 2px 6px rgba(0, 0, 0, 0.10),
-        0 6px 16px rgba(0, 0, 0, 0.08);
-    transform: translateX(-50%) scale(0.7);
-    opacity: 0;
-    animation: ingredient-delete-in 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    transition:
+        background-color 150ms ease,
+        color 150ms ease;
 }
 
-@keyframes ingredient-delete-in {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) scale(0.7);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(-50%) scale(1);
-    }
-}
-
-.ingredient-chip-delete img {
-    width: 19px;
-    height: 19px;
+.ingredient-chip-delete svg {
+    width: 14px;
+    height: 14px;
+    /* The circle follows the border box; with box-sizing: border-box
+       and no padding, flex centers the icon in that same box. */
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    fill: none;
 }
 
 .ingredient-chip-delete:hover {
@@ -128,17 +179,68 @@
 
 .ingredient-chip-delete:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline-offset: 1px;
+}
+
+.ingredient-chip-delete:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+@media (hover: none) {
+    .ingredient-chip-delete:hover {
+        background: transparent;
+        color: var(--text-muted, var(--text-h));
+    }
+
+    .ingredient-chip-delete:active {
+        background: var(--accent-bg);
+        color: var(--accent);
+    }
 }
 
 /* Material-style ingredient input */
+
 .ingredient-input-field {
     position: relative;
     display: flex;
     align-items: center;
+    transition: opacity 200ms ease;
 }
 
-.ingredient-input-field::after {
+/* Magnifying glass overlaid inside the search bar.
+   The global .ingredient-search-icon rule adds margin-right; neutralize it
+   since the icon is absolutely positioned here. */
+
+.ingredient-input-control .ingredient-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text);
+}
+
+.ingredient-input-control .ingredient-search-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    fill: none;
+}
+
+.ingredient-input-control {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.ingredient-input-control::after {
     content: '';
     position: absolute;
     left: 0;
@@ -151,14 +253,20 @@
     transition: transform 200ms ease;
 }
 
-.ingredient-input-field:focus-within::after {
+.ingredient-input-control:focus-within::after {
     transform: scaleX(1);
+}
+
+.ingredient-input-field-dimmed {
+    opacity: 0.55;
 }
 
 .ingredient-input input {
     width: 100%;
     box-sizing: border-box;
-    padding: 8px 2px;
+    /* Left padding clears the magnifying glass overlaid at the start
+       of the input (icon 18px at left: 2px + gap). */
+    padding: var(--space-2) 2px var(--space-2) 28px;
     border: none;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
@@ -189,18 +297,13 @@
     position: fixed;
     inset: 0;
     z-index: 1000;
-
     display: grid;
     place-items: center;
-
     box-sizing: border-box;
-    padding: 24px;
-
+    padding: var(--space-6);
     background: rgba(0, 0, 0, 0.25);
-
     opacity: 0;
     pointer-events: none;
-
     transition: opacity 250ms ease;
 }
 
@@ -211,30 +314,23 @@
 .ingredient-duplicate-message {
     width: max-content;
     max-width: calc(100vw - 48px);
-
     box-sizing: border-box;
     padding: 14px 20px;
-
     border: 1px solid color-mix(in srgb,
             var(--border) 60%,
             transparent);
     border-radius: 14px;
-
     background: #fff;
     color: var(--text-h);
-
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
     line-height: var(--line-height-normal);
     text-align: center;
-
     box-shadow:
         0 4px 12px rgba(0, 0, 0, 0.08),
         0 12px 32px rgba(0, 0, 0, 0.08);
-
     opacity: 0;
     transform: scale(0.88);
-
     pointer-events: none;
 }
 
@@ -272,12 +368,119 @@
     }
 }
 
-/* Dim the input while the duplicate message is visible */
+/* Search field guidance */
 
-.ingredient-input-field {
-    transition: opacity 200ms ease;
+.ingredient-input-hint {
+    margin: var(--space-2) 0 0;
+    color: var(--text-muted, #858981);
+    font-size: 12px;
+    line-height: 1.5;
 }
 
-.ingredient-input-field-dimmed {
-    opacity: 0.55;
+/* Search suggestions dropdown */
+
+.ingredient-input .ingredient-suggestions {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    overflow: hidden;
+    border: 1px solid #e7e5df;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgb(40 40 30 / 8%);
+}
+
+.ingredient-input .ingredient-suggestion {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 0;
+    border-bottom: 1px solid #f0efeb;
+    border-radius: 0;
+    background: #fff;
+    color: var(--text-primary, #303632);
+    text-align: left;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.ingredient-input .ingredient-suggestion:last-child {
+    border-bottom: 0;
+}
+
+.ingredient-input .ingredient-suggestion:hover,
+.ingredient-input .ingredient-suggestion:focus-visible {
+    background: #f7f6f2;
+    outline: none;
+}
+
+/* Keyboard-highlighted row */
+
+.ingredient-input .ingredient-suggestion-highlighted,
+.ingredient-input .ingredient-suggestion-highlighted.ingredient-suggestion-added,
+.ingredient-input .ingredient-suggestion-highlighted.ingredient-suggestion-added:hover {
+    background: #f7f6f2;
+}
+
+.ingredient-input .ingredient-suggestion-added {
+    color: var(--text-muted, #858981);
+    font-weight: var(--font-weight-normal);
+}
+
+.ingredient-input .ingredient-suggestion-added:hover,
+.ingredient-input .ingredient-suggestion-added:active {
+    background: transparent;
+}
+
+.ingredient-suggestion-added-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--disabled-bg);
+    color: var(--text-muted, #858981);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.2px;
+}
+
+.ingredient-enter-hint {
+    flex-shrink: 0;
+    color: #858981;
+    font-size: 18px;
+}
+
+.ingredient-suggestion-empty {
+    padding: 13px var(--space-4);
+    color: #858981;
+    font-size: 13px;
+}
+
+@media (max-width: 600px) {
+    .ingredient-input-hint {
+        font-size: 12px;
+    }
+
+    .ingredient-input .ingredient-suggestion {
+        min-height: 46px;
+        font-size: 15px;
+    }
+
+    .ingredient-chip {
+        gap: var(--space-1);
+        padding-left: var(--space-3);
+    }
+
+    .ingredient-chip-delete {
+        width: 30px;
+        height: 30px;
+    }
 }

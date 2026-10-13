@@ -48,7 +48,7 @@
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    padding: 8px 2px;
+    padding: var(--space-2) 2px;
     border: none;
     border-bottom: 1px solid var(--border);
     border-radius: 0;

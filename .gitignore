@@ -31,3 +31,6 @@ certs/
 .env
 .vercel
 .env*
+
+claudeAlgo/
+gptAlgo/

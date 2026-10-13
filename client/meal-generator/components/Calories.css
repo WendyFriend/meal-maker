@@ -12,7 +12,7 @@
 
   width: 100%;
   min-height: 0;
-  padding: 8px 2px;
+  padding: var(--space-2) 2px;
 
   border: none;
   border-bottom: 1px solid var(--border);
@@ -35,7 +35,7 @@
 .calories-field-content {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 /* Animated accent underline, matching IngredientInput */
@@ -64,10 +64,36 @@
   color: var(--text-h);
 }
 
+/* Wheel picker sheet content */
+
+.calories-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calories-picker-wrapper {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+
+  border: 1px solid rgb(161 161 170 / 30%);
+  border-radius: var(--radius-md);
+
+  background: var(--surface);
+}
+
+/* Highlighted wheel option: accent-red text instead of near-black */
+
+.calories-picker-wrapper [data-rwp-highlight-item] {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
 .calories-field-chevron {
   width: 8px;
   height: 8px;
-  margin-right: 4px;
+  margin-right: var(--space-1);
 
   border-top: 1.5px solid var(--text);
   border-right: 1.5px solid var(--text);
