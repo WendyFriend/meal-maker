@@ -419,7 +419,7 @@ export default function MealResult({
                                 className="macro-donut-track"
                                 cx="60"
                                 cy="60"
-                                r="44"
+                                r="42"
                             />
 
                             {MACROS.map((macro, index) => {
@@ -440,7 +440,7 @@ export default function MealResult({
                                         className={getSegmentClassName(macro)}
                                         cx="60"
                                         cy="60"
-                                        r="44"
+                                        r="42"
                                         pathLength="100"
                                         style={{
                                             strokeDasharray: `${percentage} ${

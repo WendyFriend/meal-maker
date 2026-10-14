@@ -398,9 +398,9 @@
 
 .macro-donut {
     position: relative;
-    flex: 0 0 240px;
-    width: 240px;
-    height: 240px;
+    flex: 0 0 286px;
+    width: 286px;
+    height: 286px;
 }
 
 .macro-donut svg {
@@ -414,7 +414,7 @@
 .macro-donut-track,
 .macro-donut-segment {
     fill: none;
-    stroke-width: 26;
+    stroke-width: 28;
 }
 
 .macro-donut-track {
@@ -432,7 +432,7 @@
 }
 
 .macro-donut-segment-highlighted {
-    stroke-width: 30;
+    stroke-width: 34;
 }
 
 .macro-donut-segment-dimmed {
@@ -871,9 +871,9 @@
     }
 
     .macro-donut {
-        flex-basis: 200px;
-        width: 200px;
-        height: 200px;
+        flex-basis: 242px;
+        width: 242px;
+        height: 242px;
     }
 
     .macro-legend {
@@ -925,9 +925,9 @@
     }
 
     .macro-donut {
-        flex-basis: 190px;
-        width: 190px;
-        height: 190px;
+        flex-basis: 231px;
+        width: 231px;
+        height: 231px;
     }
 
     .macro-legend {
