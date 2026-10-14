@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './NewMealResult.css';
 import type { GenerateMealResponse } from '../../../shared/types/types';
 import { IngredientWeightInput } from './IngredientWeightInput';
+import IngredientNutritionSheet from './IngredientNutritionSheet';
 
 type MealResultProps = {
     meal: GenerateMealResponse;
@@ -195,6 +196,10 @@ export default function MealResult({
         null,
     );
 
+    const [nutritionSheetIngredient, setNutritionSheetIngredient] = useState<
+        number | null
+    >(null);
+
     // Tapping outside the visible part of the donut (the ring segments, the
     // track, or a legend item) clears the highlight. The donut hole, the
     // corners of the donut box, and chart whitespace all deselect.
@@ -349,9 +354,20 @@ export default function MealResult({
                             key={`${ingredient.name}-${index}`}
                         >
                             <div className="ingredient-info">
-                                <div className="ingredient-name">
+                                <button
+                                    type="button"
+                                    className="ingredient-name ingredient-name-button"
+                                    onClick={() =>
+                                        setNutritionSheetIngredient(index)
+                                    }
+                                >
                                     {ingredient.name}
-                                </div>
+
+                                    <span
+                                        className="ingredient-name-chevron"
+                                        aria-hidden="true"
+                                    />
+                                </button>
 
                                 {/* <div className="ingredient-calories">
                                     {Math.round(
@@ -635,7 +651,6 @@ export default function MealResult({
 
             <details className="nutrition-information">
                 <summary>Ingredient Nutrition Information</summary>
-
                 <p>Nutrition values per 100g of each ingredient.</p>
 
                 <div className="nutrition-table-wrapper">
@@ -673,6 +688,13 @@ export default function MealResult({
                     </table>
                 </div>
             </details>
+
+            {nutritionSheetIngredient !== null && (
+                <IngredientNutritionSheet
+                    ingredient={meal.ingredients[nutritionSheetIngredient]}
+                    onClose={() => setNutritionSheetIngredient(null)}
+                />
+            )}
         </section>
     );
 }
