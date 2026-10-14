@@ -398,9 +398,9 @@
 
 .macro-donut {
     position: relative;
-    flex: 0 0 286px;
-    width: 286px;
-    height: 286px;
+    flex: 0 0 315px;
+    width: 315px;
+    height: 315px;
 }
 
 .macro-donut svg {
@@ -474,7 +474,7 @@
 .macro-donut-center span {
     margin-top: var(--space-1);
     color: var(--text-muted);
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-sm);
 }
 
 /* Macro legend */
@@ -500,7 +500,6 @@
     background: transparent;
     color: var(--text);
     font: inherit;
-    text-align: left;
 
     cursor: pointer;
 
@@ -528,13 +527,13 @@
 
 .macro-legend-item>span {
     color: var(--text);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
 }
 
 .macro-legend-item strong {
     margin-left: auto;
     color: var(--text-h);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
     font-weight: var(--font-weight-semibold);
 }
 
@@ -871,9 +870,9 @@
     }
 
     .macro-donut {
-        flex-basis: 242px;
-        width: 242px;
-        height: 242px;
+        flex-basis: 266px;
+        width: 266px;
+        height: 266px;
     }
 
     .macro-legend {
@@ -925,14 +924,16 @@
     }
 
     .macro-donut {
-        flex-basis: 231px;
-        width: 231px;
-        height: 231px;
+        flex-basis: 254px;
+        width: 254px;
+        height: 254px;
     }
 
     .macro-legend {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        /* Columns hug their content so the gap between the three legends is
+           identical regardless of label width */
+        grid-template-columns: repeat(3, auto);
         gap: var(--space-2);
         width: 100%;
         min-width: 0;
@@ -945,11 +946,7 @@
 
     .macro-legend-item>span,
     .macro-legend-item strong {
-        font-size: var(--font-size-xs);
-    }
-
-    .macro-legend-item strong {
-        margin-left: 0;
+        font-size: var(--font-size-sm);
     }
 
     .macro-dot {
