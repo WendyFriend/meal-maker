@@ -33,7 +33,6 @@ export type GenerateMealResponse = {
         proteinPer100g: number;
         carbohydratePer100g: number;
         fatPer100g: number;
-        nutritionSource: 'provided' | 'ai_lookup' | 'ai_estimate';
     }[];
     instructions: string[];
 };

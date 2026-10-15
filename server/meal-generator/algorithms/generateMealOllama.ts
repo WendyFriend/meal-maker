@@ -26,7 +26,6 @@ Rules:
 - Use provided nutrition data exactly; never change it.
 - For missing nutrition, look it up if possible; otherwise estimate it.
 - Return nutrition per 100 g for every ingredient.
-- Mark nutrition source as provided, ai_lookup, or ai_estimate.
 - Return only valid JSON. Do not use Markdown code fences.
 
 Response shape:
@@ -39,8 +38,7 @@ Response shape:
       "caloriesPer100g": 0,
       "proteinPer100g": 0,
       "carbohydratePer100g": 0,
-      "fatPer100g": 0,
-      "nutritionSource": "provided | ai_lookup | ai_estimate"
+      "fatPer100g": 0
     }
   ],
   "instructions": ["string"]

@@ -662,7 +662,6 @@ export default function MealResult({
                                 <th>P</th>
                                 <th>C</th>
                                 <th>F</th>
-                                <th>Source</th>
                             </tr>
                         </thead>
 
@@ -681,7 +680,6 @@ export default function MealResult({
                                         g
                                     </td>
                                     <td>{ingredient.fatPer100g.toFixed(1)}g</td>
-                                    <td>{ingredient.nutritionSource}</td>
                                 </tr>
                             ))}
                         </tbody>
