@@ -26,14 +26,7 @@ export type GenerateMealRequest = {
 
 export type GenerateMealResponse = {
     mealName: string;
-    ingredients: {
-        name: string;
-        weight: number;
-        caloriesPer100g: number;
-        proteinPer100g: number;
-        carbohydratePer100g: number;
-        fatPer100g: number;
-    }[];
+    ingredients: MealIngredient[];
     instructions: string[];
 };
 

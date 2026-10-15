@@ -1,12 +1,9 @@
-// import { OllamaAiClient } from './ai/OllamaAiClient.js';
-// import { getNutritionForIngredients } from './nutrition/getNutritionForIngredients.js';
-// import type {
-//     GenerateMealRequest,
-//     IngredientNutrition,
-// } from '../shared/types/types.ts';
-
-import type { GenerateMealRequest, GenerateMealResponse } from "../../../shared/types/types.ts";
-import { OllamaAiClient } from "../../ai/OllamaAiClient.js";
+import type {
+    GenerateMealRequest,
+    GenerateMealResponse,
+} from '../../../shared/types/types.ts';
+import { OllamaAiClient } from '../../ai/OllamaAiClient.js';
+import { isGenerateMealResponse } from './validateMealResponse.ts';
 
 const MEAL_GENERATION_SYSTEM_PROMPT = `
 You are MealMaker, a meal-planning assistant.
@@ -48,7 +45,7 @@ Do not return meal-level nutrition totals.
 `;
 
 export async function generateMealWithOllama(
-    input: GenerateMealRequest
+    input: GenerateMealRequest,
 ): Promise<GenerateMealResponse> {
     const apiKey = process.env.OLLAMA_API_KEY;
     const model = process.env.OLLAMA_MODEL;
@@ -74,18 +71,29 @@ export async function generateMealWithOllama(
         'json',
     );
 
+    let parsed: unknown;
+
     try {
-        return JSON.parse(response) as GenerateMealResponse;
-    } catch {
+        parsed = JSON.parse(response);
+    } catch (error) {
         console.error('Invalid JSON returned by Ollama:', response);
+
+        throw new Error('AI returned an invalid meal response', {
+            cause: error,
+        });
+    }
+
+    if (!isGenerateMealResponse(parsed)) {
+        console.error('AI meal response failed validation:', response);
+
         throw new Error('AI returned an invalid meal response');
     }
+
+    return parsed;
 }
 
 export async function handleGenerateMealOllama(input: GenerateMealRequest) {
-    const meal = await generateMealWithOllama(
-        input
-    );
+    const meal = await generateMealWithOllama(input);
 
     console.log('AI generated meal:', meal);
 
