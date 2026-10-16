@@ -20,7 +20,7 @@ import {
     saveUserIngredient as saveUserIngredientToDB,
     updateUserIngredient as updateUserIngredientInDB,
     deleteUserIngredient as deleteUserIngredientInDB,
-} from './lib/supabase';
+} from './services/ingredientServices';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
 import { isUserIngredient } from './utils/Ingredient';
@@ -56,7 +56,7 @@ const navigationItems: {
 }[] = [
     {
         id: 'meal-maker',
-        label: '🍲 Meal Maker',
+        label: '✨ Create Meal',
     },
     {
         id: 'my-ingredients',
@@ -64,7 +64,7 @@ const navigationItems: {
     },
     {
         id: 'food-log',
-        label: '📖 My Food Log',
+        label: '📖 My Recipes',
     },
 ];
 
