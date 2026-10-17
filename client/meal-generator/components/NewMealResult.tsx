@@ -4,6 +4,7 @@ import './NewMealResult.css';
 import type { GenerateMealResponse } from '../../../shared/types/types';
 import { IngredientWeightInput } from './IngredientWeightInput';
 import IngredientNutritionSheet from './IngredientNutritionSheet';
+import { deleteRecipe, saveRecipe } from '../../services/recipeService';
 
 type MealResultProps = {
     meal: GenerateMealResponse;
@@ -195,7 +196,11 @@ export default function MealResult({
     const [highlightedMacro, setHighlightedMacro] = useState<MacroKey | null>(
         null,
     );
-
+    // Id of the recipes-table row created when this meal was saved.
+    // Null means this meal is not bookmarked yet.
+    const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
+    const [isSavingMeal, setIsSavingMeal] = useState(false);
+    const [bookmarkError, setBookmarkError] = useState<string | null>(null);
     const [nutritionSheetIngredient, setNutritionSheetIngredient] = useState<
         number | null
     >(null);
@@ -291,6 +296,46 @@ export default function MealResult({
         });
     }
 
+    const isBookmarked = savedRecipeId !== null;
+
+    // Saving writes the meal to the recipes table; un-saving deletes the row.
+    // The icon only flips after the database call succeeds, so it always
+    // reflects what is actually stored.
+    async function toggleBookmark() {
+        if (isSavingMeal) return;
+
+        setBookmarkError(null);
+        setIsSavingMeal(true);
+
+        try {
+            if (savedRecipeId) {
+                await deleteRecipe(savedRecipeId);
+                setSavedRecipeId(null);
+            } else {
+                const savedRecipe = await saveRecipe({
+                    recipeName: meal.mealName,
+                    ingredients: meal.ingredients,
+                    instructions: meal.instructions,
+                });
+
+                if (!savedRecipe.id) {
+                    throw new Error('saveRecipe did not return a recipe id');
+                }
+
+                setSavedRecipeId(savedRecipe.id);
+            }
+        } catch (error) {
+            console.error('Failed to toggle saved meal:', error);
+            setBookmarkError(
+                savedRecipeId
+                    ? 'Could not remove this meal. Please try again.'
+                    : 'Could not save this meal. Please try again.',
+            );
+        } finally {
+            setIsSavingMeal(false);
+        }
+    }
+
     function resetWeights() {
         if (!originalMeal) return;
         setWeightDrafts({});
@@ -328,10 +373,33 @@ export default function MealResult({
             <div className="meal-result-header">
                 <h2>{meal.mealName}</h2>
 
-                <div className="meal-total-calories">
-                    {Math.round(nutrition.calories)} kcal
-                </div>
+                <button
+                    type="button"
+                    className="meal-bookmark-button"
+                    onClick={toggleBookmark}
+                    disabled={isSavingMeal}
+                    aria-pressed={isBookmarked}
+                    aria-label={
+                        isBookmarked
+                            ? 'Remove this meal from saved'
+                            : 'Save this meal'
+                    }
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                </button>
             </div>
+
+            {bookmarkError && (
+                <p className="meal-bookmark-error" role="alert">
+                    {bookmarkError}
+                </p>
+            )}
 
             <section className="meal-ingredients">
                 <div className="meal-section-header">

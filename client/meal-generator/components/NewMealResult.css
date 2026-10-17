@@ -37,14 +37,13 @@
     text-align: left;
 }
 
-/* Keep calories on the right side of the meal header */
+/* Keep the bookmark button on the right side of the meal header */
 .meal-result-header {
     text-align: left;
 }
 
-.meal-total-calories {
+.meal-bookmark-button {
     margin-left: auto;
-    text-align: right;
 }
 
 /* Ensure the nutrition section and expandable summaries align left */
@@ -81,13 +80,68 @@
     letter-spacing: -0.3px;
 }
 
-.meal-total-calories {
+.meal-bookmark-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
-    color: var(--text-h);
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-semibold);
-    line-height: var(--line-height-tight);
-    white-space: nowrap;
+    padding: var(--space-1);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition:
+        background 50ms ease,
+        color 50ms ease,
+        transform 50ms ease;
+}
+
+.meal-bookmark-button svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+/* Filled state when the meal is bookmarked */
+.meal-bookmark-button[aria-pressed='true'] {
+    color: var(--accent);
+}
+
+.meal-bookmark-button[aria-pressed='true'] svg {
+    fill: var(--accent);
+}
+
+/* Hover effect on desktop */
+@media (hover: hover) and (pointer: fine) {
+    .meal-bookmark-button:hover {
+        background: var(--accent-bg);
+        color: var(--accent);
+    }
+}
+
+/* Brief feedback while pressing */
+.meal-bookmark-button:active {
+    background: var(--accent-bg);
+    transform: scale(0.92);
+}
+
+/* Keyboard accessibility */
+.meal-bookmark-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Save/unsave failures surface under the meal header */
+.meal-bookmark-error {
+    margin: calc(-1 * var(--space-4)) 0 var(--space-4);
+    color: var(--error);
+    font-size: var(--font-size-sm);
 }
 
 /* =========================
@@ -902,10 +956,6 @@ button.ingredient-name-button:focus-visible {
         font-size: var(--font-size-lg);
     }
 
-    .meal-total-calories {
-        font-size: var(--font-size-md);
-    }
-
     .meal-ingredients {
         margin-bottom: var(--space-8);
     }
@@ -1012,6 +1062,7 @@ button.ingredient-name-button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     .ingredient-weight-control button,
     .meal-reset-button,
+    .meal-bookmark-button,
     .macro-donut-segment,
     .macro-legend-item,
     .nutrient-progress-fill,
