@@ -20,7 +20,7 @@ import {
     saveUserIngredient as saveUserIngredientToDB,
     updateUserIngredient as updateUserIngredientInDB,
     deleteUserIngredient as deleteUserIngredientInDB,
-} from './services/ingredientServices';
+} from './services/ingredientService';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
 import { isUserIngredient } from './utils/Ingredient';
