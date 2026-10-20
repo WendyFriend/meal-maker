@@ -10,6 +10,9 @@ type MealResultProps = {
     meal: GenerateMealResponse;
     originalMeal?: GenerateMealResponse;
     onChange: (meal: GenerateMealResponse) => void;
+    /* Hide the save/unsave bookmark, e.g. on the recipe detail page
+       where the meal is already saved. */
+    showBookmark?: boolean;
 };
 
 type NutrientDefinition = {
@@ -99,6 +102,7 @@ export default function MealResult({
     meal,
     originalMeal,
     onChange,
+    showBookmark = true,
 }: MealResultProps) {
     const nutrition = useMemo(() => {
         return meal.ingredients.reduce(
@@ -373,26 +377,28 @@ export default function MealResult({
             <div className="meal-result-header">
                 <h2>{meal.mealName}</h2>
 
-                <button
-                    type="button"
-                    className="meal-bookmark-button"
-                    onClick={toggleBookmark}
-                    disabled={isSavingMeal}
-                    aria-pressed={isBookmarked}
-                    aria-label={
-                        isBookmarked
-                            ? 'Remove this meal from saved'
-                            : 'Save this meal'
-                    }
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                        focusable="false"
+                {showBookmark && (
+                    <button
+                        type="button"
+                        className="meal-bookmark-button"
+                        onClick={toggleBookmark}
+                        disabled={isSavingMeal}
+                        aria-pressed={isBookmarked}
+                        aria-label={
+                            isBookmarked
+                                ? 'Remove this meal from saved'
+                                : 'Save this meal'
+                        }
                     >
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                    </svg>
-                </button>
+                        <svg
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                            focusable="false"
+                        >
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                        </svg>
+                    </button>
+                )}
             </div>
 
             {bookmarkError && (

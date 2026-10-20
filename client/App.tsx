@@ -10,6 +10,8 @@ import {
     type UserIngredient,
 } from '../shared/types/types';
 import MyIngredients from './MyIngredients';
+import MyRecipes from './MyRecipes';
+import RecipeDetail from './RecipeDetail';
 import IngredientInput from './meal-generator/components/IngredientInput';
 import Calories from './meal-generator/components/Calories';
 import MealResult from './meal-generator/components/NewMealResult';
@@ -21,6 +23,7 @@ import {
     updateUserIngredient as updateUserIngredientInDB,
     deleteUserIngredient as deleteUserIngredientInDB,
 } from './services/ingredientService';
+import type { Recipe } from '../shared/types/recipe';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
 import { isUserIngredient } from './utils/Ingredient';
@@ -40,13 +43,17 @@ const pageConfig = {
         type: 'main',
         title: 'My Ingredients',
     },
-    'food-log': {
+    'my-recipes': {
         type: 'main',
-        title: 'My Food Log',
+        title: 'My Recipes',
     },
     'add-ingredient': {
         type: 'sub',
         title: 'Add Ingredient',
+    },
+    'recipe-detail': {
+        type: 'sub',
+        title: '',
     },
 } as const;
 
@@ -63,19 +70,30 @@ const navigationItems: {
         label: '🥕 My Ingredients',
     },
     {
-        id: 'food-log',
+        id: 'my-recipes',
         label: '📖 My Recipes',
     },
 ];
+
+/*
+ * Sub-pages open on top of a parent page (see pageConfig). Entering a
+ * sub-page pushes a browser history entry, so the mobile back gesture
+ * (swipe from the left edge, Android back button) returns to the parent
+ * page instead of leaving the app.
+ */
+const subPageParent: Partial<Record<Page, Page>> = {
+    'add-ingredient': 'my-ingredients',
+    'recipe-detail': 'my-recipes',
+};
 
 function App() {
     const { user, loading, signOut } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const [currentPage, setCurrentPage] = useState<Page>('meal-maker');
-    const [pageDirection, setPageDirection] = useState<'none' | 'right'>(
-        'none',
-    );
+    const [pageDirection, setPageDirection] = useState<
+        'none' | 'right' | 'left'
+    >('none');
 
     const [ingredients, setIngredients] = useState<string[]>([]);
     const [selectedIngredientIndex, setSelectedIngredientIndex] = useState<
@@ -99,6 +117,9 @@ function App() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<AppError>();
 
+    // Recipe opened from the My Recipes list; shown on the detail page.
+    const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
+
     const config = pageConfig[currentPage];
 
     useEffect(() => {
@@ -114,11 +135,52 @@ function App() {
         loadIngredients();
     }, []);
 
+    // The browser back gesture (swipe from the left edge, Android back
+    // button) pops the history entry navigateToPage pushed when a sub-page
+    // opened. Return to that sub-page's parent instead of leaving the app.
+    useEffect(() => {
+        function handlePopState() {
+            const parent = subPageParent[currentPage];
+
+            if (!parent) return;
+
+            setPageDirection('right');
+            setCurrentPage(parent);
+        }
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [currentPage]);
+
     function navigateToPage(page: Page) {
         const isReturning =
-            currentPage === 'add-ingredient' && page === 'my-ingredients';
+            (currentPage === 'add-ingredient' && page === 'my-ingredients') ||
+            (currentPage === 'recipe-detail' && page === 'my-recipes');
 
-        setPageDirection(isReturning ? 'right' : 'none');
+        const isAdvancing =
+            (currentPage === 'my-ingredients' && page === 'add-ingredient') ||
+            (currentPage === 'my-recipes' && page === 'recipe-detail');
+
+        if (isAdvancing) {
+            if (window.history.state?.page === page) {
+                // A history entry for this sub-page is already current (e.g.
+                // after a forward gesture) — reuse it instead of stacking
+                // another one.
+                window.history.replaceState({ page }, '');
+            } else {
+                window.history.pushState({ page }, '');
+            }
+        } else if (isReturning) {
+            // The in-app back button consumes the entry pushed on the way
+            // in; the popstate listener above performs the navigation.
+            window.history.back();
+            return;
+        }
+
+        setPageDirection(isReturning ? 'right' : isAdvancing ? 'left' : 'none');
 
         setCurrentPage(page);
     }
@@ -358,7 +420,10 @@ function App() {
                         key="back"
                         type="button"
                         className="page-header-back"
-                        onClick={() => navigateToPage('my-ingredients')}
+                        onClick={() => {
+                            const parent = subPageParent[currentPage];
+                            if (parent) navigateToPage(parent);
+                        }}
                         aria-label="Back"
                     >
                         ‹
@@ -411,69 +476,6 @@ function App() {
                 className={`page-transition page-transition-${pageDirection}`}
             >
                 <main className="page-content">
-                    {/* {currentPage === 'meal-maker' && (
-                        <>
-                            <section>
-                                <IngredientInput
-                                    ingredients={ingredients}
-                                    savedIngredients={userIngredients}
-                                    onChange={setIngredients}
-                                    removeIngredient={removeIngredient}
-                                    onIngredientClick={
-                                        setSelectedIngredientIndex
-                                    }
-                                />
-                            </section>
-
-                            <section>
-                                <Calories
-                                    value={caloriesGoal}
-                                    onChange={setCaloriesGoal}
-                                />
-                            </section>
-
-                            <button
-                                type="button"
-                                className="create-button"
-                                onClick={handleCreate}
-                            >
-                                Create
-                            </button>
-
-                            {selectedIngredientIndex !== null && (
-                                <NutritionDialog
-                                    ingredientInfo={getIngredientInfoFromStoredData(
-                                        ingredients[selectedIngredientIndex],
-                                    )}
-                                    onClose={() =>
-                                        setSelectedIngredientIndex(null)
-                                    }
-                                    onSave={handleIngredientSave}
-                                />
-                            )}
-
-                            {isGenerating && (
-                                <p className="generating-message">
-                                    Generating your meal...
-                                </p>
-                            )}
-
-                            {error?.code === 'UNKNOWN_ERROR' && (
-                                <div className="error-message" role="alert">
-                                    {error.message}
-                                </div>
-                            )}
-
-                            {!isGenerating && meal && originalMeal && (
-                                <MealResult
-                                    meal={meal}
-                                    originalMeal={originalMeal}
-                                    onChange={setMeal}
-                                />
-                            )}
-                        </>
-                    )} */}
-
                     {currentPage === 'meal-maker' && (
                         <div className="meal-maker-screen">
                             <div className="meal-maker-intro">
@@ -576,6 +578,19 @@ function App() {
                             onSave={createUserIngredient}
                             findExistingIngredient={findExistingIngredient}
                         />
+                    )}
+
+                    {currentPage === 'my-recipes' && (
+                        <MyRecipes
+                            onOpenRecipe={(recipe) => {
+                                setSelectedRecipe(recipe);
+                                navigateToPage('recipe-detail');
+                            }}
+                        />
+                    )}
+
+                    {currentPage === 'recipe-detail' && selectedRecipe && (
+                        <RecipeDetail recipe={selectedRecipe} />
                     )}
                 </main>
             </div>

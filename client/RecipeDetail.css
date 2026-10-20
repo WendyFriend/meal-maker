@@ -1,0 +1,9 @@
+/* =========================
+   Recipe detail (individual recipe page)
+   ========================= */
+
+.recipe-detail {
+    /* Space below the page header, shared by both viewport sizes.
+       The MealResult component it wraps has no top padding of its own. */
+    padding-top: var(--space-6);
+}
