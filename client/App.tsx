@@ -472,7 +472,6 @@ function App() {
             </aside>
 
             <div
-                key={currentPage}
                 className={`page-transition page-transition-${pageDirection}`}
             >
                 <main className="page-content">
@@ -580,13 +579,16 @@ function App() {
                         />
                     )}
 
-                    {currentPage === 'my-recipes' && (
-                        <MyRecipes
-                            onOpenRecipe={(recipe) => {
-                                setSelectedRecipe(recipe);
-                                navigateToPage('recipe-detail');
-                            }}
-                        />
+                    {(currentPage === 'my-recipes' ||
+                        currentPage === 'recipe-detail') && (
+                        <div hidden={currentPage !== 'my-recipes'}>
+                            <MyRecipes
+                                onOpenRecipe={(recipe) => {
+                                    setSelectedRecipe(recipe);
+                                    navigateToPage('recipe-detail');
+                                }}
+                            />
+                        </div>
                     )}
 
                     {currentPage === 'recipe-detail' && selectedRecipe && (

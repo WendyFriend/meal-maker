@@ -25,9 +25,8 @@ export default function MyRecipes({ onOpenRecipe }: MyRecipesProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // The component mounts each time the page is opened, so recipes are
-    // fetched fresh on every visit and newly saved meals show up here.
-    // `reloadCount` bumps on retry so the effect runs again.
+    // App keeps this page mounted while Recipe Detail is open, preserving
+    // the list state when the user returns. `reloadCount` supports retries.
     const [reloadCount, setReloadCount] = useState(0);
 
     useEffect(() => {
