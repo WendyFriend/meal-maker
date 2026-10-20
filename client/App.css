@@ -181,7 +181,7 @@
 /* =========================
    Page transition
    ========================= */
-
+/* 
 .page-transition {
   position: relative;
   width: 100%;
@@ -199,49 +199,58 @@
   to {
     left: 0;
   }
+} 
+ */
+
+.page-transition {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
 }
-/* 
+
+.page-transition-left {
+  animation-name: page-slide-in-left;
+}
+
 .page-transition-right {
-  animation: page-slide-in-right 200ms
-    cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  animation-name: page-slide-in-right;
+}
+
+.page-transition-none {
+  animation: none;
+}
+
+@keyframes page-slide-in-left {
+  from {
+    opacity: 0.75;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes page-slide-in-right {
   from {
-    transform: translateX(-100%);
+    opacity: 0.75;
+    transform: translateX(-20px);
   }
 
   to {
+    opacity: 1;
     transform: translateX(0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .page-transition-left,
   .page-transition-right {
     animation: none;
   }
 }
 
-.page-transition-left {
-  animation: page-slide-in-left 200ms
-    cubic-bezier(0.25, 0.1, 0.25, 1) both;
-}
-
-@keyframes page-slide-in-left {
-  from {
-    transform: translateX(100%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .page-transition-left {
-    animation: none;
-  }
-} */
 
 /* =========================
    Responsive
