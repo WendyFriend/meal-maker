@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import './AddIngredient.css';
 import type { IngredientInfo } from '../shared/types/types';
 import checkmarkAnimation from './assets/animations/checkmark.svg';
@@ -24,25 +25,25 @@ const nutritionFields: NutritionFieldConfig[] = [
         required: true,
     },
     {
-        label: 'Carbohydrate',
-        id: 'carbohydratePer100g',
-        unit: 'g',
-        required: true,
-    },
-    {
         label: 'Fat',
         id: 'fatPer100g',
         unit: 'g',
         required: true,
     },
     {
-        label: 'Saturated fat',
-        id: 'saturatedFatPer100g',
+        label: 'Carbohydrate',
+        id: 'carbohydratePer100g',
+        unit: 'g',
+        required: true,
+    },
+    {
+        label: 'Sugar',
+        id: 'sugarPer100g',
         unit: 'g',
         required: false,
     },
     {
-        label: 'Fiber',
+        label: 'Dietary Fiber',
         id: 'fiberPer100g',
         unit: 'g',
         required: false,
@@ -61,15 +62,16 @@ function AddIngredient({
     findExistingIngredient,
 }: AddIngredientProps) {
     const [isSaved, setIsSaved] = useState(false);
-
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [ingredientName, setIngredientName] = useState('');
-
     const [nutritionValues, setNutritionValues] = useState<NutritionValues>({
         caloriesPer100g: '',
         proteinPer100g: '',
         carbohydratePer100g: '',
         fatPer100g: '',
         saturatedFatPer100g: '',
+        sugarPer100g: '',
         fiberPer100g: '',
     });
 
@@ -110,87 +112,118 @@ function AddIngredient({
     async function handleDone(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        const existingIngredientName = findExistingIngredient(ingredientName);
+        if (findExistingIngredient(ingredientName)) return;
 
-        if (existingIngredientName) {
-            return;
+        setIsSaving(true);
+        setSaveError(null);
+
+        try {
+            await onSave(getIngredient());
+            setIsSaved(true);
+            window.setTimeout(onBack, 950);
+        } catch (error) {
+            console.error(error);
+            setSaveError('Could not save this ingredient. Please try again.');
+        } finally {
+            setIsSaving(false);
         }
-
-        await onSave(getIngredient());
-
-        setIsSaved(true);
-
-        window.setTimeout(() => {
-            onBack();
-        }, 950);
     }
 
     const existingIngredientName = findExistingIngredient(ingredientName);
 
     return (
         <main className="add-ingredient">
-            <form onSubmit={handleDone}>
-                <label className="add-ingredient-name">
-                    <span>
-                        Name{' '}
-                        <span className="required-marker" aria-hidden="true">
-                            *
+            <form id="add-ingredient-form" onSubmit={handleDone}>
+                <div className="add-ingredient-form-card">
+                    <label className="add-ingredient-name">
+                        <span className="add-ingredient-field-label">
+                            Ingredient name
+                            <span
+                                className="required-marker"
+                                aria-hidden="true"
+                            >
+                                {' '}
+                                *
+                            </span>
                         </span>
-                    </span>
+                        <div className="add-ingredient-name-input input-underline">
+                            <input
+                                type="text"
+                                className="line-input"
+                                value={ingredientName}
+                                onChange={(event) =>
+                                    setIngredientName(event.target.value)
+                                }
+                                placeholder="e.g. Chickpeas"
+                                autoComplete="off"
+                                required
+                                autoFocus
+                            />
+                        </div>
+                        {existingIngredientName && !isSaved && (
+                            <span
+                                className="add-ingredient-inline-error"
+                                role="alert"
+                            >
+                                {existingIngredientName} is already in your
+                                ingredients.
+                            </span>
+                        )}
+                    </label>
 
-                    <div className="name-field-input">
-                        <input
-                            type="text"
-                            value={ingredientName}
-                            onChange={(event) =>
-                                setIngredientName(event.target.value)
-                            }
-                            required
-                            autoFocus
-                        />
-                    </div>
+                    <div className="add-ingredient-divider" />
 
-                    {/* !isSaved prevents duplicate message from showing while save success animation is playing */}
-                    {existingIngredientName && !isSaved && (
-                        <p className="duplicate-message" role="alert">
-                            {existingIngredientName} is already in your
-                            Ingredients
-                        </p>
-                    )}
-                </label>
-
-                <div className="nutrition-fields">
-                    {nutritionFields.map((field) => (
-                        <NutritionField
-                            key={field.id}
-                            fieldId={field.id}
-                            fieldLabel={field.label}
-                            fieldValue={nutritionValues[field.id]}
-                            unit={field.unit}
-                            required={field.required}
-                            onChange={handleNutritionChange}
-                        />
-                    ))}
+                    <section
+                        className="add-ingredient-nutrition"
+                        aria-labelledby="nutrition-heading"
+                    >
+                        <h2 id="nutrition-heading">Nutrition per 100g</h2>
+                        <div className="nutrition-fields">
+                            {nutritionFields.map((field) => (
+                                <NutritionField
+                                    key={field.id}
+                                    fieldId={field.id}
+                                    fieldLabel={field.label}
+                                    fieldValue={nutritionValues[field.id]}
+                                    unit={field.unit}
+                                    required={field.required}
+                                    onChange={handleNutritionChange}
+                                />
+                            ))}
+                        </div>
+                    </section>
                 </div>
 
-                <button
-                    type="submit"
-                    className="add-ingredient-done"
-                    disabled={isSaved}
-                >
-                    Done
-                </button>
+                {saveError && (
+                    <p className="add-ingredient-save-error" role="alert">
+                        {saveError}
+                    </p>
+                )}
             </form>
 
-            {isSaved && (
-                <div className="save-success" aria-hidden="true">
-                    <img
-                        src={checkmarkAnimation}
-                        alt=""
-                        className="save-success-animation"
-                    />
-                </div>
+            {createPortal(
+                <button
+                    type="submit"
+                    form="add-ingredient-form"
+                    className="add-ingredient-done"
+                    disabled={isSaved || isSaving}
+                >
+                    {isSaving ? 'Saving…' : 'Done'}
+                </button>,
+                document.body,
             )}
+
+            {isSaved &&
+                createPortal(
+                    <div className="save-success" aria-hidden="true">
+                        <img
+                            src={checkmarkAnimation}
+                            alt=""
+                            className="save-success-animation"
+                        />
+                    </div>,
+                    document.body,
+                )}
         </main>
     );
 }

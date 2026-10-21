@@ -1,112 +1,119 @@
+/* =========================
+   Add Ingredient
+   ========================= */
+
 .add-ingredient {
-    --add-ingredient-width: 600px;
-
-    width: min(100%, var(--add-ingredient-width));
+    width: 100%;
+    max-width: 680px;
     margin: 0 auto;
-
-    padding: var(--space-6) 0;
+    padding: var(--space-8) 0 var(--space-6);
     box-sizing: border-box;
-
     text-align: left;
 }
 
-.add-ingredient form {
-    display: flex;
-    flex-direction: column;
+.add-ingredient-form-card {
+    overflow: hidden;
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: 0 2px 8px rgb(15 30 48 / 5%);
 }
 
 .add-ingredient-name {
-    display: grid;
-    gap: var(--space-1);
-
-    margin-bottom: var(--space-5);
-
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-5) var(--space-5) var(--space-4);
     color: var(--text-h);
     font-size: var(--font-size-sm);
 }
 
-.name-field-input {
-    position: relative;
-
-    display: flex;
-    align-items: center;
+.add-ingredient-field-label {
+    font-weight: var(--font-weight-medium);
 }
 
-.name-field-input::after {
-    content: '';
-
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-
-    height: 2px;
-
-    background: var(--accent);
-
-    transform: scaleX(0);
-    transform-origin: center;
-
-    transition: transform 200ms ease;
+.add-ingredient-name-input input::placeholder {
+    color: var(--text-muted);
 }
 
-.name-field-input:focus-within::after {
-    transform: scaleX(1);
+.required-marker {
+    color: var(--error);
 }
 
-.name-field-input input {
-    width: 100%;
-    box-sizing: border-box;
+.add-ingredient-inline-error,
+.add-ingredient-save-error {
+    color: var(--error);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+}
 
-    padding: var(--space-2) 2px;
+.add-ingredient-divider {
+    height: 1px;
+    margin: 0 var(--space-5);
+    background: var(--border-hairline);
+}
 
-    border: none;
-    border-bottom: 1px solid var(--border);
-    border-radius: 0;
+.add-ingredient-nutrition {
+    padding: var(--space-5);
+}
 
-    background: transparent;
+.add-ingredient-nutrition h2 {
+    margin: 0 0 var(--space-4);
     color: var(--text-h);
-
-    font: inherit;
     font-size: var(--font-size-md);
-
-    outline: none;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0;
 }
 
-/* Required field */
-.add-ingredient-name .required-marker {
-    color: #dc2626;
+.add-ingredient .nutrition-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-4);
 }
 
-/* Done button */
+.add-ingredient .nutrition-field {
+    min-width: 0;
+    color: var(--text-muted);
+}
+
+.add-ingredient .nutrition-field:focus-within {
+    color: var(--accent);
+}
+
+.add-ingredient-save-error {
+    margin: var(--space-3) 0 0;
+    padding: 0 var(--space-1);
+}
+
 .add-ingredient-done {
     position: fixed;
+    z-index: 95;
     left: 50%;
-    bottom: var(--space-6);
-
-    width: min(calc(100% - (var(--space-6) * 2)),
-            calc(var(--add-ingredient-width) - (var(--space-6) * 2)));
-
-    padding: 10px;
+    bottom: 24px;
+    width: min(552px, calc(100vw - 48px));
+    min-height: 50px;
+    padding: var(--space-3) var(--space-5);
     transform: translateX(-50%);
-
     border: 0;
     border-radius: var(--radius-md);
-
     background: var(--accent);
     color: #fff;
-
     font: inherit;
     font-weight: var(--font-weight-semibold);
-
     cursor: pointer;
+    box-shadow: var(--shadow);
+    transition:
+        background 150ms ease,
+        transform 100ms ease,
+        box-shadow 150ms ease;
 }
 
-.add-ingredient-done:hover {
+.add-ingredient-done:hover:not(:disabled) {
     background: #ed6d60;
+    box-shadow: 0 6px 16px rgb(15 30 48 / 22%);
 }
 
-.add-ingredient-done:active {
+.add-ingredient-done:active:not(:disabled) {
     transform: translateX(-50%) scale(0.98);
 }
 
@@ -117,18 +124,17 @@
 
 .add-ingredient-done:disabled {
     cursor: default;
+    opacity: 0.75;
 }
 
-/* Save success animation */
 .save-success {
     position: fixed;
-    inset: 0;
     z-index: 200;
-
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-
+    background: rgb(255 255 255 / 35%);
     pointer-events: none;
 }
 
@@ -138,24 +144,29 @@
     object-fit: contain;
 }
 
-/* Duplicate Ingredient message */
-
-.duplicate-message {
-    margin: var(--space-1) 0 0;
-    color: #dc2626;
-    font-size: var(--font-size-sm);
-    line-height: 1.4;
-    animation: duplicate-message-in 180ms ease-out;
-}
-
-@keyframes duplicate-message-in {
-    from {
-        opacity: 0;
-        transform: translateY(-2px);
+@media (max-width: 600px) {
+    .add-ingredient {
+        padding-top: var(--space-3);
     }
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    .add-ingredient-name,
+    .add-ingredient-nutrition {
+        padding-right: var(--space-4);
+        padding-left: var(--space-4);
+    }
+
+    .add-ingredient-divider {
+        margin-right: var(--space-4);
+        margin-left: var(--space-4);
+    }
+
+    .add-ingredient .nutrition-fields {
+        row-gap: var(--space-3);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .add-ingredient-done {
+        transition: none;
     }
 }
