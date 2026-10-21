@@ -3,7 +3,7 @@ import type {
     GenerateMealResponse,
 } from '../../../shared/types/types.ts';
 import { OllamaAiClient } from '../../ai/OllamaAiClient.js';
-import { isGenerateMealResponse } from './validateMealResponse.ts';
+import { isGenerateMealResponse } from './validateMealResponse.js';
 
 const MEAL_GENERATION_SYSTEM_PROMPT = `
 You are MealMaker, a meal-planning assistant.
