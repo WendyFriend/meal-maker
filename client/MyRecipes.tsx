@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import type { Recipe } from '../shared/types/recipe';
 import type { MealIngredient } from '../shared/types/types';
@@ -18,9 +19,15 @@ function getTotalCalories(ingredients: MealIngredient[]): number {
 
 type MyRecipesProps = {
     onOpenRecipe: (recipe: Recipe) => void;
+    onCreateRecipe: () => void;
+    showAddButton: boolean;
 };
 
-export default function MyRecipes({ onOpenRecipe }: MyRecipesProps) {
+export default function MyRecipes({
+    onOpenRecipe,
+    onCreateRecipe,
+    showAddButton,
+}: MyRecipesProps) {
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -45,78 +52,107 @@ export default function MyRecipes({ onOpenRecipe }: MyRecipesProps) {
         loadRecipes();
     }, [reloadCount]);
 
+    const addButton = showAddButton
+        ? createPortal(
+              <button
+                  type="button"
+                  className="floating-add-button"
+                  onClick={onCreateRecipe}
+                  aria-label="Create recipe"
+              >
+                  <span aria-hidden="true">+</span>
+              </button>,
+              document.body,
+          )
+        : null;
+
     if (isLoading) {
         return (
-            <main className="my-recipes">
-                <div className="my-recipes-status" role="status">
-                    <span className="my-recipes-spinner" aria-hidden="true" />
-                    <p>Loading your recipes...</p>
-                </div>
-            </main>
+            <>
+                <main className="my-recipes">
+                    <div className="my-recipes-status" role="status">
+                        <span className="my-recipes-spinner" aria-hidden="true" />
+                        <p>Loading your recipes...</p>
+                    </div>
+                </main>
+                {addButton}
+            </>
         );
     }
 
     return (
-        <main className="my-recipes">
-            {error ? (
-                <div className="my-recipes-error" role="alert">
-                    <p>{error}</p>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setError(null);
-                            setIsLoading(true);
-                            setRecipes([]);
-                            setReloadCount((count) => count + 1);
-                        }}
-                    >
-                        Try again
-                    </button>
-                </div>
-            ) : recipes.length === 0 ? (
-                <div className="my-recipes-empty">
-                    <div className="my-recipes-empty-icon" aria-hidden="true">
-                        📖
-                    </div>
-                    <p className="my-recipes-empty-title">
-                        No saved recipes yet
-                    </p>
-                    <p className="my-recipes-empty-hint">
-                        Create a meal and tap the bookmark to save it here.
-                    </p>
-                </div>
-            ) : (
-                <div className="recipe-list">
-                    {recipes.map((recipe, index) => (
+        <>
+            <main className="my-recipes">
+                {error ? (
+                    <div className="my-recipes-error" role="alert">
+                        <p>{error}</p>
                         <button
                             type="button"
-                            key={recipe.id ?? `${recipe.recipeName}-${index}`}
-                            className="recipe-row"
-                            onClick={() => onOpenRecipe(recipe)}
+                            onClick={() => {
+                                setError(null);
+                                setIsLoading(true);
+                                setRecipes([]);
+                                setReloadCount((count) => count + 1);
+                            }}
                         >
-                            <span className="recipe-icon" aria-hidden="true">
-                                🍲
-                            </span>
-
-                            <span className="recipe-row-info">
-                                <strong>{recipe.recipeName}</strong>
-
-                                <span>
-                                    {recipe.ingredients.length}{' '}
-                                    {recipe.ingredients.length === 1
-                                        ? 'ingredient'
-                                        : 'ingredients'}{' '}
-                                    •{' '}
-                                    {Math.round(
-                                        getTotalCalories(recipe.ingredients),
-                                    )}
-                                    kcal
-                                </span>
-                            </span>
+                            Try again
                         </button>
-                    ))}
-                </div>
-            )}
-        </main>
+                    </div>
+                ) : recipes.length === 0 ? (
+                    <div className="my-recipes-empty">
+                        <div
+                            className="my-recipes-empty-icon"
+                            aria-hidden="true"
+                        >
+                            📖
+                        </div>
+                        <p className="my-recipes-empty-title">
+                            No saved recipes yet
+                        </p>
+                        <p className="my-recipes-empty-hint">
+                            Create a meal and tap the bookmark to save it here.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="recipe-list">
+                        {recipes.map((recipe, index) => (
+                            <button
+                                type="button"
+                                key={
+                                    recipe.id ??
+                                    `${recipe.recipeName}-${index}`
+                                }
+                                className="recipe-row"
+                                onClick={() => onOpenRecipe(recipe)}
+                            >
+                                <span
+                                    className="recipe-icon"
+                                    aria-hidden="true"
+                                >
+                                    🍲
+                                </span>
+                                <span className="recipe-row-info">
+                                    <strong>{recipe.recipeName}</strong>
+                                    <span>
+                                        {recipe.ingredients.length}{' '}
+                                        {recipe.ingredients.length === 1
+                                            ? 'ingredient'
+                                            : 'ingredients'}{' '}
+                                        •{' '}
+                                        {Math.round(
+                                            getTotalCalories(
+                                                recipe.ingredients,
+                                            ),
+                                        )}
+                                        kcal
+                                    </span>
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </main>
+            {addButton}
+        </>
     );
 }

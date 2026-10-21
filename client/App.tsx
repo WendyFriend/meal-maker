@@ -55,6 +55,10 @@ const pageConfig = {
         type: 'sub',
         title: '',
     },
+    'create-recipe': {
+        type: 'sub',
+        title: 'Create Recipe',
+    },
 } as const;
 
 const navigationItems: {
@@ -84,6 +88,7 @@ const navigationItems: {
 const subPageParent: Partial<Record<Page, Page>> = {
     'add-ingredient': 'my-ingredients',
     'recipe-detail': 'my-recipes',
+    'create-recipe': 'my-recipes',
 };
 
 function App() {
@@ -158,11 +163,14 @@ function App() {
     function navigateToPage(page: Page) {
         const isReturning =
             (currentPage === 'add-ingredient' && page === 'my-ingredients') ||
-            (currentPage === 'recipe-detail' && page === 'my-recipes');
+            ((currentPage === 'recipe-detail' ||
+                currentPage === 'create-recipe') &&
+                page === 'my-recipes');
 
         const isAdvancing =
             (currentPage === 'my-ingredients' && page === 'add-ingredient') ||
-            (currentPage === 'my-recipes' && page === 'recipe-detail');
+            (currentPage === 'my-recipes' &&
+                (page === 'recipe-detail' || page === 'create-recipe'));
 
         if (isAdvancing) {
             if (window.history.state?.page === page) {
@@ -430,6 +438,17 @@ function App() {
                     </button>
                 )}
 
+                {/* {currentPage === 'my-recipes' && (
+                    <button
+                        type="button"
+                        className="page-header-add-recipe"
+                        onClick={() => navigateToPage('create-recipe')}
+                        aria-label="Add recipe"
+                    >
+                        <span aria-hidden="true">+</span>
+                    </button>
+                )} */}
+
                 <h1>{config.title}</h1>
             </header>
 
@@ -580,9 +599,14 @@ function App() {
                     )}
 
                     {(currentPage === 'my-recipes' ||
-                        currentPage === 'recipe-detail') && (
+                        currentPage === 'recipe-detail' ||
+                        currentPage === 'create-recipe') && (
                         <div hidden={currentPage !== 'my-recipes'}>
                             <MyRecipes
+                                showAddButton={currentPage === 'my-recipes'}
+                                onCreateRecipe={() =>
+                                    navigateToPage('create-recipe')
+                                }
                                 onOpenRecipe={(recipe) => {
                                     setSelectedRecipe(recipe);
                                     navigateToPage('recipe-detail');

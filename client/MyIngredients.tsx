@@ -275,7 +275,7 @@ export default function MyIngredients({
             {createPortal(
                 <button
                     type="button"
-                    className="add-ingredient-button"
+                    className="floating-add-button"
                     onClick={onAdd}
                     aria-label="Add ingredient"
                 >
