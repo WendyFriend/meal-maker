@@ -79,7 +79,7 @@ export default function MyRecipes({ onOpenRecipe }: MyRecipesProps) {
                         📖
                     </div>
                     <p className="my-recipes-empty-title">
-                        No saved recipes yet.
+                        No saved recipes yet
                     </p>
                     <p className="my-recipes-empty-hint">
                         Create a meal and tap the bookmark to save it here.
