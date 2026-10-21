@@ -1,0 +1,230 @@
+.my-ingredients {
+    margin-top: var(--space-2);
+    width: 100%;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.my-ingredients h3 {
+    display: none;
+}
+
+.ingredients-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ingredient-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 0;
+
+    box-sizing: border-box;
+    border: none;
+    border-radius: var(--radius-md);
+
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    touch-action: pan-y;
+    user-select: none;
+}
+
+.ingredient-row:hover {
+    background: var(--accent-bg);
+}
+
+.ingredient-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: var(--radius-sm);
+    font-size: 1em;
+}
+
+.ingredient-row-info {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+
+    text-align: left;
+}
+
+.ingredient-row-info strong {
+    font-weight: var(--font-weight-medium);
+}
+
+.ingredient-row-info span {
+    font-size: var(--font-size-sm);
+    opacity: 0.7;
+}
+
+/* Add Ingredient Button */
+.add-ingredient-button {
+    position: fixed;
+    left: 50%;
+    bottom: var(--space-6);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 56px;
+    height: 56px;
+
+    padding: 0;
+
+    transform: translateX(-50%);
+
+    border: none;
+    border-radius: 50%;
+
+    background: var(--accent);
+    color: #ffffff;
+
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1;
+
+    cursor: pointer;
+
+    box-shadow: var(--shadow);
+
+    transition:
+        background 150ms ease,
+        transform 100ms ease,
+        box-shadow 150ms ease;
+}
+
+.add-ingredient-button:hover {
+    background: #ed6d60;
+    box-shadow: 0 6px 16px rgb(15 30 48 / 22%);
+}
+
+.add-ingredient-button:active {
+    transform: translateX(-50%) scale(0.94);
+}
+
+.add-ingredient-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+/* Delete transition */
+.ingredient-row-wrapper {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    opacity: 1;
+    transition:
+        grid-template-rows 250ms ease,
+        opacity 200ms ease;
+}
+
+.ingredient-row-wrapper-deleting {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.ingredient-row {
+    min-height: 0;
+}
+
+.ingredient-row-wrapper-selected .ingredient-row {
+    background: var(--accent-bg);
+}
+
+/* search box */
+.ingredient-search-field {
+    display: flex;
+    align-items: center;
+
+    margin-top: 0;
+    margin-bottom: var(--space-5);
+}
+
+.ingredient-search-icon {
+    flex-shrink: 0;
+
+    margin-right: var(--space-2);
+
+    color: var(--text);
+    font-size: var(--font-size-md);
+}
+
+.ingredient-search-input {
+    position: relative;
+
+    flex: 1;
+    min-width: 0;
+    margin-right: var(--space-4);
+}
+
+.ingredient-search-input::after {
+    content: '';
+
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    height: 2px;
+
+    background: var(--accent);
+
+    transform: scaleX(0);
+    transform-origin: center;
+
+    transition: transform 200ms ease;
+}
+
+.ingredient-search-input:focus-within::after {
+    transform: scaleX(1);
+}
+
+.ingredient-search {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: var(--space-2) 2px;
+
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+
+    background: transparent;
+    color: var(--text-h);
+
+    font: inherit;
+    font-size: var(--font-size-md);
+
+    outline: none;
+}
+
+.ingredient-search::placeholder {
+    color: var(--text);
+}
+
+.ingredient-search::placeholder {
+    color: var(--text);
+    transition: color 200ms ease;
+}
+
+.ingredient-search:focus::placeholder {
+    color: transparent;
+}

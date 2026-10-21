@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { UserIngredient } from '../shared/types/types';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import ActionMenu from './meal-generator/components/ActionMenu';
@@ -180,74 +181,108 @@ export default function MyIngredients({
         <main className="my-ingredients">
             <div className="ingredient-search-field">
                 <span className="ingredient-search-icon" aria-hidden="true">
-                    🔍
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <circle cx="10.8" cy="10.8" r="6.8" />
+                        <path d="m16 16 4.2 4.2" />
+                    </svg>
                 </span>
 
-                <div className="ingredient-search-input">
-                    <input
-                        className="ingredient-search"
-                        type="search"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Search ingredients..."
-                        aria-label="Search ingredients"
-                    />
-                </div>
+                <input
+                    className="ingredient-search"
+                    type="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search ingredients"
+                    aria-label="Search ingredients"
+                />
             </div>
 
-            {filteredIngredients.map((ingredient) => (
-                <div
-                    key={ingredient.ingredientId ?? ingredient.name}
-                    className={`ingredient-row-wrapper ${
-                        deletingIngredientId === ingredient.ingredientId
-                            ? 'ingredient-row-wrapper-deleting'
-                            : ''
-                    } ${
-                        actionMenuIngredient?.ingredientId ===
-                        ingredient.ingredientId
-                            ? 'ingredient-row-wrapper-selected'
-                            : ''
-                    }`}
-                >
-                    <button
-                        type="button"
-                        className="ingredient-row"
-                        onPointerDown={() => handlePointerDown(ingredient)}
-                        onPointerUp={handlePointerUp}
-                        onPointerCancel={handlePointerUp}
-                        onPointerLeave={handlePointerUp}
-                        onClick={() => handleIngredientClick(ingredient)}
-                    >
-                        <span className="ingredient-icon" aria-hidden="true">
-                            🥕
-                        </span>
+            {filteredIngredients.length > 0 ? (
+                <div className="ingredients-list">
+                    {filteredIngredients.map((ingredient) => (
+                        <div
+                            key={ingredient.ingredientId ?? ingredient.name}
+                            className={`ingredient-row-wrapper ${
+                                deletingIngredientId ===
+                                ingredient.ingredientId
+                                    ? 'ingredient-row-wrapper-deleting'
+                                    : ''
+                            } ${
+                                actionMenuIngredient?.ingredientId ===
+                                ingredient.ingredientId
+                                    ? 'ingredient-row-wrapper-selected'
+                                    : ''
+                            }`}
+                        >
+                            <button
+                                type="button"
+                                className="ingredient-row"
+                                onPointerDown={() =>
+                                    handlePointerDown(ingredient)
+                                }
+                                onPointerUp={handlePointerUp}
+                                onPointerCancel={handlePointerUp}
+                                onPointerLeave={handlePointerUp}
+                                onClick={() =>
+                                    handleIngredientClick(ingredient)
+                                }
+                            >
+                                <span
+                                    className="ingredient-icon"
+                                    aria-hidden="true"
+                                >
+                                    🥕
+                                </span>
 
-                        <span className="ingredient-row-info">
-                            <strong>{ingredient.name}</strong>
+                                <span className="ingredient-row-info">
+                                    <strong>{ingredient.name}</strong>
 
-                            <span>
-                                {ingredient.caloriesPer100g !== undefined
-                                    ? `${ingredient.caloriesPer100g} kcal`
-                                    : 'Calories not set'}
-                                {' · '}
-                                {ingredient.proteinPer100g !== undefined
-                                    ? `${ingredient.proteinPer100g}g protein`
-                                    : 'Protein not set'}
-                                {' / 100g'}
-                            </span>
-                        </span>
-                    </button>
+                                    <span>
+                                        {ingredient.caloriesPer100g !==
+                                        undefined
+                                            ? `${ingredient.caloriesPer100g} kcal`
+                                            : 'Calories not set'}
+                                        {' · '}
+                                        {ingredient.proteinPer100g !==
+                                        undefined
+                                            ? `${ingredient.proteinPer100g}g protein`
+                                            : 'Protein not set'}
+                                        {' / 100g'}
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+                    ))}
                 </div>
-            ))}
+            ) : (
+                <div className="ingredients-empty">
+                    <div className="ingredients-empty-icon" aria-hidden="true">
+                        {ingredients.length === 0 ? '🥕' : '🔎'}
+                    </div>
+                    <p className="ingredients-empty-title">
+                        {ingredients.length === 0
+                            ? 'No ingredients yet'
+                            : 'No matching ingredients'}
+                    </p>
+                    <p className="ingredients-empty-hint">
+                        {ingredients.length === 0
+                            ? 'Add an ingredient to start building your pantry.'
+                            : 'Try a different search.'}
+                    </p>
+                </div>
+            )}
 
-            <button
-                type="button"
-                className="add-ingredient-button"
-                onClick={onAdd}
-                aria-label="Add ingredient"
-            >
-                <span aria-hidden="true">+</span>
-            </button>
+            {createPortal(
+                <button
+                    type="button"
+                    className="add-ingredient-button"
+                    onClick={onAdd}
+                    aria-label="Add ingredient"
+                >
+                    <span aria-hidden="true">+</span>
+                </button>,
+                document.body,
+            )}
 
             {/* Normal tap → edit ingredient */}
             {selectedIngredient && (
