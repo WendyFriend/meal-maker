@@ -90,6 +90,35 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
+.input-underline {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-underline::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    content: '';
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 200ms ease;
+}
+
+.input-underline:focus-within::after {
+    transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .input-underline::after {
+        transition: none;
+    }
+}
+
 #root {
     width: 1126px;
     max-width: 100%;

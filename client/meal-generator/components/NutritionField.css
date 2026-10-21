@@ -11,38 +11,11 @@
     color: var(--accent);
 }
 
-.nutrition-field-label {
-    display: inline;
-}
-
 .required-marker {
     color: var(--error);
 }
 
 /* Input */
-
-.nutrition-field-input {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.nutrition-field-input::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 2px;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: center;
-    transition: transform 200ms ease;
-}
-
-.nutrition-field-input:focus-within::after {
-    transform: scaleX(1);
-}
 
 .nutrition-field-input input {
     width: 100%;
@@ -57,10 +30,6 @@
     font: inherit;
     font-size: var(--font-size-md);
     outline: none;
-}
-
-.nutrition-field-input input::placeholder {
-    color: var(--text);
 }
 
 .nutrition-field-input span {

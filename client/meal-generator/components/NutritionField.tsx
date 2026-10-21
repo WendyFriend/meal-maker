@@ -5,6 +5,7 @@ export type NutritionFieldId =
     | 'proteinPer100g'
     | 'carbohydratePer100g'
     | 'fatPer100g'
+    | 'sugarPer100g'
     | 'saturatedFatPer100g'
     | 'fiberPer100g';
 
@@ -45,8 +46,8 @@ export function NutritionField({
         <label
             className={`nutrition-field ${error ? 'nutrition-field-error' : ''}`}
         >
-            <span className="nutrition-field-label">
-                {fieldLabel} / 100g
+            <span>
+                {fieldLabel}
                 {required && (
                     <span className="required-marker" aria-hidden="true">
                         {' '}
@@ -55,7 +56,7 @@ export function NutritionField({
                 )}
             </span>
 
-            <div className="nutrition-field-input">
+            <div className="nutrition-field-input input-underline">
                 <input
                     type="number"
                     min="0"
