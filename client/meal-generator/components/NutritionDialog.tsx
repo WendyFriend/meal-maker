@@ -34,6 +34,12 @@ const nutritionFields: NutritionFieldConfig[] = [
         required: true,
     },
     {
+        label: 'Sugar',
+        id: 'sugarPer100g',
+        unit: 'g',
+        required: false,
+    },
+    {
         label: 'Saturated fat',
         id: 'saturatedFatPer100g',
         unit: 'g',
@@ -68,6 +74,7 @@ function NutritionDialog({
         proteinPer100g: String(ingredientInfo.proteinPer100g ?? ''),
         carbohydratePer100g: String(ingredientInfo.carbohydratePer100g ?? ''),
         fatPer100g: String(ingredientInfo.fatPer100g ?? ''),
+        sugarPer100g: String(ingredientInfo.sugarPer100g ?? ''),
         saturatedFatPer100g: String(ingredientInfo.saturatedFatPer100g ?? ''),
         fiberPer100g: String(ingredientInfo.fiberPer100g ?? ''),
     });

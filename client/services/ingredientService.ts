@@ -9,6 +9,7 @@ export type UserIngredientRow = {
     protein_per_100g: number;
     carbohydrate_per_100g: number;
     fat_per_100g: number;
+    sugar_per_100g: number | null;
     saturated_fat_per_100g: number | null;
     fiber_per_100g: number | null;
     created_at: string;
@@ -24,6 +25,7 @@ export async function saveUserIngredient(ingredient: IngredientInfo) {
             protein_per_100g: ingredient.proteinPer100g,
             carbohydrate_per_100g: ingredient.carbohydratePer100g,
             fat_per_100g: ingredient.fatPer100g,
+            sugar_per_100g: ingredient.sugarPer100g,
             saturated_fat_per_100g: ingredient.saturatedFatPer100g,
             fiber_per_100g: ingredient.fiberPer100g,
         })
@@ -62,6 +64,7 @@ export async function updateUserIngredient(
             protein_per_100g: ingredient.proteinPer100g,
             carbohydrate_per_100g: ingredient.carbohydratePer100g,
             fat_per_100g: ingredient.fatPer100g,
+            sugar_per_100g: ingredient.sugarPer100g,
             saturated_fat_per_100g: ingredient.saturatedFatPer100g,
             fiber_per_100g: ingredient.fiberPer100g,
             updated_at: new Date().toISOString(),
@@ -100,6 +103,7 @@ export function toUserIngredient(row: UserIngredientRow): UserIngredient {
         proteinPer100g: row.protein_per_100g,
         carbohydratePer100g: row.carbohydrate_per_100g ?? undefined,
         fatPer100g: row.fat_per_100g ?? undefined,
+        sugarPer100g: row.sugar_per_100g ?? undefined,
         saturatedFatPer100g: row.saturated_fat_per_100g ?? undefined,
         fiberPer100g: row.fiber_per_100g ?? undefined,
     };
