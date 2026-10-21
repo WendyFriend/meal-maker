@@ -59,6 +59,7 @@ export function NutritionField({
             <div className="nutrition-field-input input-underline">
                 <input
                     type="number"
+                    className="line-input"
                     min="0"
                     step="0.01"
                     inputMode="decimal"

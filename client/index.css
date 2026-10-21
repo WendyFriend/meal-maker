@@ -113,6 +113,21 @@
     transform: scaleX(1);
 }
 
+.line-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: var(--space-2) 2px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-md);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .input-underline::after {
         transition: none;
