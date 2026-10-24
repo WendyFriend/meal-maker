@@ -1,4 +1,4 @@
-import produceIllustration from '../../assets/produce-illustration.png';
+import mealMakerImage from '../../assets/mealmaker3.jpg';
 
 /*
  * Compact "how it works" steps shown in the homepage intro column.
@@ -46,7 +46,10 @@ const homeSteps = [
 export function MealMakerIntro() {
     return (
         <div className="meal-maker-intro">
-            <h2>Turn your ingredients into a delicious meal.</h2>
+            <h2>
+                <span>Turn your ingredients</span>{' '}
+                <span>into a delicious meal.</span>
+            </h2>
             <p className="intro-description">
                 <span className="intro-description-full">
                     Tell us what you have, set a calorie goal if you like, and
@@ -61,13 +64,35 @@ export function MealMakerIntro() {
             <div className="intro-art" aria-hidden="true">
                 <img
                     className="intro-art-produce"
-                    src={produceIllustration}
+                    src={mealMakerImage}
                     alt=""
                 />
                 <span className="intro-art-note">
-                    Good food.
-                    <br />
-                    Made easy. ♡
+                    <span className="intro-note-line">Good food.</span>
+                    <span className="intro-note-line">Made easy.</span>
+                    <svg
+                        className="intro-note-doodles"
+                        viewBox="0 0 150 76"
+                        fill="none"
+                        aria-hidden="true"
+                    >
+                        <path
+                            className="intro-note-mobile-strokes"
+                            d="M5 8 0 0M-1 18l-8-4"
+                        />
+                        <path
+                            className="intro-note-top-right-stroke"
+                            d="m124 12 5-8"
+                        />
+                        <path
+                            className="intro-note-heart"
+                            d="M137 32c-5-7-11 0-6 5l6 6 6-7c4-6-3-10-6-4Z"
+                        />
+                        <path
+                            className="intro-note-right-strokes"
+                            d="m134 58 8 6m-12 3 5 5"
+                        />
+                    </svg>
                 </span>
             </div>
         </div>

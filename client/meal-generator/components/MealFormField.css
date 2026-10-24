@@ -1,0 +1,37 @@
+/* Shared treatment for the meal form's search and calorie controls. */
+.meal-form-field {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--warm-cream) 45%, var(--surface));
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+    outline: none;
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.meal-form-field:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+@media (hover: hover) {
+    .meal-form-field:hover:not(:focus) {
+        border-color: color-mix(in srgb, var(--border) 85%, transparent);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .meal-form-field {
+        transition: none;
+    }
+}

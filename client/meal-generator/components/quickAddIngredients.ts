@@ -7,13 +7,39 @@ export const quickAddCategories = [
     { id: 'vegetables', name: 'Vegetables' },
     { id: 'proteins', name: 'Proteins' },
     { id: 'grains', name: 'Grains' },
-    { id: 'extras', name: 'Extras' },
+    { id: 'nuts-seeds', name: 'Nuts & Seeds' },
 ] as const;
 
 export type QuickAddCategory = (typeof quickAddCategories)[number];
 export type QuickAddCategoryId = QuickAddCategory['id'];
 
 const categoryAliases = {
+    'nuts-seeds': [
+        'almond',
+        'almonds',
+        'walnut',
+        'walnuts',
+        'cashew',
+        'cashews',
+        'peanut',
+        'peanuts',
+        'pecan',
+        'pecans',
+        'pistachio',
+        'pistachios',
+        'hazelnut',
+        'hazelnuts',
+        'macadamia',
+        'macadamias',
+        'brazil nuts',
+        'pine nuts',
+        'seed',
+        'seeds',
+        'chia',
+        'flax',
+        'linseed',
+        'sesame',
+    ],
     vegetables: [
         'broccoli',
         'carrot',
@@ -92,28 +118,34 @@ function hasAlias(name: string, aliases: readonly string[]) {
     return aliases.some((alias) => name.includes(` ${alias} `));
 }
 
-export function getQuickAddCategory(name: string): QuickAddCategoryId {
+const pantryAliases = [
+    'oil',
+    'sauce',
+    'stock',
+    'broth',
+    'dressing',
+    'milk',
+    'yogurt',
+    'yoghurt',
+    'cheese',
+    'butter',
+];
+
+export function getQuickAddCategory(
+    name: string,
+): QuickAddCategoryId | undefined {
     const words = ` ${normalizeIngredientName(name).replace(/[^a-z0-9]+/g, ' ')} `;
-    // Pantry products such as chicken stock or rice milk belong in Extras.
-    if (
-        hasAlias(words, [
-            'oil',
-            'sauce',
-            'stock',
-            'broth',
-            'dressing',
-            'milk',
-            'yogurt',
-            'yoghurt',
-            'cheese',
-            'butter',
-        ])
-    )
-        return 'extras';
-    for (const category of ['vegetables', 'proteins', 'grains'] as const) {
+    // Exclude pantry products such as chicken stock or almond milk. Nuts and
+    // seeds take precedence so pumpkin seeds don't appear under Vegetables.
+    if (hasAlias(words, pantryAliases)) return;
+    for (const category of [
+        'nuts-seeds',
+        'vegetables',
+        'proteins',
+        'grains',
+    ] as const) {
         if (hasAlias(words, categoryAliases[category])) return category;
     }
-    return 'extras';
 }
 
 export function groupQuickAddIngredients(records: UserIngredient[]) {
@@ -121,14 +153,15 @@ export function groupQuickAddIngredients(records: UserIngredient[]) {
         vegetables: [],
         proteins: [],
         grains: [],
-        extras: [],
+        'nuts-seeds': [],
     };
     const seen = new Set<string>();
     for (const record of records) {
         const name = normalizeIngredientName(record.name);
         if (!name || seen.has(name)) continue;
         seen.add(name);
-        groups[getQuickAddCategory(name)].push(record);
+        const category = getQuickAddCategory(name);
+        if (category) groups[category].push(record);
     }
     return groups;
 }

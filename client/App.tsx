@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './Sidebar.css';
-import '@ncdai/react-wheel-picker/style.css';
 import type { AppError, ErrorResponse } from './meal-generator/types';
 import {
     type GenerateMealRequest,
@@ -33,8 +32,6 @@ import AddIngredient from './AddIngredient';
 import { isUserIngredient, normalizeIngredientName } from './utils/Ingredient';
 import { APP_VERSION } from './version';
 import cookingLoader from './assets/animations/cooking-loader.svg';
-
-type CaloriesGoal = number | undefined;
 
 type Page = keyof typeof pageConfig;
 
@@ -95,6 +92,56 @@ const subPageParent: Partial<Record<Page, Page>> = {
     'create-recipe': 'my-recipes',
 };
 
+function Brand({ className }: { className: string }) {
+    return (
+        <div className={className}>
+            <span className="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 10.5C4 6.9 7.1 4 11 4c1.1 0 2.1.25 3 .7V19c0 .6-.4 1-1 1h-4c-.6 0-1-.4-1-1v-8.3" />
+                    <path d="M13.2 12.5c1.7-1.9 4-3.9 6.3-3.4" />
+                </svg>
+            </span>
+            <span className="brand-name">Meal Maker</span>
+        </div>
+    );
+}
+
+function NavigationLinks({
+    currentPage,
+    itemClassName,
+    onNavigate,
+}: {
+    currentPage: Page;
+    itemClassName: string;
+    onNavigate: (page: Page) => void;
+}) {
+    return navigationItems.map(({ id, label }) => {
+        const active = currentPage === id;
+        return (
+            <button
+                key={id}
+                type="button"
+                className={`${itemClassName}${active ? ` ${itemClassName}-active` : ''}`}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => onNavigate(id)}
+            >
+                {label}
+            </button>
+        );
+    });
+}
+
+function findIngredientByName<T extends IngredientInfo>(
+    ingredients: T[],
+    name: string,
+): T | undefined {
+    const normalizedName = normalizeIngredientName(name);
+    return ingredients.find(
+        (ingredient) =>
+            normalizeIngredientName(ingredient.name) === normalizedName,
+    );
+}
+
 function App() {
     const { user, loading, signOut } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -112,12 +159,12 @@ function App() {
     const [userIngredients, setUserIngredients] = useState<UserIngredient[]>(
         [],
     );
-    // ingredient with nutritional information used for this meal, created when user deselect "save to ingredients"
+    // Nutrition edits kept for this meal when "Save to Ingredients" is unchecked.
     const [thisMealIngredients, setThisMealIngredients] = useState<
         IngredientInfo[]
     >([]);
 
-    const [caloriesGoal, setCaloriesGoal] = useState<CaloriesGoal>(undefined);
+    const [caloriesGoal, setCaloriesGoal] = useState<number>();
 
     const [meal, setMeal] = useState<GenerateMealResponse | undefined>();
     const [originalMeal, setOriginalMeal] = useState<
@@ -134,6 +181,10 @@ function App() {
     const mealResultRef = useRef<HTMLDivElement>(null);
 
     const config = pageConfig[currentPage];
+    const isMealMaker = currentPage === 'meal-maker';
+    const isRecipesPage =
+        currentPage === 'my-recipes' ||
+        subPageParent[currentPage] === 'my-recipes';
 
     useEffect(() => {
         async function loadIngredients() {
@@ -169,16 +220,8 @@ function App() {
     }, [currentPage]);
 
     function navigateToPage(page: Page) {
-        const isReturning =
-            (currentPage === 'add-ingredient' && page === 'my-ingredients') ||
-            ((currentPage === 'recipe-detail' ||
-                currentPage === 'create-recipe') &&
-                page === 'my-recipes');
-
-        const isAdvancing =
-            (currentPage === 'my-ingredients' && page === 'add-ingredient') ||
-            (currentPage === 'my-recipes' &&
-                (page === 'recipe-detail' || page === 'create-recipe'));
+        const isReturning = subPageParent[currentPage] === page;
+        const isAdvancing = subPageParent[page] === currentPage;
 
         if (isAdvancing) {
             if (window.history.state?.page === page) {
@@ -196,37 +239,19 @@ function App() {
             return;
         }
 
-        setPageDirection(isReturning ? 'right' : isAdvancing ? 'left' : 'none');
+        setPageDirection(isAdvancing ? 'left' : 'none');
 
         setCurrentPage(page);
-    }
-
-    function getUserIngredient(
-        ingredientName: string,
-    ): UserIngredient | undefined {
-        return userIngredients.find(
-            (ingredient) =>
-                normalizeIngredientName(ingredient.name) ===
-                normalizeIngredientName(ingredientName),
-        );
-    }
-
-    function getThisMealIngredient(
-        ingredientName: string,
-    ): IngredientInfo | undefined {
-        return thisMealIngredients.find(
-            (ingredient) =>
-                normalizeIngredientName(ingredient.name) ===
-                normalizeIngredientName(ingredientName),
-        );
     }
 
     function getIngredientInfoFromStoredData(
         ingredientName: string,
     ): IngredientInfo | UserIngredient {
         return (
-            getThisMealIngredient(ingredientName) ??
-            getUserIngredient(ingredientName) ?? { name: ingredientName }
+            findIngredientByName(thisMealIngredients, ingredientName) ??
+            findIngredientByName(userIngredients, ingredientName) ?? {
+                name: ingredientName,
+            }
         );
     }
 
@@ -258,8 +283,6 @@ function App() {
     }
 
     async function deleteUserIngredient(ingredient: UserIngredient) {
-        if (!('ingredientId' in ingredient)) return;
-        // to do: error handling
         // remove user ingredient from database
         const deleted = await deleteUserIngredientInDB(ingredient);
         // remove local copy of user ingredient
@@ -321,12 +344,6 @@ function App() {
         }
     }
 
-    function getIngredientsInfo(ingredients: string[]): IngredientInfo[] {
-        return ingredients.map((ingredientName) =>
-            getIngredientInfoFromStoredData(ingredientName),
-        );
-    }
-
     function removeIngredient(ingredientName: string) {
         setIngredients((ingredients) =>
             ingredients.filter((ingredient) => ingredient !== ingredientName),
@@ -345,7 +362,7 @@ function App() {
         setError(undefined);
         try {
             const input: GenerateMealRequest = {
-                ingredients: getIngredientsInfo(ingredients),
+                ingredients: ingredients.map(getIngredientInfoFromStoredData),
                 requirements: {
                     calories: caloriesGoal,
                 },
@@ -372,10 +389,7 @@ function App() {
 
             const mealResponse = payload as GenerateMealResponse;
 
-            if (
-                !mealResponse.ingredients ||
-                !Array.isArray(mealResponse.ingredients)
-            ) {
+            if (!Array.isArray(mealResponse.ingredients)) {
                 console.error('Unexpected generate-meal response:', payload);
                 throw new Error('Invalid meal response');
             }
@@ -413,12 +427,7 @@ function App() {
     }
 
     function findExistingIngredient(name: string): string | undefined {
-        const normalizedName = name.trim().toLowerCase();
-
-        return userIngredients.find(
-            (ingredient) =>
-                ingredient.name.trim().toLowerCase() === normalizedName,
-        )?.name;
+        return findIngredientByName(userIngredients, name)?.name;
     }
 
     if (loading) {
@@ -432,7 +441,7 @@ function App() {
     return (
         <div className="app">
             <header
-                className={`page-header ${currentPage === 'meal-maker' ? 'page-header-meal-maker' : ''}`}
+                className={`page-header ${isMealMaker ? 'page-header-meal-maker' : ''}`}
             >
                 <div className="page-header-inner">
                     {config.type === 'main' ? (
@@ -464,39 +473,16 @@ function App() {
                         </button>
                     )}
 
-                    {/* Brand */}
-                    <div className="page-header-brand">
-                        <span className="brand-mark" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M4 10.5C4 6.9 7.1 4 11 4c1.1 0 2.1.25 3 .7V19c0 .6-.4 1-1 1h-4c-.6 0-1-.4-1-1v-8.3" />
-                                <path d="M13.2 12.5c1.7-1.9 4-3.9 6.3-3.4" />
-                            </svg>
-                        </span>
-                        <span className="brand-name">Meal Maker</span>
-                    </div>
+                    <Brand className="page-header-brand" />
 
                     {/* Desktop navigation */}
                     {config.type === 'main' && (
                         <nav className="page-header-nav" aria-label="Primary">
-                            {navigationItems.map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    className={`page-header-nav-item ${
-                                        currentPage === item.id
-                                            ? 'page-header-nav-item-active'
-                                            : ''
-                                    }`}
-                                    aria-current={
-                                        currentPage === item.id
-                                            ? 'page'
-                                            : undefined
-                                    }
-                                    onClick={() => navigateToPage(item.id)}
-                                >
-                                    {item.label}
-                                </button>
-                            ))}
+                            <NavigationLinks
+                                currentPage={currentPage}
+                                itemClassName="page-header-nav-item"
+                                onNavigate={navigateToPage}
+                            />
                         </nav>
                     )}
 
@@ -524,34 +510,17 @@ function App() {
                 className={`sidebar ${isSidebarOpen ? 'open' : ''}`}
                 aria-label="Navigation"
             >
-                <div className="sidebar-brand">
-                    <span className="brand-mark" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" focusable="false">
-                            <path d="M4 10.5C4 6.9 7.1 4 11 4c1.1 0 2.1.25 3 .7V19c0 .6-.4 1-1 1h-4c-.6 0-1-.4-1-1v-8.3" />
-                            <path d="M13.2 12.5c1.7-1.9 4-3.9 6.3-3.4" />
-                        </svg>
-                    </span>
-                    <span className="brand-name">Meal Maker</span>
-                </div>
+                <Brand className="sidebar-brand" />
 
                 <nav className="sidebar-nav">
-                    {navigationItems.map((item) => (
-                        <button
-                            key={item.id}
-                            type="button"
-                            className={`sidebar-item ${
-                                currentPage === item.id
-                                    ? 'sidebar-item-active'
-                                    : ''
-                            }`}
-                            onClick={() => {
-                                navigateToPage(item.id);
-                                setIsSidebarOpen(false);
-                            }}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
+                    <NavigationLinks
+                        currentPage={currentPage}
+                        itemClassName="sidebar-item"
+                        onNavigate={(page) => {
+                            navigateToPage(page);
+                            setIsSidebarOpen(false);
+                        }}
+                    />
                 </nav>
 
                 <button
@@ -567,9 +536,9 @@ function App() {
 
             <div className={`page-transition page-transition-${pageDirection}`}>
                 <main
-                    className={`page-content ${currentPage === 'meal-maker' ? 'page-content-meal-maker' : ''}`}
+                    className={`page-content ${isMealMaker ? 'page-content-meal-maker' : ''}`}
                 >
-                    {currentPage === 'meal-maker' && (
+                    {isMealMaker && (
                         <div className="meal-maker-screen">
                             <div className="meal-maker-hero">
                                 <MealMakerIntro />
@@ -582,9 +551,6 @@ function App() {
                                         removeIngredient={removeIngredient}
                                         onIngredientClick={
                                             setSelectedIngredientIndex
-                                        }
-                                        onOpenSavedIngredients={() =>
-                                            navigateToPage('my-ingredients')
                                         }
                                     />
 
@@ -614,8 +580,10 @@ function App() {
                                             </>
                                         ) : (
                                             <>
-                                                <span aria-hidden="true">✦</span>
-                                                Generate a recipe
+                                                <span aria-hidden="true">
+                                                    ✦
+                                                </span>
+                                                Create my meal
                                             </>
                                         )}
                                     </button>
@@ -691,9 +659,7 @@ function App() {
                         />
                     )}
 
-                    {(currentPage === 'my-recipes' ||
-                        currentPage === 'recipe-detail' ||
-                        currentPage === 'create-recipe') && (
+                    {isRecipesPage && (
                         <div hidden={currentPage !== 'my-recipes'}>
                             <MyRecipes
                                 showAddButton={currentPage === 'my-recipes'}

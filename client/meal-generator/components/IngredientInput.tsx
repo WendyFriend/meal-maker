@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './IngredientInput.css';
+import './MealFormField.css';
 import QuickAddIngredientPicker from './QuickAddIngredientPicker';
 import { normalizeIngredientName } from '../../utils/Ingredient';
 import type { UserIngredient } from '../../../shared/types/types';
@@ -11,7 +12,6 @@ type IngredientInputProps = {
     onChange: (ingredients: string[]) => void;
     removeIngredient: (ingredient: string) => void;
     onIngredientClick: (index: number) => void;
-    onOpenSavedIngredients: () => void;
 };
 
 function IngredientInput({
@@ -20,7 +20,6 @@ function IngredientInput({
     onChange,
     removeIngredient,
     onIngredientClick,
-    onOpenSavedIngredients,
 }: IngredientInputProps) {
     const [input, setInput] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -44,13 +43,10 @@ function IngredientInput({
     const inputRef = useRef<HTMLInputElement>(null);
 
     const normalizedInput = normalizeIngredientName(input);
+    const selectedNames = new Set(ingredients.map(normalizeIngredientName));
 
     function isDuplicate(name: string) {
-        const normalizedName = normalizeIngredientName(name);
-
-        return ingredients.some(
-            (current) => normalizeIngredientName(current) === normalizedName,
-        );
+        return selectedNames.has(normalizeIngredientName(name));
     }
 
     const suggestions =
@@ -58,7 +54,9 @@ function IngredientInput({
             ? []
             : savedIngredients
                   .filter((ingredient) =>
-                      ingredient.name.toLowerCase().includes(normalizedInput),
+                      normalizeIngredientName(ingredient.name).includes(
+                          normalizedInput,
+                      ),
                   )
                   .slice(0, 6);
 
@@ -66,14 +64,6 @@ function IngredientInput({
         (ingredient) =>
             normalizeIngredientName(ingredient.name) === normalizedInput,
     );
-
-    /*
-     * Quick-add row: saved ingredients that are not already selected.
-     * Purely derived from the passed-in pantry data — no mock content.
-     */
-    const quickAddIngredients = savedIngredients
-        .filter((ingredient) => !isDuplicate(ingredient.name))
-        .slice(0, 6);
 
     const canAddCustom =
         normalizedInput.length > 0 && !exactMatch && !isDuplicate(input);
@@ -94,29 +84,17 @@ function IngredientInput({
     const activeHighlightedIndex =
         highlightedIndex < suggestionRows.length ? highlightedIndex : -1;
 
-    useEffect(() => {
-        return () => {
-            if (duplicateMessageTimer.current !== null) {
-                window.clearTimeout(duplicateMessageTimer.current);
-            }
-
-            if (duplicateMessageHideTimer.current !== null) {
-                window.clearTimeout(duplicateMessageHideTimer.current);
-            }
-        };
+    const clearDuplicateMessageTimers = useCallback(() => {
+        for (const timer of [
+            duplicateMessageTimer,
+            duplicateMessageHideTimer,
+        ]) {
+            window.clearTimeout(timer.current ?? undefined);
+            timer.current = null;
+        }
     }, []);
 
-    function clearDuplicateMessageTimers() {
-        if (duplicateMessageTimer.current !== null) {
-            window.clearTimeout(duplicateMessageTimer.current);
-            duplicateMessageTimer.current = null;
-        }
-
-        if (duplicateMessageHideTimer.current !== null) {
-            window.clearTimeout(duplicateMessageHideTimer.current);
-            duplicateMessageHideTimer.current = null;
-        }
-    }
+    useEffect(() => clearDuplicateMessageTimers, [clearDuplicateMessageTimers]);
 
     function showDuplicateMessage(ingredient: string) {
         clearDuplicateMessageTimers();
@@ -275,20 +253,6 @@ function IngredientInput({
                         saved ingredients.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    className="ingredient-saved-button"
-                    onClick={onOpenSavedIngredients}
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                        focusable="false"
-                    >
-                        <path d="M6 3.5h12v17l-6-4-6 4z" />
-                    </svg>
-                    Saved ingredients
-                </button>
             </div>
 
             <div
@@ -305,6 +269,7 @@ function IngredientInput({
                     </span>
 
                     <input
+                        className="meal-form-field"
                         ref={inputRef}
                         type="text"
                         value={input}
@@ -423,11 +388,7 @@ function IngredientInput({
                         : ''
                 }`}
             >
-                <div
-                    className={`ingredient-chips ${
-                        ingredients.length === 0 ? 'ingredient-chips-empty' : ''
-                    }`}
-                >
+                <div className="ingredient-chips">
                     {ingredients.map((ingredient, index) => {
                         const isDeleting = deletingIngredient === ingredient;
 
@@ -485,27 +446,6 @@ function IngredientInput({
                     </button>
                 )}
             </div>
-
-            {quickAddIngredients.length > 0 && (
-                <div className="ingredient-quick-add">
-                    <span className="ingredient-quick-add-label">
-                        From your pantry
-                    </span>
-                    <div className="ingredient-quick-add-chips">
-                        {quickAddIngredients.map((ingredient) => (
-                            <button
-                                key={ingredient.ingredientId}
-                                type="button"
-                                className="ingredient-quick-add-chip"
-                                title={ingredient.name}
-                                onClick={() => addIngredient(ingredient.name)}
-                            >
-                                {ingredient.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             <QuickAddIngredientPicker
                 savedIngredients={savedIngredients}

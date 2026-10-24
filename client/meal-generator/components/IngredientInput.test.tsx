@@ -37,7 +37,6 @@ function Form({ initial = [] as string[], saved = records, onEdit = vi.fn() }) {
                     )
                 }
                 onIngredientClick={onEdit}
-                onOpenSavedIngredients={vi.fn()}
             />
             <button type="button">Outside control</button>
         </>
@@ -175,23 +174,21 @@ describe('ingredient Quick add integration', () => {
         },
     );
 
-    it.each(['Done', 'close', 'Escape', 'backdrop'])(
+    it.each(['close', 'Escape', 'backdrop'])(
         'dismisses mobile with %s and restores inertness, scrolling and focus',
         async (method) => {
             setMobile(true);
             const user = userEvent.setup();
             const { container } = render(<Form />);
             const originalOverflow = document.body.style.overflow;
-            const trigger = screen.getByRole('button', { name: 'Extras' });
+            const trigger = screen.getByRole('button', {
+                name: 'Nuts & Seeds',
+            });
             await user.click(trigger);
             const picker = screen.getByRole('dialog');
             expect(picker).toHaveAttribute('aria-modal', 'true');
             expect(container).toHaveAttribute('inert');
             expect(document.body.style.overflow).toBe('hidden');
-            if (method === 'Done')
-                await user.click(
-                    within(picker).getByRole('button', { name: 'Done' }),
-                );
             if (method === 'close')
                 await user.click(
                     within(picker).getByRole('button', {
@@ -222,7 +219,7 @@ describe('ingredient Quick add integration', () => {
         ).toHaveFocus();
         await user.tab({ shift: true });
         expect(
-            within(picker).getByRole('button', { name: 'Done' }),
+            within(picker).getByRole('button', { name: 'Broccoli' }),
         ).toHaveFocus();
         await user.tab();
         expect(
@@ -287,7 +284,7 @@ describe('ingredient Quick add integration', () => {
 });
 
 describe('saved record category mapping', () => {
-    it('classifies familiar variants, deduplicates names, preserves records and retains unknowns in Extras', () => {
+    it('classifies familiar variants, deduplicates names, preserves records and excludes uncategorised pantry records', () => {
         const groups = groupQuickAddIngredients([
             ...records,
             { ...records[0], ingredientId: 'duplicate', name: ' SPINACH ' },
@@ -295,7 +292,7 @@ describe('saved record category mapping', () => {
         expect(groups.vegetables).toEqual([records[0], records[1]]);
         expect(groups.proteins).toEqual([records[2]]);
         expect(groups.grains).toEqual([records[3]]);
-        expect(groups.extras).toEqual([records[4], records[5]]);
+        expect(groups['nuts-seeds']).toEqual([]);
         expect(groups.vegetables[0]).toBe(records[0]);
     });
 });

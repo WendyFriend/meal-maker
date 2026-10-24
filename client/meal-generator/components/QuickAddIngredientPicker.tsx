@@ -2,15 +2,17 @@ import {
     useCallback,
     useId,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
-    useSyncExternalStore,
     type ReactNode,
     type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useMobilePicker } from '../../hooks/useMobilePicker';
 import type { UserIngredient } from '../../../shared/types/types';
 import { normalizeIngredientName } from '../../utils/Ingredient';
+import { positionPopover } from '../../utils/positionPopover';
 import {
     groupQuickAddIngredients,
     quickAddCategories,
@@ -20,31 +22,33 @@ import {
 import './BottomSheet.css';
 import './QuickAddIngredientPicker.css';
 
-const mobileQuery =
-    '(max-width: 640px), (max-width: 1000px) and (max-height: 500px)';
-
-function subscribeToViewport(onChange: () => void) {
-    const query = window.matchMedia(mobileQuery);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-}
-
-function isMobileViewport() {
-    return window.matchMedia(mobileQuery).matches;
-}
+const categoryIconPaths: Record<QuickAddCategoryId, string> = {
+    vegetables:
+        'M16 28V14M16 21C7 22 5 17 5 12c7-1 11 2 11 9ZM16 15c-1-8 3-12 10-12 1 7-2 12-10 12Z',
+    proteins:
+        'M11 21c-6-3-6-9-2-13s10-4 13 0 1 10-5 12l-5 6-3-3 2-2ZM10 25l-3 3a3 3 0 0 1-4-4l4-3M11 11c2-2 5-3 7-1',
+    grains: 'm10 29 12-25M15 19C7 20 6 16 6 13c6 0 9 2 9 6ZM19 12c-7-1-8-4-7-8 5 1 7 4 7 8ZM16 19c1-6 5-8 10-6-1 5-5 7-10 6Z',
+    'nuts-seeds': 'M7 26C3 15 10 6 26 3c2 15-5 25-19 23Z',
+};
 
 function CategoryIcon({ category }: { category: QuickAddCategoryId }) {
-    const paths = {
-        vegetables:
-            'M16 28V14M16 21C7 22 5 17 5 12c7-1 11 2 11 9ZM16 15c-1-8 3-12 10-12 1 7-2 12-10 12Z',
-        proteins:
-            'M11 21c-6-3-6-9-2-13s10-4 13 0 1 10-5 12l-5 6-3-3 2-2ZM10 25l-3 3a3 3 0 0 1-4-4l4-3M11 11c2-2 5-3 7-1',
-        grains: 'm10 29 12-25M15 19C7 20 6 16 6 13c6 0 9 2 9 6ZM19 12c-7-1-8-4-7-8 5 1 7 4 7 8ZM16 19c1-6 5-8 10-6-1 5-5 7-10 6Z',
-        extras: 'M10 4h12v4H10zM11 8v4l-4 4v10a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V16l-4-4V8M7 18h18M7 24h18',
-    };
     return (
-        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-            <path d={paths[category]} />
+        <svg
+            viewBox="0 0 32 32"
+            data-category={category}
+            aria-hidden="true"
+            focusable="false"
+        >
+            <path d={categoryIconPaths[category]} />
+            {category === 'nuts-seeds' && (
+                <path className="quick-add-icon-detail" d="M8 25 23 7" />
+            )}
+            {category === 'proteins' && (
+                <path
+                    className="quick-add-icon-detail"
+                    d="M11 11c2-2 5-3 7-1"
+                />
+            )}
         </svg>
     );
 }
@@ -69,35 +73,22 @@ function PickerOverlay({
     const dialogRef = useRef<HTMLDialogElement>(null);
 
     useLayoutEffect(() => {
-        const dialog = dialogRef.current;
-        if (!dialog) return;
+        const dialogNode = dialogRef.current;
+        if (!dialogNode) return;
+        const dialog = dialogNode;
 
-        function positionPopover() {
+        function position() {
             if (mobile) return;
-            const panel = dialog!;
-            const anchor = trigger.getBoundingClientRect();
-            const margin = 12;
-            const width = Math.min(380, window.innerWidth - margin * 2);
-            panel.style.width = `${width}px`;
-            panel.style.maxHeight = `${Math.min(440, window.innerHeight - margin * 2)}px`;
-            const desiredHeight = panel.getBoundingClientRect().height;
-            const belowSpace = Math.max(
-                0,
-                window.innerHeight - anchor.bottom - 8 - margin,
-            );
-            const aboveSpace = Math.max(0, anchor.top - 8 - margin);
-            const below =
-                belowSpace >= desiredHeight || belowSpace >= aboveSpace;
-            panel.style.maxHeight = `${Math.min(440, below ? belowSpace : aboveSpace)}px`;
-            const height = panel.getBoundingClientRect().height;
-            const top = below ? anchor.bottom + 8 : anchor.top - height - 8;
-            panel.style.left = `${Math.max(margin, Math.min(anchor.left, window.innerWidth - width - margin))}px`;
-            panel.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - height - margin))}px`;
+            positionPopover(dialog, trigger, {
+                width: 380,
+                maxHeight: 440,
+                gap: 8,
+            });
         }
 
         if (mobile) dialog.showModal();
         else dialog.show();
-        positionPopover();
+        position();
         dialog.focus({ preventScroll: true });
 
         const inertElements: { element: HTMLElement; wasInert: boolean }[] = [];
@@ -150,7 +141,7 @@ function PickerOverlay({
             }
             if (!mobile || event.key !== 'Tab') return;
             const buttons = Array.from(
-                dialog!.querySelectorAll<HTMLButtonElement>(
+                dialog.querySelectorAll<HTMLButtonElement>(
                     'button:not(:disabled)',
                 ),
             );
@@ -177,7 +168,7 @@ function PickerOverlay({
             const target = event.target as Node;
             if (
                 !mobile &&
-                !dialog!.contains(target) &&
+                !dialog.contains(target) &&
                 !categoriesRef.current?.contains(target)
             )
                 onClose();
@@ -185,21 +176,21 @@ function PickerOverlay({
 
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('pointerdown', closeOnOutsidePointer);
-        window.addEventListener('resize', positionPopover);
-        window.addEventListener('scroll', positionPopover, true);
+        window.addEventListener('resize', position);
+        window.addEventListener('scroll', position, true);
         const observer =
             typeof ResizeObserver === 'undefined'
                 ? null
-                : new ResizeObserver(positionPopover);
+                : new ResizeObserver(position);
         observer?.observe(dialog);
-        if (trigger.closest('.ingredient-input'))
-            observer?.observe(trigger.closest('.ingredient-input')!);
+        const ingredientInput = trigger.closest('.ingredient-input');
+        if (ingredientInput) observer?.observe(ingredientInput);
 
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('pointerdown', closeOnOutsidePointer);
-            window.removeEventListener('resize', positionPopover);
-            window.removeEventListener('scroll', positionPopover, true);
+            window.removeEventListener('resize', position);
+            window.removeEventListener('scroll', position, true);
             observer?.disconnect();
             for (const { element, wasInert } of inertElements)
                 element.toggleAttribute('inert', wasInert);
@@ -218,7 +209,6 @@ function PickerOverlay({
             id={id}
             tabIndex={-1}
             aria-labelledby={`${id}-title`}
-            aria-describedby={`${id}-hint`}
             aria-modal={mobile ? true : undefined}
             className={`quick-add-picker ${mobile ? 'quick-add-picker-mobile bottom-sheet' : 'quick-add-picker-desktop'}`}
             onCancel={(event) => {
@@ -258,14 +248,13 @@ export default function QuickAddIngredientPicker({
         category: QuickAddCategory;
         trigger: HTMLButtonElement;
     } | null>(null);
-    const mobile = useSyncExternalStore(
-        subscribeToViewport,
-        isMobileViewport,
-        () => false,
-    );
+    const mobile = useMobilePicker();
     const categoriesRef = useRef<HTMLDivElement>(null);
     const id = useId();
-    const groups = groupQuickAddIngredients(savedIngredients);
+    const groups = useMemo(
+        () => groupQuickAddIngredients(savedIngredients),
+        [savedIngredients],
+    );
     const selected = new Set(selectedIngredients.map(normalizeIngredientName));
     const close = useCallback(() => setActive(null), []);
 
@@ -312,12 +301,7 @@ export default function QuickAddIngredientPicker({
                     onClose={close}
                 >
                     <header className="quick-add-picker-header">
-                        <div>
-                            <h3 id={`${id}-title`}>{active.category.name}</h3>
-                            <p id={`${id}-hint`}>
-                                Tap ingredients to add them.
-                            </p>
-                        </div>
+                        <h3 id={`${id}-title`}>{active.category.name}</h3>
                         <button
                             type="button"
                             className="quick-add-close"
@@ -369,15 +353,6 @@ export default function QuickAddIngredientPicker({
                             </p>
                         )}
                     </div>
-                    {mobile && (
-                        <button
-                            type="button"
-                            className="quick-add-done"
-                            onClick={close}
-                        >
-                            Done
-                        </button>
-                    )}
                 </PickerOverlay>
             )}
         </section>

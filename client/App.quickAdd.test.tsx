@@ -58,11 +58,10 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     vi.stubGlobal('fetch', fetch);
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByRole('button', { name: 'Spinach' });
     await user.click(screen.getByRole('button', { name: 'Vegetables' }));
     expect(fetch).not.toHaveBeenCalled();
     await user.click(
-        within(screen.getByRole('dialog', { name: 'Vegetables' })).getByRole(
+        await within(screen.getByRole('dialog', { name: 'Vegetables' })).findByRole(
             'button',
             { name: 'Spinach' },
         ),
@@ -91,7 +90,7 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     const search = screen.getByRole('combobox');
     await user.type(search, 'Tofu{Enter}');
     await user.type(search, 'Paprika{Enter}');
-    await user.click(screen.getByRole('button', { name: 'Generate a recipe' }));
+    await user.click(screen.getByRole('button', { name: 'Create my meal' }));
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     const [url, request] = fetch.mock.calls[0];
     expect(url).toBe('/api/generate-meal');

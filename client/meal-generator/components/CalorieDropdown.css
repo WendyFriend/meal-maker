@@ -1,0 +1,62 @@
+.calorie-dropdown {
+    position: fixed;
+    z-index: 1100;
+    box-sizing: border-box;
+    padding: 6px;
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    outline: none;
+}
+
+.calorie-dropdown:focus-visible {
+    border-color: var(--accent);
+}
+
+.calorie-dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 36px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--deep-green);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    text-align: left;
+    cursor: pointer;
+}
+
+.calorie-dropdown-option[data-active='true'] {
+    background: var(--accent-bg);
+}
+
+.calorie-dropdown-option[aria-selected='true'] {
+    background: var(--soft-sage);
+}
+
+.calorie-dropdown-option svg {
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.calorie-dropdown-unit {
+    margin-left: 4px;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
