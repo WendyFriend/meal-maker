@@ -7,35 +7,43 @@
 }
 
 :root {
-    --text: #5f6368;
-    --text-h: #0f1e30;
+    /* design system */
+    --coral: #f4796c;
+    --warm-cream: #fff8f0;
+    --soft-sage: #dce9e8;
+    --deep-green: #244541;
 
-    --bg: #ffffff;
+    --text: #5a655f;
+    --text-h: #244541;
+    --text-h-strong: #1b332f;
+
+    --bg: #fbf5ec;
     --surface: #ffffff;
+    --surface-tint: #fffdf9;
 
-    /* Soft fill behind inset grouped lists (iOS-style) */
-    --surface-muted: #f3f4f6;
+    /* Soft fill behind inset grouped lists / fields */
+    --surface-muted: #f6efe4;
 
-    --border: #aaa;
+    --border: #e3d9cc;
     --border-focus: #f4796c;
 
     /* Hairline separator between list rows, derived from --border */
-    --border-hairline: color-mix(in srgb, var(--border) 30%, transparent);
+    --border-hairline: color-mix(in srgb, var(--border) 75%, transparent);
 
-    --disabled-bg: #f3f4f6;
-    --disabled-text: #a0a6ad;
+    --disabled-bg: #f3efe7;
+    --disabled-text: #a8a196;
 
     --accent: #f4796c;
     --accent-bg: #fff0ee;
     --accent-border: #f4796c;
     --accent-green: #dce9e8;
 
-    --error: #dc2626;
+    --error: #c8452f;
 
     /* Semantic colors */
-    --text-muted: #7a7f84;
-    --danger: #d33;
-    --danger-bg: #fff7f7;
+    --text-muted: #8b9189;
+    --danger: #c8452f;
+    --danger-bg: #fdf3f0;
 
     /* Typography */
     --sans: 'Manrope', sans-serif;
@@ -49,11 +57,13 @@
     --font-size-2xl: 32px;
 
     --font-weight-normal: 400;
+    --font-weight-regular: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
+    --font-weight-bold: 700;
 
-    --line-height-normal: 145%;
-    --line-height-tight: 118%;
+    --line-height-normal: 150%;
+    --line-height-tight: 120%;
 
     /* Spacing */
     --space-1: 4px;
@@ -67,20 +77,22 @@
     --space-12: 48px;
 
     /* Border radius */
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
     --radius-xl: 20px;
 
     /* Layout */
     --header-height: 64px;
-    --content-width: 700px;
+    --content-width: 1160px;
 
     /* Shadows */
-    --shadow: 0 4px 12px rgb(15 30 48 / 16%);
+    --shadow: 0 8px 24px rgb(84 60 46 / 10%);
+    --shadow-sm: 0 1px 2px rgb(84 60 46 / 6%), 0 4px 12px rgb(84 60 46 / 5%);
+    --shadow-md: 0 2px 6px rgb(84 60 46 / 5%), 0 12px 32px rgb(84 60 46 / 8%);
 
-    font: 18px/145% var(--sans);
-    letter-spacing: 0.18px;
+    font: 16px/150% var(--sans);
+    letter-spacing: 0.1px;
     color: var(--text);
     background: var(--bg);
 
@@ -128,6 +140,10 @@
     font-size: var(--font-size-md);
 }
 
+.line-input::placeholder {
+    color: var(--text-muted);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .input-underline::after {
         transition: none;
@@ -135,11 +151,10 @@
 }
 
 #root {
-    width: 1126px;
+    width: 100%;
     max-width: 100%;
     margin: 0 auto;
-    text-align: center;
-    border-inline: 1px solid var(--border);
+    text-align: left;
     min-height: 100svh;
     display: flex;
     flex-direction: column;
@@ -157,7 +172,7 @@ h2 {
     font-weight: 600;
     color: var(--text-h);
     font-size: 24px;
-    line-height: 118%;
+    line-height: 120%;
     letter-spacing: -0.24px;
     margin: 0 0 8px;
     @media (max-width: 1024px) {
@@ -177,4 +192,22 @@ h3 {
 
 body {
     font-weight: 400;
+}
+
+button {
+    font-family: inherit;
+}
+
+/* Reusable app card */
+.app-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 600px) {
+    .app-card {
+        border-radius: var(--radius-lg);
+    }
 }

@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import './IngredientInput.css';
+import QuickAddIngredientPicker from './QuickAddIngredientPicker';
+import { normalizeIngredientName } from '../../utils/Ingredient';
 import type { UserIngredient } from '../../../shared/types/types';
 
 type IngredientInputProps = {
@@ -9,6 +11,7 @@ type IngredientInputProps = {
     onChange: (ingredients: string[]) => void;
     removeIngredient: (ingredient: string) => void;
     onIngredientClick: (index: number) => void;
+    onOpenSavedIngredients: () => void;
 };
 
 function IngredientInput({
@@ -17,6 +20,7 @@ function IngredientInput({
     onChange,
     removeIngredient,
     onIngredientClick,
+    onOpenSavedIngredients,
 }: IngredientInputProps) {
     const [input, setInput] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -39,13 +43,13 @@ function IngredientInput({
     const duplicateMessageHideTimer = useRef<number | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const normalizedInput = input.trim().toLowerCase();
+    const normalizedInput = normalizeIngredientName(input);
 
     function isDuplicate(name: string) {
-        const normalizedName = name.trim().toLowerCase();
+        const normalizedName = normalizeIngredientName(name);
 
         return ingredients.some(
-            (current) => current.trim().toLowerCase() === normalizedName,
+            (current) => normalizeIngredientName(current) === normalizedName,
         );
     }
 
@@ -60,8 +64,16 @@ function IngredientInput({
 
     const exactMatch = savedIngredients.find(
         (ingredient) =>
-            ingredient.name.trim().toLowerCase() === normalizedInput,
+            normalizeIngredientName(ingredient.name) === normalizedInput,
     );
+
+    /*
+     * Quick-add row: saved ingredients that are not already selected.
+     * Purely derived from the passed-in pantry data — no mock content.
+     */
+    const quickAddIngredients = savedIngredients
+        .filter((ingredient) => !isDuplicate(ingredient.name))
+        .slice(0, 6);
 
     const canAddCustom =
         normalizedInput.length > 0 && !exactMatch && !isDuplicate(input);
@@ -131,7 +143,7 @@ function IngredientInput({
         showDuplicateMessage(ingredient);
     }
 
-    function addIngredient(name: string) {
+    function addIngredient(name: string, focusSearch = true) {
         const ingredient = name.trim();
 
         if (!ingredient) return;
@@ -146,7 +158,9 @@ function IngredientInput({
         onChange([...ingredients, ingredient]);
 
         // Keep the field ready for the next ingredient.
-        window.requestAnimationFrame(() => inputRef.current?.focus());
+        if (focusSearch) {
+            window.requestAnimationFrame(() => inputRef.current?.focus());
+        }
     }
 
     function highlightSuggestion(index: number) {
@@ -251,71 +265,30 @@ function IngredientInput({
     return (
         <div className="ingredient-input">
             <div className="ingredient-input-header">
-                <h3>1. Choose your ingredients</h3>
-
-                {ingredients.length > 0 && (
-                    <button
-                        type="button"
-                        className="ingredient-clear-all-button"
-                        onClick={handleClearAll}
+                <span className="ingredient-step-number" aria-hidden="true">
+                    1
+                </span>
+                <div className="ingredient-heading-copy">
+                    <h3>Choose your ingredients</h3>
+                    <p>
+                        Search and add what you have. You can also use your
+                        saved ingredients.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    className="ingredient-saved-button"
+                    onClick={onOpenSavedIngredients}
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        focusable="false"
                     >
-                        Clear all
-                    </button>
-                )}
-            </div>
-
-            <div
-                className={`ingredient-chips ${
-                    ingredients.length === 0 ? 'ingredient-chips-empty' : ''
-                }`}
-            >
-                {ingredients.map((ingredient, index) => {
-                    const isDeleting = deletingIngredient === ingredient;
-
-                    return (
-                        <div
-                            key={ingredient}
-                            className={`ingredient-chip-wrapper ${
-                                isDeleting
-                                    ? 'ingredient-chip-wrapper-deleting'
-                                    : ''
-                            }`}
-                            onAnimationEnd={(event) =>
-                                handleDeleteAnimationEnd(event, ingredient)
-                            }
-                        >
-                            <span className="ingredient-chip">
-                                <button
-                                    type="button"
-                                    className="ingredient-chip-label"
-                                    onClick={() => onIngredientClick(index)}
-                                    aria-label={`Edit nutrition for ${ingredient}`}
-                                    disabled={isDeleting}
-                                >
-                                    {ingredient}
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="ingredient-chip-delete"
-                                    onClick={() =>
-                                        handleDeleteIngredient(ingredient)
-                                    }
-                                    aria-label={`Remove ${ingredient}`}
-                                    disabled={isDeleting}
-                                >
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        aria-hidden="true"
-                                        focusable="false"
-                                    >
-                                        <path d="M6 6l12 12M18 6L6 18" />
-                                    </svg>
-                                </button>
-                            </span>
-                        </div>
-                    );
-                })}
+                        <path d="M6 3.5h12v17l-6-4-6 4z" />
+                    </svg>
+                    Saved ingredients
+                </button>
             </div>
 
             <div
@@ -347,7 +320,7 @@ function IngredientInput({
                         }}
                         onKeyDown={handleKeyDown}
                         enterKeyHint="done"
-                        placeholder="Search or add an ingredient..."
+                        placeholder="Search for an ingredient..."
                         aria-label="Search or add an ingredient"
                         role="combobox"
                         aria-expanded={
@@ -443,9 +416,111 @@ function IngredientInput({
                 )}
             </div>
 
-            {/* <p className="ingredient-input-hint">
-                Select a suggestion or press Enter to add.
-            </p> */}
+            <div
+                className={`ingredient-selection-row ${
+                    ingredients.length === 0
+                        ? 'ingredient-selection-row-empty'
+                        : ''
+                }`}
+            >
+                <div
+                    className={`ingredient-chips ${
+                        ingredients.length === 0 ? 'ingredient-chips-empty' : ''
+                    }`}
+                >
+                    {ingredients.map((ingredient, index) => {
+                        const isDeleting = deletingIngredient === ingredient;
+
+                        return (
+                            <div
+                                key={ingredient}
+                                className={`ingredient-chip-wrapper ${
+                                    isDeleting
+                                        ? 'ingredient-chip-wrapper-deleting'
+                                        : ''
+                                }`}
+                                onAnimationEnd={(event) =>
+                                    handleDeleteAnimationEnd(event, ingredient)
+                                }
+                            >
+                                <span className="ingredient-chip">
+                                    <button
+                                        type="button"
+                                        className="ingredient-chip-label"
+                                        onClick={() => onIngredientClick(index)}
+                                        aria-label={`Edit nutrition for ${ingredient}`}
+                                        disabled={isDeleting}
+                                    >
+                                        {ingredient}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="ingredient-chip-delete"
+                                        onClick={() =>
+                                            handleDeleteIngredient(ingredient)
+                                        }
+                                        aria-label={`Remove ${ingredient}`}
+                                        disabled={isDeleting}
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            aria-hidden="true"
+                                            focusable="false"
+                                        >
+                                            <path d="M6 6l12 12M18 6L6 18" />
+                                        </svg>
+                                    </button>
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+                {ingredients.length > 0 && (
+                    <button
+                        type="button"
+                        className="ingredient-clear-all-button"
+                        onClick={handleClearAll}
+                    >
+                        Clear all
+                    </button>
+                )}
+            </div>
+
+            {quickAddIngredients.length > 0 && (
+                <div className="ingredient-quick-add">
+                    <span className="ingredient-quick-add-label">
+                        From your pantry
+                    </span>
+                    <div className="ingredient-quick-add-chips">
+                        {quickAddIngredients.map((ingredient) => (
+                            <button
+                                key={ingredient.ingredientId}
+                                type="button"
+                                className="ingredient-quick-add-chip"
+                                title={ingredient.name}
+                                onClick={() => addIngredient(ingredient.name)}
+                            >
+                                {ingredient.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <QuickAddIngredientPicker
+                savedIngredients={savedIngredients}
+                selectedIngredients={ingredients}
+                onToggleIngredient={(name) => {
+                    const selectedName = ingredients.find(
+                        (ingredient) =>
+                            normalizeIngredientName(ingredient) ===
+                            normalizeIngredientName(name),
+                    );
+                    if (selectedName !== undefined)
+                        removeIngredient(selectedName);
+                    else addIngredient(name, false);
+                }}
+            />
 
             {duplicateMessage &&
                 createPortal(

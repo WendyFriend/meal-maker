@@ -1,521 +1,1032 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* =========================
-   App header
+   Page header (brand + nav)
    ========================= */
 
 .page-header {
-  position: sticky;
-  top: 0;
-  z-index: 90;
+    position: sticky;
+    top: 0;
+    z-index: 90;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    box-sizing: border-box;
 
-  height: var(--header-height);
-  box-sizing: border-box;
-  padding: 0 var(--space-6);
-
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 92%, #ffffff);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-.page-header h1,
-.page-header h2 {
-  margin: 0;
+.page-header-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
 
-  color: var(--text-h);
-  font-family: var(--heading);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-  letter-spacing: -0.24px;
+    width: 100%;
+    max-width: var(--content-width);
+    height: var(--header-height);
+    box-sizing: border-box;
+    padding: 0 var(--space-6);
+    margin: 0 auto;
 }
+
+.page-header-meal-maker .page-header-inner {
+    max-width: 1320px;
+    padding-inline: clamp(var(--space-5), 3vw, 44px);
+}
+
+/* =========================
+   Brand mark
+   ========================= */
+
+.page-header-brand,
+.sidebar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 34px;
+    height: 34px;
+
+    border-radius: 11px;
+    background: var(--accent);
+
+    color: #ffffff;
+}
+
+.brand-mark svg {
+    width: 21px;
+    height: 21px;
+
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+.brand-name {
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+}
+
+.page-header-back + .page-header-brand {
+    margin-left: var(--space-1);
+}
+
+/* =========================
+   Header controls
+   ========================= */
 
 .page-header-menu,
 .page-header-back {
-  position: absolute;
-  left: var(--space-4);
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
 
-  width: 40px;
-  height: 40px;
-  padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
 
-  border: none;
-  border-radius: var(--radius-sm);
-
-  background: transparent;
-  color: var(--text-h);
+    background: transparent;
+    color: var(--text-h);
 
     cursor: pointer;
 
-  transition:
-    background 150ms ease,
-    color 150ms ease;
+    transition:
+        background 150ms ease,
+        color 150ms ease;
 }
 
 .page-header-back {
-  font-size: 30px;
-  line-height: 1;
+    font-size: 30px;
+    line-height: 1;
 }
-
-.floating-add-button {
-  position: fixed;
-  z-index: 80;
-  bottom: var(--space-6);
-  left: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  padding: 0;
-  transform: translateX(-50%);
-  border: 0;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-size: 32px;
-  font-weight: 400;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  transition:
-    background 150ms ease,
-    transform 100ms ease,
-    box-shadow 150ms ease;
-}
-
-.floating-add-button:hover {
-  background: #ed6d60;
-  box-shadow: 0 6px 16px rgb(15 30 48 / 22%);
-}
-
-.floating-add-button:active {
-  transform: translateX(-50%) scale(0.94);
-}
-
-.floating-add-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .floating-add-button {
-    transition: none;
-  }
-}
-/* 
-.page-header-add-recipe {
-  position: absolute;
-  top: 50%;
-  right: var(--space-6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-size: var(--font-size-lg);
-  font-weight: 400;
-  line-height: 1;
-  cursor: pointer;
-  transform: translateY(-50%);
-  transition:
-    background 150ms ease,
-    transform 100ms ease;
-}
-
-.page-header-add-recipe:hover {
-  background: #ed6d60;
-}
-
-.page-header-add-recipe:active {
-  transform: translateY(-50%) scale(0.94);
-}
-
-.page-header-add-recipe:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .page-header-add-recipe {
-    transition: none;
-  }
-} */
 
 .page-header-menu:hover,
 .page-header-back:hover {
-  background: var(--accent-bg);
-  color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
 }
 
 .page-header-menu:focus-visible,
 .page-header-back:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
+/* =========================
+   Desktop navigation
+   ========================= */
+
+.page-header-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-left: var(--space-4);
+}
+
+.page-header-nav-item {
+    padding: var(--space-2) var(--space-4);
+
+    border: none;
+    border-radius: 999px;
+
+    background: transparent;
+    color: var(--text);
+
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+
+    cursor: pointer;
+
+    transition:
+        background 150ms ease,
+        color 150ms ease;
+}
+
+.page-header-nav-item:hover {
+    background: var(--accent-bg);
+    color: var(--accent);
+}
+
+.page-header-nav-item-active,
+.page-header-nav-item-active:hover {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.page-header-nav-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+.page-header-signout {
+    padding: var(--space-2) var(--space-4);
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: var(--text);
+
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+
+    cursor: pointer;
+
+    transition:
+        background 150ms ease,
+        color 150ms ease,
+        border-color 150ms ease;
+}
+
+.page-header-signout:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: var(--accent-bg);
+    color: var(--accent);
+}
+
+.page-header-signout:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* =========================
+   Floating add button (My Ingredients / My Recipes)
+   ========================= */
+
+.floating-add-button {
+    position: fixed;
+    z-index: 80;
+    bottom: var(--space-6);
+    left: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    transform: translateX(-50%);
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgb(244 121 108 / 35%);
+    transition:
+        background 150ms ease,
+        transform 100ms ease,
+        box-shadow 150ms ease;
+}
+
+.floating-add-button:hover {
+    background: #ed6d60;
+    box-shadow: 0 10px 24px rgb(244 121 108 / 40%);
+}
+
+.floating-add-button:active {
+    transform: translateX(-50%) scale(0.94);
+}
+
+.floating-add-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .floating-add-button {
+        transition: none;
+    }
+}
 
 /* =========================
    Hamburger icon
    ========================= */
 
 .menu-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
 }
 
 .menu-icon span {
-  display: block;
+    display: block;
 
-  width: 18px;
-  height: 2px;
+    width: 18px;
+    height: 2px;
 
-  border-radius: 1px;
-  background: currentColor;
+    border-radius: 1px;
+    background: currentColor;
 }
 
-
 /* =========================
-   Page content
+   Page content shell
    ========================= */
 
 .page-content {
-  width: 100%;
-  max-width: var(--content-width);
-  margin: 0 auto;
-  padding: 0 var(--space-6);
-  box-sizing: border-box;
+    width: 100%;
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+    box-sizing: border-box;
+}
+
+.page-content-meal-maker {
+    max-width: 1320px;
+    padding-inline: clamp(var(--space-5), 3vw, 44px);
 }
 
 .app {
-  display: flex;
-  flex-direction: column;
-  height: 100svh;
-  min-height: 0;
-  overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100svh;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .app > .page-header {
-  flex: 0 0 var(--header-height);
+    flex: 0 0 auto;
 }
 
 .app > .page-transition {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* =========================
-   Meal Maker
+   Meal Maker landing
+   ========================= */
+
+.meal-maker-screen {
+    width: 100%;
+    max-width: 1180px;
+    margin-inline: auto;
+    box-sizing: border-box;
+    padding: 24px 0 40px;
+}
+
+.meal-maker-hero {
+    display: grid;
+    grid-template-areas: 'intro form' 'steps form';
+    grid-template-columns: minmax(280px, 0.9fr) minmax(0, 2fr);
+    gap: 16px 36px;
+    align-items: start;
+}
+
+.meal-maker-intro {
+    grid-area: intro;
+    min-width: 0;
+    padding-top: 24px;
+}
+
+.meal-maker-intro h2 {
+    max-width: 20ch;
+    margin: 0 0 14px;
+    color: var(--deep-green);
+    font-family: var(--heading);
+    font-size: clamp(26px, 2.2vw, 30px);
+    font-weight: 750;
+    line-height: 1.25;
+    letter-spacing: -0.7px;
+    text-wrap: balance;
+}
+
+.intro-description {
+    max-width: 36ch;
+    margin: 0;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.intro-description-compact {
+    display: none;
+}
+
+.intro-art {
+    display: grid;
+    grid-template-columns: 0.8fr 1.4fr;
+    align-items: center;
+    min-height: 144px;
+    margin-top: 14px;
+    gap: 8px;
+}
+
+.intro-art-produce {
+    grid-column: 2;
+    grid-row: 1;
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.intro-art-note {
+    grid-column: 1;
+    grid-row: 1;
+    color: #f47765;
+    font-family: 'Bradley Hand', 'Segoe Print', cursive;
+    font-size: clamp(18px, 1.8vw, 23px);
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    transform: rotate(-8deg);
+}
+
+.intro-steps {
+    grid-area: steps;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-5) var(--space-3);
+    list-style: none;
+    border: 0;
+    border-radius: 8px;
+    background: rgb(255 255 255 / 42%);
+}
+
+.intro-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    text-align: center;
+}
+
+.intro-step-icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 43px;
+    height: 43px;
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
+    border-radius: 50%;
+    background: #fff9f3;
+    color: var(--accent);
+    box-shadow: 0 4px 12px rgb(107 77 51 / 5%);
+}
+
+.intro-step:first-child .intro-step-icon {
+    border-color: color-mix(in srgb, var(--deep-green) 18%, transparent);
+    background: var(--soft-sage);
+    color: var(--deep-green);
+}
+
+.intro-step-icon svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+.intro-step-copy {
+    display: block;
+    min-width: 0;
+}
+
+.intro-step-copy strong {
+    display: block;
+    color: var(--deep-green);
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.35;
+}
+
+.meal-maker-form.app-card {
+    grid-area: form;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: var(--space-6) var(--space-8);
+    border: 1px solid #f4eee5;
+    border-radius: 9px;
+    background: linear-gradient(160deg, #fff 0%, #fffdf9 100%);
+    box-shadow: 0 8px 36px rgb(86 58 38 / 6%);
+}
+
+.meal-maker-form > *,
+.meal-maker-calories {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.meal-maker-calories {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-hairline);
+}
+
+.meal-maker-create-button {
+    min-height: 48px;
+    margin-top: var(--space-5);
+    border-radius: var(--radius-md);
+}
+
+.create-button.meal-maker-create-button {
+    border-radius: 8px;
+    background: linear-gradient(110deg, #ff7968, #ff685b);
+}
+
+/* =========================
+   Create button
    ========================= */
 
 .create-button {
-  display: block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
 
-  width: 33%;
-  margin: var(--space-10) auto var(--space-12);
-  padding: 14px var(--space-6);
+    width: 100%;
+    padding: 15px var(--space-6);
 
-  border: none;
-  border-radius: var(--radius-lg);
+    border: none;
+    border-radius: var(--radius-lg);
 
-  background: var(--accent);
-  color: #ffffff;
+    background: var(--accent);
+    color: #ffffff;
 
-  font: inherit;
-  font-weight: var(--font-weight-semibold);
-  font-size: 17px;
+    font: inherit;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-md);
 
-  cursor: pointer;
+    cursor: pointer;
 
-  transition:
-    background 150ms ease,
-    transform 100ms ease,
-    box-shadow 150ms ease;
+    transition:
+        background 150ms ease,
+        transform 100ms ease,
+        box-shadow 150ms ease;
 }
 
-.create-button:hover {
-  background: #ed6d60;
-  box-shadow: 0 4px 12px rgba(244, 121, 108, 0.25);
+.create-button:hover:not(:disabled) {
+    background: #ed6d60;
+    box-shadow: 0 8px 20px rgb(244 121 108 / 30%);
 }
 
-.create-button:active {
-  transform: scale(0.98);
+.create-button:active:not(:disabled) {
+    transform: scale(0.98);
 }
 
 .create-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
 }
 
-.error-title {
-  margin-bottom: var(--space-4);
-
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
+.create-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }
 
-.error-stats {
-  display: flex;
-  gap: var(--space-10);
-  margin-bottom: var(--space-4);
+/* Spinner inside the primary action */
+.button-spinner {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border: 2px solid rgb(255 255 255 / 45%);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: button-spinner-rotate 600ms linear infinite;
 }
 
-.error-stats>div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+@keyframes button-spinner-rotate {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-.error-stats span {
-  color: #7a5555;
-  font-size: var(--font-size-sm);
+@media (prefers-reduced-motion: reduce) {
+    .button-spinner {
+        animation-duration: 1500ms;
+    }
 }
 
-.error-stats strong {
-  font-size: 1.1rem;
+/* =========================
+   Generating indicator
+   ========================= */
+
+.generating-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-10);
+}
+
+.generating-indicator .generating-message {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.generating-loader {
+    display: block;
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+}
+
+/* =========================
+   Error message
+   ========================= */
+
+.error-message {
+    margin-top: var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
+    border-radius: var(--radius-lg);
+    background: var(--danger-bg);
+    color: var(--error);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-normal);
 }
 
 /* =========================
    Page transition
    ========================= */
-/* 
-.page-transition {
-  position: relative;
-  width: 100%;
-}
-
-.page-transition-right {
-  animation: page-slide-in-right 150ms ease-out both;
-}
-
-@keyframes page-slide-in-right {
-  from {
-    left: -100px;
-  }
-
-  to {
-    left: 0;
-  }
-} 
- */
 
 .page-transition {
-  position: relative;
-  animation-duration: 280ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  animation-fill-mode: both;
+    position: relative;
+    animation-duration: 280ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
 }
 
 .page-transition-left {
-  animation-name: page-slide-in-left;
+    animation-name: page-slide-in-left;
 }
 
 .page-transition-right {
-  animation-name: page-slide-in-right;
+    animation-name: page-slide-in-right;
 }
 
 .page-transition-none {
-  animation: none;
+    animation: none;
 }
 
 @keyframes page-slide-in-left {
-  from {
-    opacity: 0.75;
-    left: 20px;
-  }
+    from {
+        opacity: 0.75;
+        left: 20px;
+    }
 
-  to {
-    opacity: 1;
-    left: 0;
-  }
+    to {
+        opacity: 1;
+        left: 0;
+    }
 }
 
 @keyframes page-slide-in-right {
-  from {
-    opacity: 0.75;
-    left: -20px;
-  }
+    from {
+        opacity: 0.75;
+        left: -20px;
+    }
 
-  to {
-    opacity: 1;
-    left: 0;
-  }
+    to {
+        opacity: 1;
+        left: 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-transition-left,
-  .page-transition-right {
-    animation: none;
-  }
+    .page-transition-left,
+    .page-transition-right {
+        animation: none;
+    }
 }
 
+/* =========================
+   Generated recipe (result)
+   ========================= */
+
+.meal-maker-result {
+    margin-top: var(--space-10);
+    padding: var(--space-8);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 768px) {
+    .meal-maker-result {
+        margin-top: var(--space-8);
+        padding: var(--space-5);
+    }
+}
+
+@media (max-width: 360px) {
+    .meal-maker-result {
+        padding: var(--space-4);
+    }
+}
 
 /* =========================
    Responsive
    ========================= */
-@media (max-width: 600px) {
-  .create-button {
-      width: 100%;
- }
 
-  .page-content {
-    padding-left: var(--space-6);
-    padding-right: var(--space-6);
-  }
+/* Tablet and below: hide the inline desktop nav, use the drawer */
+@media (max-width: 900px) {
+    .page-header-nav {
+        display: none;
+    }
 }
 
-
-/* =========================
-   Meal Maker landing layout
-   ========================= */
-
-.meal-maker-screen {
-  width: 100%;
-  max-width: 680px;
-  margin: 0 auto;
-  /* Horizontal padding is provided by .page-content so this page lines up
-     with the My Ingredients page (which uses padding: 0). */
-  padding: var(--space-12) 0 var(--space-10);
-  box-sizing: border-box;
+@media (min-width: 901px) {
+    .page-header-menu {
+        display: none;
+    }
 }
 
-.meal-maker-intro {
-  margin-bottom: 36px;
+/* Stack the tool before the two-column layout gets cramped. */
+@media (max-width: 1000px) {
+    .meal-maker-screen {
+        max-width: 720px;
+        padding-block: 24px;
+    }
+
+    .meal-maker-hero {
+        grid-template-areas: 'intro' 'steps' 'form';
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+    }
+
+    .meal-maker-intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 220px;
+        gap: 10px 24px;
+        align-items: center;
+        padding: 0;
+    }
+
+    .meal-maker-intro h2 {
+        grid-column: 1;
+        margin: 0;
+    }
+
+    .intro-description {
+        grid-column: 1;
+    }
+
+    .intro-art {
+        grid-column: 2;
+        grid-row: 1 / 3;
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+        gap: 4px;
+        min-height: 0;
+        margin: 0;
+    }
+
+    .intro-art-produce,
+    .intro-art-note {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .intro-art-note {
+        font-size: 19px;
+    }
+
+    .intro-steps {
+        padding: 14px 12px;
+    }
+
+    .meal-maker-form.app-card {
+        padding: 24px;
+    }
 }
 
-.meal-maker-intro h2 {
-  margin: 0 0 10px;
-  color: var(--text-primary, #303632);
-  font-size: clamp(30px, 4vw, 40px);
-  font-weight: 750;
-  line-height: 1.2;
-  letter-spacing: -1.2px;
-  text-align: left;
+@media (max-width: 640px) {
+    .page-header-meal-maker .page-header-inner {
+        height: 52px;
+        padding-inline: 14px;
+    }
+
+    .page-header-meal-maker .page-header-brand {
+        order: 1;
+    }
+
+    .page-header-meal-maker .page-header-menu {
+        order: 2;
+        margin-left: auto;
+    }
+
+    .page-header-meal-maker .page-header-actions {
+        display: none;
+    }
+
+    .page-content-meal-maker {
+        padding-inline: clamp(10px, 3vw, 18px);
+    }
+
+    .meal-maker-screen {
+        max-width: 500px;
+        padding-block: clamp(12px, 2.4svh, 22px) 20px;
+    }
+
+    .meal-maker-hero {
+        gap: clamp(10px, 1.8svh, 16px);
+    }
+
+    .meal-maker-intro {
+        grid-template-columns: minmax(0, 1fr) clamp(96px, 28vw, 144px);
+        gap: 10px 8px;
+        padding-inline: 4px;
+    }
+
+    .meal-maker-intro h2 {
+        grid-column: 1 / -1;
+        max-width: 25ch;
+        font-size: clamp(21px, 5.6vw, 27px);
+        line-height: 1.22;
+        letter-spacing: -0.6px;
+        text-wrap: initial;
+    }
+
+    .intro-description {
+        grid-column: 1;
+        max-width: none;
+        font-size: clamp(12px, 3.1vw, 14px);
+        line-height: 1.55;
+        align-self: center;
+    }
+
+    .intro-description-full {
+        display: none;
+    }
+
+    .intro-description-compact {
+        display: inline;
+    }
+
+    .intro-art {
+        grid-column: 2;
+        grid-row: 2;
+        gap: 2px;
+        align-self: center;
+    }
+
+    .intro-art-note {
+        font-size: clamp(14px, 3.7vw, 18px);
+        line-height: 1.1;
+    }
+
+    .intro-steps {
+        gap: 6px;
+        padding: 8px 0;
+        background: transparent;
+    }
+
+    .intro-step {
+        gap: 6px;
+    }
+
+    .intro-step-icon {
+        width: clamp(34px, 10vw, 44px);
+        height: clamp(34px, 10vw, 44px);
+        box-shadow: none;
+    }
+
+    .intro-step-copy strong {
+        max-width: 11ch;
+        font-size: clamp(9px, 2.55vw, 11px);
+        line-height: 1.35;
+    }
+
+    .meal-maker-form.app-card {
+        padding: clamp(12px, 3.5vw, 18px);
+        border-radius: 8px;
+        box-shadow: 0 5px 20px rgb(86 58 38 / 5%);
+    }
+
+    .meal-maker-calories {
+        margin-top: 14px;
+        padding-top: 12px;
+    }
+
+    .meal-maker-create-button {
+        min-height: 44px;
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+    }
 }
 
-.meal-maker-intro p {
-  margin: 0;
-  color: var(--text-muted, #747a74);
-  font-size: 15px;
-  line-height: 1.6;
-  text-align: left;
+/* Compact vertical spacing on shorter phones without shrinking the controls. */
+@media (max-width: 640px) and (max-height: 700px) {
+    .meal-maker-screen {
+        padding-block: 10px 12px;
+    }
+
+    .meal-maker-hero {
+        gap: 8px;
+    }
+
+    .meal-maker-intro {
+        gap-block: 6px;
+    }
+
+    .intro-steps {
+        padding-block: 4px;
+    }
+
+    .intro-step-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .meal-maker-calories {
+        margin-top: 10px;
+        padding-top: 10px;
+    }
 }
 
-.meal-maker-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  width: 100%;
+@media (max-width: 640px) and (max-height: 600px) {
+    .intro-art-note {
+        display: none;
+    }
+
+    .intro-steps {
+        padding-block: 2px;
+    }
+
+    .intro-step {
+        gap: 4px;
+    }
+
+    .intro-step-icon {
+        width: 26px;
+        height: 26px;
+    }
+
+    .meal-maker-form.app-card {
+        padding: 10px;
+    }
 }
 
-.meal-maker-form>*,
-.meal-maker-calories {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
+/* Give short landscape screens direct access to the tool. */
+@media (min-width: 641px) and (max-width: 1000px) and (max-height: 500px) {
+    .page-header-meal-maker .page-header-inner {
+        height: 48px;
+    }
 
-.meal-maker-create-button {
-  width: 100%;
-  min-height: 52px;
-  /* Space around the primary action: the form gap adds another var(--space-6)
-     above (48px total), matching the --space-12 below. */
-  margin-top: var(--space-6);
-  margin-bottom: var(--space-12);
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 750;
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease,
-    opacity 0.2s ease;
-}
+    .meal-maker-screen {
+        max-width: none;
+        padding-block: 12px;
+    }
 
-.meal-maker-create-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
+    .meal-maker-hero {
+        grid-template-areas: 'intro form' 'steps form';
+        grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.4fr);
+        gap: 10px 20px;
+    }
 
-.meal-maker-create-button:active:not(:disabled) {
-  transform: scale(0.99);
-}
+    .meal-maker-intro {
+        display: block;
+    }
 
-.meal-maker-screen .error-message {
-  margin-top: var(--space-5);
-}
+    .meal-maker-intro h2 {
+        margin-bottom: 8px;
+        font-size: 22px;
+    }
 
-/* =========================
-   Generating meal indicator
-   ========================= */
+    .intro-description {
+        font-size: 12px;
+        line-height: 1.45;
+    }
 
-.generating-indicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-5);
-}
+    .intro-description-full {
+        display: none;
+    }
 
-.generating-indicator .generating-message {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-}
+    .intro-description-compact {
+        display: inline;
+    }
 
-.generating-loader {
-  display: block;
-  width: 140px;
-  height: 140px;
-  object-fit: contain;
-}
+    .intro-art {
+        grid-template-columns: 0.8fr 1.2fr;
+        margin-top: 8px;
+        max-width: 220px;
+    }
 
-/* =========================
-   Mobile
-   ========================= */
+    .intro-art-produce {
+        grid-column: 2;
+        grid-row: 1;
+    }
 
-@media (max-width: 600px) {
-  .meal-maker-screen {
-    padding: var(--space-8) 0 var(--space-10);
-  }
+    .intro-art-note {
+        grid-column: 1;
+        grid-row: 1;
+        font-size: 15px;
+    }
 
-  .meal-maker-intro {
-    margin-bottom: var(--space-6);
-  }
+    .intro-steps {
+        padding: 6px 0;
+        gap: 4px;
+        background: transparent;
+    }
 
-  .meal-maker-intro h2 {
-    margin-bottom: var(--space-2);
-    font-size: 30px;
-    letter-spacing: -0.8px;
-  }
+    .intro-step-icon {
+        width: 28px;
+        height: 28px;
+    }
 
-  .meal-maker-intro p {
-    max-width: 320px;
-    font-size: 13px;
-    line-height: 1.55;
-  }
+    .intro-step-copy strong {
+        font-size: 9px;
+    }
 
-  .meal-maker-form {
-    gap: var(--space-6);
-  }
+    .meal-maker-form.app-card {
+        padding: 12px;
+    }
 
-  .meal-maker-create-button {
-    min-height: 50px;
-  }
+    .meal-maker-calories {
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+
+    .meal-maker-create-button {
+        min-height: 44px;
+        margin-top: 10px;
+        padding-block: 10px;
+        font-size: 14px;
+    }
 }

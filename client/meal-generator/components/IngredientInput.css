@@ -4,32 +4,86 @@
 
 .ingredient-input {
     width: 100%;
-    margin: var(--space-5) 0;
     box-sizing: border-box;
     text-align: left;
 }
 
-.ingredient-input h3 {
-    margin-top: 0;
-    text-align: left;
-}
-
-/* Heading row with the clear-all action */
-
 .ingredient-input-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: start;
     gap: var(--space-3);
+    margin-bottom: var(--space-5);
 }
 
 .ingredient-input-header h3 {
-    margin-top: 0;
-    margin-bottom: 0;
+    margin: 2px 0 var(--space-1);
+    color: var(--deep-green);
+    font-size: 18px;
+    font-weight: var(--font-weight-bold);
+}
+
+.ingredient-step-number {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 17px;
+    font-weight: var(--font-weight-bold);
+}
+
+.ingredient-heading-copy p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.ingredient-saved-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 0 var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--border) 72%, white);
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, #fff, #fffcf7);
+    color: var(--deep-green);
+    font: inherit;
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgb(86 58 38 / 5%);
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.ingredient-saved-button svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+.ingredient-saved-button:hover {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+}
+
+.ingredient-saved-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .ingredient-clear-all-button {
-    padding: var(--space-1) var(--space-2);
+    flex: 0 0 auto;
+    padding: var(--space-1) 0 var(--space-1) var(--space-2);
 
     border: none;
     background: transparent;
@@ -38,7 +92,7 @@
 
     font-family: inherit;
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-regular);
+    font-weight: var(--font-weight-medium);
 
     cursor: pointer;
 
@@ -62,17 +116,24 @@
 
 /* Ingredient chips */
 
+.ingredient-selection-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+}
+
 .ingredient-chips {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-    margin-bottom: var(--space-3);
-    padding-top: var(--space-2);
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .ingredient-chips-empty {
-    margin-bottom: 0;
-    padding-top: 0;
+    min-height: 0;
 }
 
 .ingredient-chip-wrapper {
@@ -107,14 +168,70 @@
     gap: var(--space-1);
     min-width: 0;
     flex-shrink: 0;
-    padding: var(--space-1) 5px var(--space-1) var(--space-3);
+    padding: 2px 4px 2px var(--space-3);
+    border: 1px solid var(--border-hairline);
     border-radius: 999px;
-    background: var(--accent-green);
-    color: var(--text-h);
-    font-size: var(--font-size-md);
+    background: var(--surface-tint);
+    color: var(--deep-green);
+    font-size: 12px;
+    font-weight: var(--font-weight-medium);
     transition:
         background 150ms ease,
         color 150ms ease;
+}
+
+/* Quick-add chips — saved pantry suggestions */
+
+.ingredient-quick-add {
+    margin-top: var(--space-3);
+}
+
+.ingredient-quick-add-label {
+    display: block;
+    margin-bottom: var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.ingredient-quick-add-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.ingredient-quick-add-chip {
+    padding: 5px var(--space-3);
+    border: 1px solid var(--border-hairline);
+    border-radius: 999px;
+    background: var(--surface-tint);
+    color: var(--deep-green);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        color 150ms ease,
+        border-color 150ms ease,
+        transform 100ms ease;
+}
+
+.ingredient-quick-add-chip:hover {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.ingredient-quick-add-chip:active {
+    transform: scale(0.96);
+}
+
+.ingredient-quick-add-chip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .ingredient-chip-label {
@@ -199,7 +316,7 @@
     }
 }
 
-/* Material-style ingredient input */
+/* Filled search field */
 
 .ingredient-input-field {
     position: relative;
@@ -208,21 +325,24 @@
     transition: opacity 200ms ease;
 }
 
-/* Magnifying glass overlaid inside the search bar.
-   The global .ingredient-search-icon rule adds margin-right; neutralize it
-   since the icon is absolutely positioned here. */
+/* Magnifying glass inside the search bar */
 
 .ingredient-input-control .ingredient-search-icon {
     position: absolute;
     top: 50%;
-    left: 2px;
+    left: var(--space-4);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-right: 0;
     transform: translateY(-50%);
     pointer-events: none;
-    color: var(--text);
+    color: var(--text-muted);
+    transition: color 150ms ease;
+}
+
+.ingredient-input-control:focus-within .ingredient-search-icon {
+    color: var(--accent);
 }
 
 .ingredient-input-control .ingredient-search-icon svg {
@@ -240,21 +360,21 @@
     min-width: 0;
 }
 
+/* Focus ring around the filled field */
+
 .ingredient-input-control::after {
     content: '';
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 2px;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: center;
-    transition: transform 200ms ease;
+    inset: -2px;
+    border-radius: calc(var(--radius-lg) + 2px);
+    box-shadow: 0 0 0 2px var(--accent);
+    opacity: 0;
+    transition: opacity 150ms ease;
+    pointer-events: none;
 }
 
 .ingredient-input-control:focus-within::after {
-    transform: scaleX(1);
+    opacity: 1;
 }
 
 .ingredient-input-field-dimmed {
@@ -265,30 +385,34 @@
     width: 100%;
     box-sizing: border-box;
     /* Left padding clears the magnifying glass overlaid at the start
-       of the input (icon 18px at left: 2px + gap). */
-    padding: var(--space-2) 2px var(--space-2) 28px;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    border-radius: 0;
-    background: transparent;
+       of the input (icon 18px at left: var(--space-4) + gap). */
+    min-height: 46px;
+    padding: var(--space-2) var(--space-4) var(--space-2) 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
     color: var(--text-h);
     font: inherit;
     font-size: var(--font-size-md);
     outline: none;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease;
 }
 
 .ingredient-input input::placeholder {
-    color: var(--text);
+    color: var(--text-muted);
     transition: color 200ms ease;
 }
 
-.ingredient-input input:focus::placeholder {
-    color: transparent;
+.ingredient-input input:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    outline: none;
 }
 
-.ingredient-input input:focus,
-.ingredient-input input:focus-visible {
-    outline: none;
+.ingredient-input input:focus::placeholder {
+    color: var(--text-muted);
 }
 
 /* Duplicate message overlay */
@@ -386,10 +510,10 @@
     left: 0;
     right: 0;
     overflow: hidden;
-    border: 1px solid #e7e5df;
-    border-radius: 12px;
-    background: #fff;
-    box-shadow: 0 10px 28px rgb(40 40 30 / 8%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
 }
 
 .ingredient-input .ingredient-suggestion {
@@ -402,14 +526,15 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border: 0;
-    border-bottom: 1px solid #f0efeb;
+    border-bottom: 1px solid var(--border-hairline);
     border-radius: 0;
-    background: #fff;
-    color: var(--text-primary, #303632);
+    background: var(--surface);
+    color: var(--text-h);
     text-align: left;
     font: inherit;
-    font-size: 14px;
+    font-size: var(--font-size-sm);
     cursor: pointer;
+    transition: background 100ms ease;
 }
 
 .ingredient-input .ingredient-suggestion:last-child {
@@ -418,7 +543,7 @@
 
 .ingredient-input .ingredient-suggestion:hover,
 .ingredient-input .ingredient-suggestion:focus-visible {
-    background: #f7f6f2;
+    background: var(--accent-bg);
     outline: none;
 }
 
@@ -427,11 +552,11 @@
 .ingredient-input .ingredient-suggestion-highlighted,
 .ingredient-input .ingredient-suggestion-highlighted.ingredient-suggestion-added,
 .ingredient-input .ingredient-suggestion-highlighted.ingredient-suggestion-added:hover {
-    background: #f7f6f2;
+    background: var(--accent-bg);
 }
 
 .ingredient-input .ingredient-suggestion-added {
-    color: var(--text-muted, #858981);
+    color: var(--text-muted);
     font-weight: var(--font-weight-normal);
 }
 
@@ -446,7 +571,7 @@
     padding: 2px 8px;
     border-radius: 999px;
     background: var(--disabled-bg);
-    color: var(--text-muted, #858981);
+    color: var(--text-muted);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.2px;
@@ -454,17 +579,121 @@
 
 .ingredient-enter-hint {
     flex-shrink: 0;
-    color: #858981;
+    color: var(--accent);
     font-size: 18px;
+    font-weight: 700;
 }
 
 .ingredient-suggestion-empty {
     padding: 13px var(--space-4);
-    color: #858981;
+    color: var(--text-muted);
     font-size: 13px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px),
+    (min-width: 641px) and (max-width: 1000px) and (max-height: 500px) {
+    .ingredient-input-header {
+        grid-template-columns: 26px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--space-2);
+        margin-bottom: var(--space-2);
+    }
+
+    .ingredient-step-number {
+        width: 26px;
+        height: 26px;
+        font-size: 13px;
+    }
+
+    .ingredient-input-header h3 {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    .ingredient-heading-copy p {
+        display: none;
+    }
+
+    .ingredient-saved-button {
+        grid-column: 3;
+        min-height: 32px;
+        gap: var(--space-1);
+        padding-inline: var(--space-2);
+        border-radius: 7px;
+        font-size: 9px;
+    }
+
+    .ingredient-saved-button svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    .ingredient-input input {
+        min-height: 38px;
+        padding: 6px 12px 6px 36px;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+
+    .ingredient-input-control .ingredient-search-icon {
+        left: var(--space-3);
+    }
+
+    .ingredient-input-control::after {
+        border-radius: 10px;
+    }
+
+    .ingredient-selection-row {
+        align-items: center;
+        gap: 8px;
+        margin-top: var(--space-2);
+    }
+
+    .ingredient-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-block: 2px;
+        scrollbar-width: none;
+    }
+
+    .ingredient-chips::-webkit-scrollbar {
+        display: none;
+    }
+
+    .ingredient-clear-all-button {
+        padding-left: 0;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .ingredient-selection-row-empty {
+        display: none;
+    }
+
+    .ingredient-quick-add {
+        margin-top: var(--space-2);
+    }
+
+    .ingredient-quick-add-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .ingredient-quick-add-chip {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 100%;
+        min-height: 32px;
+        padding: 4px var(--space-2);
+        font-size: 11px;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .ingredient-input-hint {
         font-size: 12px;
     }
@@ -472,15 +701,5 @@
     .ingredient-input .ingredient-suggestion {
         min-height: 46px;
         font-size: 15px;
-    }
-
-    .ingredient-chip {
-        gap: var(--space-1);
-        padding-left: var(--space-3);
-    }
-
-    .ingredient-chip-delete {
-        width: 30px;
-        height: 30px;
     }
 }

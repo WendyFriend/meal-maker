@@ -64,7 +64,15 @@ export default function Login() {
     return (
         <main className="login-page">
             <section className="login">
-                <h1>🍲 Meal Maker</h1>
+                <h1>
+                    <span className="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M4 10.5C4 6.9 7.1 4 11 4c1.1 0 2.1.25 3 .7V19c0 .6-.4 1-1 1h-4c-.6 0-1-.4-1-1v-8.3" />
+                            <path d="M13.2 12.5c1.7-1.9 4-3.9 6.3-3.4" />
+                        </svg>
+                    </span>
+                    Meal Maker
+                </h1>
 
                 <h2>{isSignUp ? 'Create an account' : 'Welcome back'}</h2>
 

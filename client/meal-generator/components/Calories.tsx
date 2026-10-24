@@ -31,11 +31,7 @@ function Calories({ value, onChange }: CaloriesProps) {
 
     const selectedValue = value === undefined ? 'none' : String(value);
 
-    // "No preference" otherwise "400 kcal" in the field button.
-    const selectedLabel =
-        value === undefined
-            ? 'No preference'
-            : `${value} kcal`;
+    const selectedLabel = value === undefined ? 'e.g. 500' : String(value);
 
     function onValueChange(value: string) {
         if (value === 'none') {
@@ -47,7 +43,12 @@ function Calories({ value, onChange }: CaloriesProps) {
 
     return (
         <div className="calories">
-            <h3>2. Set your calorie target</h3>
+            <h3>
+                <span className="calories-heading-icon" aria-hidden="true">
+                    ◎
+                </span>
+                Optional: Set a calorie goal
+            </h3>
 
             <button
                 type="button"
@@ -55,10 +56,10 @@ function Calories({ value, onChange }: CaloriesProps) {
                 onClick={() => setIsOpen(true)}
             >
                 <span className="calories-field-content">
-                    <span className="calories-field-value">
+                    <span className={`calories-field-value ${value === undefined ? 'calories-field-placeholder' : ''}`}>
                         {selectedLabel}
                     </span>
-
+                    <span className="calories-field-unit">kcal</span>
                     <span
                         className="calories-field-chevron"
                         aria-hidden="true"

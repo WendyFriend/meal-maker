@@ -375,30 +375,79 @@ export default function MealResult({
     return (
         <section className="meal-result">
             <div className="meal-result-header">
-                <h2>{meal.mealName}</h2>
+                <div className="meal-result-title-block">
+                    <p className="meal-result-eyebrow">Your recipe</p>
+                    <h2>{meal.mealName}</h2>
+                </div>
 
-                {showBookmark && (
-                    <button
-                        type="button"
-                        className="meal-bookmark-button"
-                        onClick={toggleBookmark}
-                        disabled={isSavingMeal}
-                        aria-pressed={isBookmarked}
-                        aria-label={
-                            isBookmarked
-                                ? 'Remove this meal from saved'
-                                : 'Save this meal'
-                        }
-                    >
-                        <svg
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                            focusable="false"
+                <div className="meal-result-actions">
+                    {showBookmark && (
+                        <button
+                            type="button"
+                            className="meal-bookmark-button"
+                            onClick={toggleBookmark}
+                            disabled={isSavingMeal}
+                            aria-pressed={isBookmarked}
+                            aria-label={
+                                isBookmarked
+                                    ? 'Remove this meal from saved'
+                                    : 'Save this meal'
+                            }
                         >
-                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                        </svg>
-                    </button>
-                )}
+                            <svg
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                                focusable="false"
+                            >
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                            </svg>
+                        </button>
+                    )}
+
+                    <div className="meal-total-calories">
+                        {Math.round(nutrition.calories)} kcal
+                    </div>
+                </div>
+            </div>
+
+            <p className="meal-result-meta">
+                {meal.ingredients.length}{' '}
+                {meal.ingredients.length === 1 ? 'ingredient' : 'ingredients'}
+                {' \u00b7 '}
+                {meal.instructions.length}{' '}
+                {meal.instructions.length === 1 ? 'step' : 'steps'}
+            </p>
+
+            {/* Nutrition at a glance */}
+            <div className="nutrition-summary">
+                <div className="nutrition-summary-item">
+                    <span className="nutrition-summary-label">Calories</span>
+                    <span className="nutrition-summary-value">
+                        {Math.round(nutrition.calories)}
+                    </span>
+                    <span className="nutrition-summary-unit">kcal</span>
+                </div>
+                <div className="nutrition-summary-item">
+                    <span className="nutrition-summary-label">Protein</span>
+                    <span className="nutrition-summary-value">
+                        {Math.round(nutrition.protein)}
+                    </span>
+                    <span className="nutrition-summary-unit">g</span>
+                </div>
+                <div className="nutrition-summary-item">
+                    <span className="nutrition-summary-label">Carbs</span>
+                    <span className="nutrition-summary-value">
+                        {Math.round(nutrition.carbohydrate)}
+                    </span>
+                    <span className="nutrition-summary-unit">g</span>
+                </div>
+                <div className="nutrition-summary-item">
+                    <span className="nutrition-summary-label">Fat</span>
+                    <span className="nutrition-summary-value">
+                        {Math.round(nutrition.fat)}
+                    </span>
+                    <span className="nutrition-summary-unit">g</span>
+                </div>
             </div>
 
             {bookmarkError && (
@@ -406,6 +455,8 @@ export default function MealResult({
                     {bookmarkError}
                 </p>
             )}
+            <div className="meal-result-grid">
+                <div className="meal-result-main">
 
             <section className="meal-ingredients">
                 <div className="meal-section-header">
@@ -488,6 +539,19 @@ export default function MealResult({
                 </div>
             </section>
 
+
+            <section className="meal-instructions">
+                <h3>How to make it</h3>
+
+                <ol>
+                    {meal.instructions.map((instruction, index) => (
+                        <li key={index}>{instruction}</li>
+                    ))}
+                </ol>
+            </section>
+                </div>
+
+                <aside className="meal-result-side">
             <section className="meal-nutrition">
                 <h3>Nutrition</h3>
 
@@ -657,16 +721,6 @@ export default function MealResult({
                 </div>
             </section>
 
-            <section className="meal-instructions">
-                <h3>How to make it</h3>
-
-                <ol>
-                    {meal.instructions.map((instruction, index) => (
-                        <li key={index}>{instruction}</li>
-                    ))}
-                </ol>
-            </section>
-
             <details className="key-nutrients">
                 <summary>
                     <span>Key nutrients</span>
@@ -760,6 +814,8 @@ export default function MealResult({
                     </table>
                 </div>
             </details>
+                </aside>
+            </div>
 
             {nutritionSheetIngredient !== null && (
                 <IngredientNutritionSheet

@@ -1,111 +1,191 @@
 .calories {
-  width: 100%;
-  margin: var(--space-5) 0;
-  box-sizing: border-box;
-  text-align: left;
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.calories h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--deep-green);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+}
+
+.calories-heading-icon {
+    color: var(--accent);
+    font-size: 25px;
+    line-height: 1;
 }
 
 .calories-field {
-  position: relative;
-  display: flex;
-  align-items: center;
+    position: relative;
+    display: flex;
+    align-items: center;
 
-  width: 100%;
-  min-height: 0;
-  padding: var(--space-2) 2px;
+    width: 170px;
+    min-width: 0;
+    min-height: 40px;
+    padding: var(--space-1) var(--space-3);
 
-  border: none;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
 
-  background: transparent;
-  color: var(--text-h);
+    background: var(--surface);
+    color: var(--text-h);
 
-  font: inherit;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-regular);
-  text-align: left;
+    font: inherit;
+    font-size: 13px;
+    font-weight: var(--font-weight-medium);
+    text-align: left;
 
-  cursor: pointer;
-  outline: none;
+    cursor: pointer;
+    outline: none;
 
-  -webkit-tap-highlight-color: transparent;
+    -webkit-tap-highlight-color: transparent;
+
+    transition:
+        border-color 150ms ease,
+        background 150ms ease;
 }
 
-.calories-field-content {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.calories-field:hover {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
-/* Animated accent underline, matching IngredientInput */
+.calories-field:focus-visible,
+.calories-field:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    outline: none;
+}
 
+/* Focus ring, mirroring the ingredient search field */
 .calories-field::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-
-  background: var(--accent);
-
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 200ms ease;
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: calc(var(--radius-lg) + 2px);
+    box-shadow: 0 0 0 2px var(--accent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease;
 }
 
 .calories-field:focus-visible::after,
 .calories-field:focus::after {
-  transform: scaleX(1);
+    opacity: 1;
+}
+
+.calories-field-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
 }
 
 .calories-field-value {
-  color: var(--text-h);
+    color: var(--text-h);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calories-field-placeholder,
+.calories-field-unit {
+    color: var(--text-muted);
+}
+
+.calories-field-unit {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: var(--font-weight-normal);
+}
+
+/* Chevron */
+.calories-field-chevron {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin-right: var(--space-1);
+
+    border-top: 1.5px solid var(--text-muted);
+    border-right: 1.5px solid var(--text-muted);
+
+    transform: rotate(135deg);
+
+    transition:
+        border-color 150ms ease,
+        transform 150ms ease;
+}
+
+.calories-field:hover .calories-field-chevron {
+    border-color: var(--accent);
 }
 
 /* Wheel picker sheet content */
 
 .calories-picker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .calories-picker-wrapper {
-  flex: 1;
-  min-width: 0;
-  max-width: 320px;
+    flex: 1;
+    min-width: 0;
+    max-width: 320px;
 
-  border: 1px solid rgb(161 161 170 / 30%);
-  border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
 
-  background: var(--surface);
+    background: var(--surface);
 }
 
-/* Highlighted wheel option: accent-red text instead of near-black */
+/* Highlighted wheel option: coral text */
 
 .calories-picker-wrapper [data-rwp-highlight-item] {
-  color: var(--accent);
-  font-weight: var(--font-weight-semibold);
+    color: var(--accent);
+    font-weight: var(--font-weight-semibold);
 }
 
-.calories-field-chevron {
-  width: 8px;
-  height: 8px;
-  margin-right: var(--space-1);
+@media (max-width: 640px) {
+    .calories {
+        align-items: stretch;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
 
-  border-top: 1.5px solid var(--text);
-  border-right: 1.5px solid var(--text);
+    .calories h3 {
+        font-size: 11px;
+    }
 
-  transform: rotate(45deg);
+    .calories-heading-icon {
+        font-size: 20px;
+    }
 
-  transition:
-    border-color 150ms ease,
-    transform 150ms ease;
+    .calories-field {
+        width: 100%;
+        min-height: 38px;
+        border-radius: 8px;
+    }
+
+    .calories-field::after {
+        border-radius: 10px;
+    }
 }
 
-.calories-field:hover .calories-field-chevron {
-  border-color: var(--text-h);
-  transform: translateX(2px) rotate(45deg);
+@media (prefers-reduced-motion: reduce) {
+    .calories-field,
+    .calories-field::after,
+    .calories-field-chevron {
+        transition: none;
+    }
 }

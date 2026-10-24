@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './Sidebar.css';
 import '@ncdai/react-wheel-picker/style.css';
@@ -14,6 +14,10 @@ import MyRecipes from './MyRecipes';
 import RecipeDetail from './RecipeDetail';
 import IngredientInput from './meal-generator/components/IngredientInput';
 import Calories from './meal-generator/components/Calories';
+import {
+    MealMakerIntro,
+    MealMakerSteps,
+} from './meal-generator/components/MealMakerIntro';
 import MealResult from './meal-generator/components/NewMealResult';
 import { useAuth } from './auth/AuthContext';
 import Login from './auth/Login';
@@ -26,7 +30,7 @@ import {
 import type { Recipe } from '../shared/types/recipe';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
-import { isUserIngredient } from './utils/Ingredient';
+import { isUserIngredient, normalizeIngredientName } from './utils/Ingredient';
 import { APP_VERSION } from './version';
 import cookingLoader from './assets/animations/cooking-loader.svg';
 
@@ -37,7 +41,7 @@ type Page = keyof typeof pageConfig;
 const pageConfig = {
     'meal-maker': {
         type: 'main',
-        title: 'MealMaker',
+        title: 'Meal Maker',
     },
     'my-ingredients': {
         type: 'main',
@@ -53,7 +57,7 @@ const pageConfig = {
     },
     'recipe-detail': {
         type: 'sub',
-        title: '',
+        title: 'Recipe',
     },
     'create-recipe': {
         type: 'sub',
@@ -67,15 +71,15 @@ const navigationItems: {
 }[] = [
     {
         id: 'meal-maker',
-        label: '✨ Create Meal',
+        label: 'Create Meal',
     },
     {
         id: 'my-ingredients',
-        label: '🥕 My Ingredients',
+        label: 'My Ingredients',
     },
     {
         id: 'my-recipes',
-        label: '📖 My Recipes',
+        label: 'My Recipes',
     },
 ];
 
@@ -124,6 +128,10 @@ function App() {
 
     // Recipe opened from the My Recipes list; shown on the detail page.
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
+
+    // Scroll target for the generated recipe; scrolls smoothly once the
+    // result is ready (see handleCreate).
+    const mealResultRef = useRef<HTMLDivElement>(null);
 
     const config = pageConfig[currentPage];
 
@@ -198,7 +206,8 @@ function App() {
     ): UserIngredient | undefined {
         return userIngredients.find(
             (ingredient) =>
-                ingredient.name.toLowerCase() === ingredientName.toLowerCase(),
+                normalizeIngredientName(ingredient.name) ===
+                normalizeIngredientName(ingredientName),
         );
     }
 
@@ -207,7 +216,8 @@ function App() {
     ): IngredientInfo | undefined {
         return thisMealIngredients.find(
             (ingredient) =>
-                ingredient.name.toLowerCase() === ingredientName.toLowerCase(),
+                normalizeIngredientName(ingredient.name) ===
+                normalizeIngredientName(ingredientName),
         );
     }
 
@@ -372,6 +382,19 @@ function App() {
 
             setMeal(mealResponse);
             setOriginalMeal(mealResponse);
+
+            // Bring the freshly generated recipe into view. Runs after the
+            // result renders; falls back to a jump when motion is reduced.
+            window.requestAnimationFrame(() => {
+                const prefersReducedMotion = window.matchMedia(
+                    '(prefers-reduced-motion: reduce)',
+                ).matches;
+
+                mealResultRef.current?.scrollIntoView({
+                    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+                    block: 'start',
+                });
+            });
         } catch (error) {
             console.error(error);
             setError({
@@ -408,48 +431,85 @@ function App() {
 
     return (
         <div className="app">
-            <header className="page-header">
-                {config.type === 'main' ? (
-                    <button
-                        key="menu"
-                        type="button"
-                        className="page-header-menu"
-                        onClick={() => setIsSidebarOpen(true)}
-                        aria-label="Open navigation menu"
-                    >
-                        <span className="menu-icon" aria-hidden="true">
-                            <span />
-                            <span />
-                            <span />
+            <header
+                className={`page-header ${currentPage === 'meal-maker' ? 'page-header-meal-maker' : ''}`}
+            >
+                <div className="page-header-inner">
+                    {config.type === 'main' ? (
+                        <button
+                            key="menu"
+                            type="button"
+                            className="page-header-menu"
+                            onClick={() => setIsSidebarOpen(true)}
+                            aria-label="Open navigation menu"
+                        >
+                            <span className="menu-icon" aria-hidden="true">
+                                <span />
+                                <span />
+                                <span />
+                            </span>
+                        </button>
+                    ) : (
+                        <button
+                            key="back"
+                            type="button"
+                            className="page-header-back"
+                            onClick={() => {
+                                const parent = subPageParent[currentPage];
+                                if (parent) navigateToPage(parent);
+                            }}
+                            aria-label="Back"
+                        >
+                            ‹
+                        </button>
+                    )}
+
+                    {/* Brand */}
+                    <div className="page-header-brand">
+                        <span className="brand-mark" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M4 10.5C4 6.9 7.1 4 11 4c1.1 0 2.1.25 3 .7V19c0 .6-.4 1-1 1h-4c-.6 0-1-.4-1-1v-8.3" />
+                                <path d="M13.2 12.5c1.7-1.9 4-3.9 6.3-3.4" />
+                            </svg>
                         </span>
-                    </button>
-                ) : (
-                    <button
-                        key="back"
-                        type="button"
-                        className="page-header-back"
-                        onClick={() => {
-                            const parent = subPageParent[currentPage];
-                            if (parent) navigateToPage(parent);
-                        }}
-                        aria-label="Back"
-                    >
-                        ‹
-                    </button>
-                )}
+                        <span className="brand-name">Meal Maker</span>
+                    </div>
 
-                {/* {currentPage === 'my-recipes' && (
-                    <button
-                        type="button"
-                        className="page-header-add-recipe"
-                        onClick={() => navigateToPage('create-recipe')}
-                        aria-label="Add recipe"
-                    >
-                        <span aria-hidden="true">+</span>
-                    </button>
-                )} */}
+                    {/* Desktop navigation */}
+                    {config.type === 'main' && (
+                        <nav className="page-header-nav" aria-label="Primary">
+                            {navigationItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className={`page-header-nav-item ${
+                                        currentPage === item.id
+                                            ? 'page-header-nav-item-active'
+                                            : ''
+                                    }`}
+                                    aria-current={
+                                        currentPage === item.id
+                                            ? 'page'
+                                            : undefined
+                                    }
+                                    onClick={() => navigateToPage(item.id)}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                    )}
 
-                <h1>{config.title}</h1>
+                    <div className="page-header-actions">
+                        <button
+                            type="button"
+                            className="page-header-signout"
+                            onClick={handleSignOut}
+                        >
+                            Log out
+                        </button>
+                    </div>
+                </div>
             </header>
 
             {/* Side Bar */}
@@ -462,13 +522,28 @@ function App() {
             <aside
                 id="sidebar"
                 className={`sidebar ${isSidebarOpen ? 'open' : ''}`}
+                aria-label="Navigation"
             >
+                <div className="sidebar-brand">
+                    <span className="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M4 10.5C4 6.9 7.1 4 11 4c1.1 0 2.1.25 3 .7V19c0 .6-.4 1-1 1h-4c-.6 0-1-.4-1-1v-8.3" />
+                            <path d="M13.2 12.5c1.7-1.9 4-3.9 6.3-3.4" />
+                        </svg>
+                    </span>
+                    <span className="brand-name">Meal Maker</span>
+                </div>
+
                 <nav className="sidebar-nav">
                     {navigationItems.map((item) => (
                         <button
                             key={item.id}
                             type="button"
-                            className="sidebar-item"
+                            className={`sidebar-item ${
+                                currentPage === item.id
+                                    ? 'sidebar-item-active'
+                                    : ''
+                            }`}
                             onClick={() => {
                                 navigateToPage(item.id);
                                 setIsSidebarOpen(false);
@@ -490,50 +565,63 @@ function App() {
                 <div className="app-version">v{APP_VERSION}</div>
             </aside>
 
-            <div
-                className={`page-transition page-transition-${pageDirection}`}
-            >
-                <main className="page-content">
+            <div className={`page-transition page-transition-${pageDirection}`}>
+                <main
+                    className={`page-content ${currentPage === 'meal-maker' ? 'page-content-meal-maker' : ''}`}
+                >
                     {currentPage === 'meal-maker' && (
                         <div className="meal-maker-screen">
-                            <div className="meal-maker-intro">
-                                <h2>Create your meal</h2>
-                                <p>
-                                    Use what you have. We'll work out the recipe
-                                    ✔
-                                </p>
-                            </div>
+                            <div className="meal-maker-hero">
+                                <MealMakerIntro />
 
-                            <div className="meal-maker-form">
-                                <IngredientInput
-                                    ingredients={ingredients}
-                                    savedIngredients={userIngredients}
-                                    onChange={setIngredients}
-                                    removeIngredient={removeIngredient}
-                                    onIngredientClick={
-                                        setSelectedIngredientIndex
-                                    }
-                                />
-
-                                <section className="meal-maker-calories">
-                                    <Calories
-                                        value={caloriesGoal}
-                                        onChange={setCaloriesGoal}
+                                <div className="meal-maker-form app-card">
+                                    <IngredientInput
+                                        ingredients={ingredients}
+                                        savedIngredients={userIngredients}
+                                        onChange={setIngredients}
+                                        removeIngredient={removeIngredient}
+                                        onIngredientClick={
+                                            setSelectedIngredientIndex
+                                        }
+                                        onOpenSavedIngredients={() =>
+                                            navigateToPage('my-ingredients')
+                                        }
                                     />
-                                </section>
 
-                                <button
-                                    type="button"
-                                    className="create-button meal-maker-create-button"
-                                    onClick={handleCreate}
-                                    disabled={
-                                        isGenerating || ingredients.length === 0
-                                    }
-                                >
-                                    {isGenerating
-                                        ? 'Creating your meal...'
-                                        : 'Create my meal'}
-                                </button>
+                                    <section className="meal-maker-calories">
+                                        <Calories
+                                            value={caloriesGoal}
+                                            onChange={setCaloriesGoal}
+                                        />
+                                    </section>
+
+                                    <button
+                                        type="button"
+                                        className="create-button meal-maker-create-button"
+                                        onClick={handleCreate}
+                                        disabled={
+                                            isGenerating ||
+                                            ingredients.length === 0
+                                        }
+                                    >
+                                        {isGenerating ? (
+                                            <>
+                                                <span
+                                                    className="button-spinner"
+                                                    aria-hidden="true"
+                                                />
+                                                Creating your meal…
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span aria-hidden="true">✦</span>
+                                                Generate a recipe
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                <MealMakerSteps />
                             </div>
 
                             {selectedIngredientIndex !== null && (
@@ -560,7 +648,7 @@ function App() {
                                         className="generating-loader"
                                     />
                                     <p className="generating-message">
-                                        Creating your meal...
+                                        Creating your meal…
                                     </p>
                                 </div>
                             )}
@@ -572,11 +660,16 @@ function App() {
                             )}
 
                             {!isGenerating && meal && originalMeal && (
-                                <MealResult
-                                    meal={meal}
-                                    originalMeal={originalMeal}
-                                    onChange={setMeal}
-                                />
+                                <div
+                                    ref={mealResultRef}
+                                    className="meal-maker-result"
+                                >
+                                    <MealResult
+                                        meal={meal}
+                                        originalMeal={originalMeal}
+                                        onChange={setMeal}
+                                    />
+                                </div>
                             )}
                         </div>
                     )}
