@@ -16,6 +16,22 @@ schema can be evolved independently of the original project
   - `user_ingredients`: `quantity`, `unit`, `expires_on`
   - `recipes`: `servings`
   - New tables `meal_plan_entries`, `shopping_list_items` (RLS as above)
+- Migration: `migrations/20261025020000_profiles_planner_tiers.sql`
+  - New table `profiles` (one per user, auto-created on sign-up and
+    backfilled): plan tier (`free` / `trial` / `pro`), trial end, daily
+    calorie + macro targets, `meal_slots` (the user's meal periods)
+  - Users can edit targets and meal periods; plan fields only change via
+    `start_trial()` (one 14-day trial per account) or the service role
+    (billing). Client inserts are forced to `free`.
+  - New table `generation_usage` (one row per AI meal, for the daily cap)
+  - `user_ingredients`: `is_favorite`, `usda_fdc_id`, `usda_description`,
+    `micronutrients` (jsonb, per 100 g)
+  - `recipes`: `source` (`manual` / `generated`), `meal_type`
+  - `meal_plan_entries`: `slot` is any meal-period id now; `servings`
+
+Plan limits are enforced in the app (see `shared/plans.ts`). The generation
+API doesn't check them yet; server-side enforcement needs it to verify the
+caller's Supabase JWT and read `profiles` / `generation_usage`.
 
 The migration was **inferred from the app code** (`client/services/*.ts`,
 `shared/types/*.ts`), not dumped from the original database. If the original

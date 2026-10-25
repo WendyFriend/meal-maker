@@ -6,6 +6,7 @@ import {
     type ReactNode,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import type { PlanTier } from '../../shared/plans';
 import { supabase } from '../lib/supabase';
 import {
     endDevSession,
@@ -21,7 +22,7 @@ type AuthContextValue = {
     signIn: (email: string, password: string) => Promise<void>;
     signUp: (email: string, password: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
-    signInAsDev: () => void;
+    signInAsDev: (tier: PlanTier) => void;
     signOut: () => Promise<void>;
 };
 
@@ -110,8 +111,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }
 
-    function signInAsDev() {
-        setSession(startDevSession());
+    function signInAsDev(tier: PlanTier) {
+        setSession(startDevSession(tier));
     }
 
     async function signOut() {

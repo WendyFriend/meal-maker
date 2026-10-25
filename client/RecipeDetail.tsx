@@ -44,10 +44,13 @@ function haveSameWeights(
  * Detail page for a saved recipe.
  *
  * Renders the same sections as the meal result on the meal maker page:
- * Ingredients, Nutrition (macro donut + tables), Instructions, Key
- * nutrients, and Ingredient Nutrition Information.
+ * Ingredients, Nutrition (macro donut + tables, vitamins and minerals),
+ * Preparation & safety (worked out from the ingredients, since saved
+ * recipes don't store it), Instructions, and Ingredient Nutrition
+ * Information.
  *
- * The bookmark button is hidden — the recipe is already saved. Ingredient
+ * The bookmark button is hidden — the recipe is already saved, and "Add to
+ * plan" uses the stored recipe rather than saving a copy. Ingredient
  * weight tweaks stay local until the user presses "Save changes", which
  * writes them to the saved recipe.
  */
@@ -101,6 +104,8 @@ export default function RecipeDetail({
                     setSaveStatus('idle');
                 }}
                 showBookmark={false}
+                mealType={recipe.mealType}
+                savedRecipeId={recipe.id}
                 saveChanges={
                     recipe.id
                         ? {

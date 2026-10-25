@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './Sidebar.css';
-import type { AppError, ErrorResponse } from './meal-generator/types';
+import type { AppError } from './meal-generator/types';
 import {
-    type GenerateMealRequest,
     type GenerateMealResponse,
     type IngredientInfo,
     type MealRequirements,
@@ -21,6 +20,21 @@ import {
     MealMakerSteps,
 } from './meal-generator/components/MealMakerIntro';
 import MealOptions from './meal-generator/components/MealOptions';
+import PrepNotes from './meal-generator/components/PrepNotes';
+import GenerationGate from './meal-generator/components/GenerationGate';
+import PlanBridge, {
+    type PlanValue,
+} from './meal-generator/components/PlanBridge';
+import {
+    AI_ESTIMATE,
+    describeCandidate,
+    enrichGeneratedMeal,
+    getCandidates,
+    getMatchedIngredient,
+    getSelectedIndex,
+    toSourceOptions,
+    type IngredientSource,
+} from './meal-generator/components/ingredientMatching';
 import {
     DEFAULT_MEAL_OPTIONS,
     type MealOptionsValue,
@@ -33,13 +47,21 @@ import {
     saveUserIngredient as saveUserIngredientToDB,
     updateUserIngredient as updateUserIngredientInDB,
     deleteUserIngredient as deleteUserIngredientInDB,
+    setIngredientFavorite,
 } from './services/ingredientService';
 import type { Recipe } from '../shared/types/recipe';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
 import CreateRecipe from './CreateRecipe';
-import MealPlan from './MealPlan';
 import ShoppingList from './ShoppingList';
+import DayPlanner from './planner/DayPlanner';
+import Goals from './planner/Goals';
+import PlanPage from './plan/PlanPage';
+import PlanBadge from './plan/PlanBadge';
+import { PlanProvider } from './plan/PlanContext';
+import { requestMeal } from './services/generateMealService';
+import { useIngredientMatches } from './hooks/useIngredientMatches';
+import { getPrepConsiderations } from '../shared/nutrition/prepGuidance';
 import { isUserIngredient, normalizeIngredientName } from './utils/Ingredient';
 import { APP_VERSION } from './version';
 import {
@@ -52,25 +74,33 @@ import cookingLoader from './assets/animations/cooking-loader.svg';
 type Page = keyof typeof pageConfig;
 
 const pageConfig = {
+    planner: {
+        type: 'main',
+        title: 'Today',
+    },
     'meal-maker': {
         type: 'main',
         title: 'Meal Maker',
     },
     'my-ingredients': {
         type: 'main',
-        title: 'My Ingredients',
+        title: 'Ingredients',
     },
     'my-recipes': {
         type: 'main',
-        title: 'My Recipes',
-    },
-    'meal-plan': {
-        type: 'main',
-        title: 'Meal Plan',
+        title: 'Saved Meals',
     },
     'shopping-list': {
         type: 'main',
         title: 'Shopping List',
+    },
+    goals: {
+        type: 'main',
+        title: 'Goals',
+    },
+    plans: {
+        type: 'main',
+        title: 'Plans',
     },
     'add-ingredient': {
         type: 'sub',
@@ -86,29 +116,43 @@ const pageConfig = {
     },
 } as const;
 
-const navigationItems: {
+type NavigationItem = {
     id: Page;
     label: string;
-}[] = [
+};
+
+const navigationItems: NavigationItem[] = [
+    {
+        id: 'planner',
+        label: 'Today',
+    },
     {
         id: 'meal-maker',
         label: 'Create Meal',
     },
     {
-        id: 'my-ingredients',
-        label: 'My Ingredients',
-    },
-    {
         id: 'my-recipes',
-        label: 'My Recipes',
+        label: 'Saved Meals',
     },
     {
-        id: 'meal-plan',
-        label: 'Meal Plan',
+        id: 'my-ingredients',
+        label: 'Ingredients',
     },
     {
         id: 'shopping-list',
         label: 'Shopping List',
+    },
+];
+
+// Shown under "Account" in the sidebar.
+const accountItems: NavigationItem[] = [
+    {
+        id: 'goals',
+        label: 'Goals & meal times',
+    },
+    {
+        id: 'plans',
+        label: 'Plan & usage',
     },
 ];
 
@@ -139,15 +183,17 @@ function Brand({ className }: { className: string }) {
 }
 
 function NavigationLinks({
+    items = navigationItems,
     currentPage,
     itemClassName,
     onNavigate,
 }: {
+    items?: NavigationItem[];
     currentPage: Page;
     itemClassName: string;
     onNavigate: (page: Page) => void;
 }) {
-    return navigationItems.map(({ id, label }) => {
+    return items.map(({ id, label }) => {
         const active = currentPage === id;
         return (
             <button
@@ -174,11 +220,18 @@ function findIngredientByName<T extends IngredientInfo>(
     );
 }
 
-function App() {
+type AppProps = {
+    // Tests start on a specific page; users land on Today.
+    initialPage?: Page;
+};
+
+function App({ initialPage = 'planner' }: AppProps) {
     const { user, loading, signOut } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    const [currentPage, setCurrentPage] = useState<Page>('meal-maker');
+    const [currentPage, setCurrentPage] = useState<Page>(initialPage);
+    // Feature that sent the user to the Plans page, e.g. "Vitamins & minerals".
+    const [plansReason, setPlansReason] = useState<string>();
     const [pageDirection, setPageDirection] = useState<
         'none' | 'right' | 'left'
     >('none');
@@ -195,6 +248,12 @@ function App() {
     const [thisMealIngredients, setThisMealIngredients] = useState<
         IngredientInfo[]
     >([]);
+    // The USDA food picked for an ingredient (by normalized name): an index
+    // into its match's candidates, or AI_ESTIMATE. Without a pick the best
+    // match is used.
+    const [matchChoices, setMatchChoices] = useState<Record<string, number>>(
+        {},
+    );
 
     const [caloriesGoal, setCaloriesGoal] = useState<number>();
     const [mealOptions, setMealOptions] = useState<MealOptionsValue>(() => ({
@@ -207,6 +266,16 @@ function App() {
     const mealIngredients = ingredients.filter(
         (ingredient) =>
             getDietConflicts(ingredient, mealOptions.dietary).length === 0,
+    );
+
+    // Ingredients that aren't the user's own are matched to the closest USDA
+    // food, unless they've been given nutrition for this meal.
+    const { getMatch, settle: settleMatches } = useIngredientMatches(
+        mealIngredients.filter(
+            (ingredient) =>
+                !findIngredientByName(userIngredients, ingredient) &&
+                !findIngredientByName(thisMealIngredients, ingredient),
+        ),
     );
 
     const [meal, setMeal] = useState<GenerateMealResponse | undefined>();
@@ -233,6 +302,9 @@ function App() {
     // Scroll target for the generated recipe; scrolls smoothly once the
     // result is ready (see handleCreate).
     const mealResultRef = useRef<HTMLDivElement>(null);
+
+    // The plan (tier, daily allowance), published from inside PlanProvider.
+    const planRef = useRef<PlanValue | null>(null);
 
     const config = pageConfig[currentPage];
     const isMealMaker = currentPage === 'meal-maker';
@@ -311,11 +383,68 @@ function App() {
     ): IngredientInfo | UserIngredient {
         return (
             findIngredientByName(thisMealIngredients, ingredientName) ??
-            findIngredientByName(userIngredients, ingredientName) ?? {
+            findIngredientByName(userIngredients, ingredientName) ??
+            getMatchedIngredient(
+                ingredientName,
+                getMatch(ingredientName),
+                matchChoices[normalizeIngredientName(ingredientName)],
+            ) ?? {
                 name: ingredientName,
             }
         );
     }
+
+    // Where an ingredient's nutrition comes from, for the Nutrition data list.
+    function getNutritionSource(
+        ingredientName: string,
+    ): IngredientSource | undefined {
+        const edited = findIngredientByName(thisMealIngredients, ingredientName);
+
+        if (edited) {
+            return {
+                kind: 'edited',
+                caloriesPer100g: edited.caloriesPer100g,
+            };
+        }
+
+        const saved = findIngredientByName(userIngredients, ingredientName);
+
+        if (saved) {
+            return { kind: 'yours', caloriesPer100g: saved.caloriesPer100g };
+        }
+
+        const match = getMatch(ingredientName);
+
+        if (match === undefined) return { kind: 'matching' };
+        if (match === null) return { kind: 'estimate' };
+
+        const options = toSourceOptions(match);
+        const selected = getSelectedIndex(
+            match,
+            matchChoices[normalizeIngredientName(ingredientName)],
+        );
+        const chosen = getCandidates(match)[selected];
+
+        return chosen
+            ? {
+                  kind: 'usda',
+                  ...describeCandidate(chosen),
+                  confidence: match.confidence,
+                  options,
+                  selected,
+              }
+            : { kind: 'estimate', options, selected: AI_ESTIMATE };
+    }
+
+    const nutritionSources = Object.fromEntries(
+        mealIngredients.flatMap((ingredient) => {
+            const source = getNutritionSource(ingredient);
+
+            return source
+                ? [[normalizeIngredientName(ingredient), source]]
+                : [];
+        }),
+    );
 
     async function updateUserIngredient(
         ingredientId: string,
@@ -356,6 +485,30 @@ function App() {
                     ingredient.ingredientId !== deleted.ingredientId,
             ),
         );
+    }
+
+    async function toggleIngredientFavorite(ingredient: UserIngredient) {
+        try {
+            const updated = await setIngredientFavorite(
+                ingredient.ingredientId,
+                !ingredient.isFavorite,
+            );
+            setUserIngredients((userIngredients) =>
+                userIngredients.map((userIngredient) =>
+                    userIngredient.ingredientId === updated.ingredientId
+                        ? updated
+                        : userIngredient,
+                ),
+            );
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function openPlans(reason?: string) {
+        setPlansReason(reason);
+        navigateToPage('plans');
+        window.scrollTo({ top: 0 });
     }
 
     async function handleIngredientSave(
@@ -417,6 +570,11 @@ function App() {
                 (ingredient) => ingredient.name !== ingredientName,
             ),
         );
+        setMatchChoices((choices) => {
+            const next = { ...choices };
+            delete next[normalizeIngredientName(ingredientName)];
+            return next;
+        });
     }
 
     function buildRequirements(
@@ -451,6 +609,15 @@ function App() {
     // `variation` re-runs generation for "Try another" style tweaks, with
     // the same ingredients and options.
     async function handleCreate(variation?: MealVariation) {
+        const plan = planRef.current;
+
+        // Out of AI meals for today: the form shows why, so only a
+        // regeneration from the result can get here.
+        if (plan && !plan.canGenerate) {
+            plan.openPlans('Daily AI meal limit');
+            return;
+        }
+
         const previousMealName = meal?.mealName;
 
         setIsGenerating(true);
@@ -459,42 +626,29 @@ function App() {
         setEstimatedIngredients([]);
         setError(undefined);
         try {
-            const input: GenerateMealRequest = {
-                ingredients: mealIngredients.map(
-                    getIngredientInfoFromStoredData,
-                ),
-                requirements: buildRequirements(variation, previousMealName),
-            };
+            // Let a USDA lookup still in flight finish, so its nutrition
+            // goes with the request.
+            await settleMatches();
 
-            const response = await fetch('/api/generate-meal', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(input),
+            const ingredients = mealIngredients.map(
+                getIngredientInfoFromStoredData,
+            );
+            const result = await requestMeal({
+                ingredients,
+                requirements: buildRequirements(variation, previousMealName),
             });
 
-            const payload = await response.json();
-
-            console.log('generate-meal status:', response.status);
-            console.log('generate-meal payload:', payload);
-
-            if (response.status === 422) {
-                setError((payload as ErrorResponse).error);
+            if (!result.ok) {
+                setError(result.error);
                 return;
             }
-            if (!response.ok) throw new Error('Failed to generate meal');
 
-            const mealResponse = payload as GenerateMealResponse;
-
-            if (!Array.isArray(mealResponse.ingredients)) {
-                console.error('Unexpected generate-meal response:', payload);
-                throw new Error('Invalid meal response');
-            }
+            const mealResponse = enrichGeneratedMeal(result.meal, ingredients);
 
             setMeal(mealResponse);
             setOriginalMeal(mealResponse);
             setEstimatedIngredients(mealResponse.estimatedIngredients ?? []);
+            void plan?.recordGeneration();
 
             // Bring the freshly generated recipe into view. Runs after the
             // result renders; falls back to a jump when motion is reduced.
@@ -507,13 +661,6 @@ function App() {
                     behavior: prefersReducedMotion ? 'auto' : 'smooth',
                     block: 'start',
                 });
-            });
-        } catch (error) {
-            console.error(error);
-            setError({
-                code: 'UNKNOWN_ERROR',
-                message:
-                    'Something went wrong while generating your meal. Please try again.',
             });
         } finally {
             setIsGenerating(false);
@@ -598,6 +745,8 @@ function App() {
     }
 
     return (
+        <PlanProvider userId={user.id} onOpenPlans={openPlans}>
+        <PlanBridge planRef={planRef} />
         <div className="app">
             <header
                 className={`page-header ${isMealMaker ? 'page-header-meal-maker' : ''}`}
@@ -646,6 +795,7 @@ function App() {
                     )}
 
                     <div className="page-header-actions">
+                        <PlanBadge onClick={() => openPlans()} />
                         <button
                             type="button"
                             className="page-header-signout"
@@ -676,6 +826,20 @@ function App() {
                         currentPage={currentPage}
                         itemClassName="sidebar-item"
                         onNavigate={(page) => {
+                            navigateToPage(page);
+                            setIsSidebarOpen(false);
+                        }}
+                    />
+                </nav>
+
+                <nav className="sidebar-nav sidebar-nav-account" aria-label="Account">
+                    <span className="sidebar-section-label">Account</span>
+                    <NavigationLinks
+                        items={accountItems}
+                        currentPage={currentPage}
+                        itemClassName="sidebar-item"
+                        onNavigate={(page) => {
+                            if (page === 'plans') setPlansReason(undefined);
                             navigateToPage(page);
                             setIsSidebarOpen(false);
                         }}
@@ -719,6 +883,26 @@ function App() {
                                             }));
                                             saveDietPreference(dietary);
                                         }}
+                                        nutritionSources={nutritionSources}
+                                        onSelectNutritionSource={(
+                                            ingredient,
+                                            optionIndex,
+                                        ) =>
+                                            setMatchChoices((choices) => ({
+                                                ...choices,
+                                                [normalizeIngredientName(
+                                                    ingredient,
+                                                )]: optionIndex,
+                                            }))
+                                        }
+                                    />
+
+                                    <PrepNotes
+                                        considerations={getPrepConsiderations(
+                                            mealIngredients,
+                                        )}
+                                        heading="Preparation notes"
+                                        description="Anti-nutrients and food safety for what you picked."
                                     />
 
                                     <section className="meal-maker-calories">
@@ -733,32 +917,34 @@ function App() {
                                         onChange={setMealOptions}
                                     />
 
-                                    <button
-                                        type="button"
-                                        className="create-button meal-maker-create-button"
-                                        onClick={() => handleCreate()}
-                                        disabled={
-                                            isGenerating ||
-                                            mealIngredients.length === 0
-                                        }
-                                    >
-                                        {isGenerating ? (
-                                            <>
-                                                <span
-                                                    className="button-spinner"
-                                                    aria-hidden="true"
-                                                />
-                                                Creating your meal…
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span aria-hidden="true">
-                                                    ✦
-                                                </span>
-                                                Create my meal
-                                            </>
-                                        )}
-                                    </button>
+                                    <GenerationGate>
+                                        <button
+                                            type="button"
+                                            className="create-button meal-maker-create-button"
+                                            onClick={() => handleCreate()}
+                                            disabled={
+                                                isGenerating ||
+                                                mealIngredients.length === 0
+                                            }
+                                        >
+                                            {isGenerating ? (
+                                                <>
+                                                    <span
+                                                        className="button-spinner"
+                                                        aria-hidden="true"
+                                                    />
+                                                    Creating your meal…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span aria-hidden="true">
+                                                        ✦
+                                                    </span>
+                                                    Create my meal
+                                                </>
+                                            )}
+                                        </button>
+                                    </GenerationGate>
                                 </div>
 
                                 <MealMakerSteps
@@ -808,7 +994,7 @@ function App() {
                                 </div>
                             )}
 
-                            {error?.code === 'UNKNOWN_ERROR' && (
+                            {error && (
                                 <div className="error-message" role="alert">
                                     {error.message}
                                 </div>
@@ -824,6 +1010,7 @@ function App() {
                                         originalMeal={originalMeal}
                                         onChange={setMeal}
                                         onRegenerate={handleCreate}
+                                        mealType={mealOptions.mealType}
                                         estimatedIngredients={
                                             estimatedIngredients
                                         }
@@ -836,10 +1023,29 @@ function App() {
                         </div>
                     )}
 
+                    {currentPage === 'planner' && (
+                        <DayPlanner
+                            savedIngredients={userIngredients}
+                            onOpenRecipe={(recipe) => {
+                                setSelectedRecipe(recipe);
+                                navigateToPage('recipe-detail');
+                            }}
+                            onSavedMealsChanged={() =>
+                                setRecipesVersion((version) => version + 1)
+                            }
+                            onEditGoals={() => navigateToPage('goals')}
+                        />
+                    )}
+
+                    {currentPage === 'goals' && <Goals />}
+
+                    {currentPage === 'plans' && <PlanPage reason={plansReason} />}
+
                     {currentPage === 'my-ingredients' && (
                         <MyIngredients
                             ingredients={userIngredients}
                             onUpdate={updateUserIngredient}
+                            onToggleFavorite={toggleIngredientFavorite}
                             onDelete={deleteUserIngredient}
                             onAdd={() => navigateToPage('add-ingredient')}
                         />
@@ -891,19 +1097,11 @@ function App() {
                         />
                     )}
 
-                    {currentPage === 'meal-plan' && (
-                        <MealPlan
-                            onOpenRecipe={(recipe) => {
-                                setSelectedRecipe(recipe);
-                                navigateToPage('recipe-detail');
-                            }}
-                        />
-                    )}
-
                     {currentPage === 'shopping-list' && <ShoppingList />}
                 </main>
             </div>
         </div>
+        </PlanProvider>
     );
 }
 

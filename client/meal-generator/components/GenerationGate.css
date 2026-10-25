@@ -1,0 +1,35 @@
+.generation-quota {
+    margin: var(--space-6) 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.generation-quota strong {
+    color: var(--text-h);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Sits just above the Create button */
+.generation-quota + .meal-maker-create-button {
+    margin-top: var(--space-2);
+}
+
+.generation-quota-low strong {
+    color: var(--accent);
+}
+
+.generation-gate-limit {
+    margin-top: var(--space-6);
+}
+
+@media (max-width: 640px) {
+    .generation-quota {
+        margin: var(--space-4) 0 0;
+        font-size: var(--font-size-xs);
+    }
+
+    .generation-gate-limit {
+        margin-top: var(--space-4);
+    }
+}

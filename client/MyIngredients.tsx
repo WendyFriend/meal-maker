@@ -5,6 +5,8 @@ import NutritionDialog from './meal-generator/components/NutritionDialog';
 import ActionMenu from './meal-generator/components/ActionMenu';
 import './MyIngredients.css';
 import { isUserIngredient } from './utils/Ingredient';
+import { usePlan } from './plan/PlanContext';
+import UpgradeNotice from './plan/UpgradeNotice';
 import {
     expiryTone,
     filterExpiringSoon,
@@ -42,6 +44,8 @@ type MyIngredientsProps = {
         ingredient: UserIngredient,
     ) => Promise<void>;
     onDelete: (ingredient: UserIngredient) => Promise<void>;
+    // Favourites are offered first when building a meal in the planner.
+    onToggleFavorite?: (ingredient: UserIngredient) => void;
     onAdd: () => void;
 };
 
@@ -49,11 +53,16 @@ export default function MyIngredients({
     ingredients,
     onUpdate,
     onDelete,
+    onToggleFavorite,
     onAdd,
 }: MyIngredientsProps) {
+    const { limits } = usePlan();
     const [search, setSearch] = useState('');
     // Show only items expiring within a week (or already expired).
     const [expiringOnly, setExpiringOnly] = useState(false);
+    const [favoritesOnly, setFavoritesOnly] = useState(false);
+    // Shown when Add is pressed with the plan's ingredient limit reached.
+    const [showLimitNotice, setShowLimitNotice] = useState(false);
     // Ingredient currently being edited.
     const [selectedIngredient, setSelectedIngredient] =
         useState<UserIngredient | null>(null);
@@ -90,13 +99,32 @@ export default function MyIngredients({
         (ingredient) => ingredient.expiresOn,
     );
     const expiringCount = filterExpiringSoon(ingredients).length;
+    const favoriteCount = ingredients.filter(
+        (ingredient) => ingredient.isFavorite,
+    ).length;
 
-    const matchingIngredients = ingredients.filter((ingredient) =>
-        ingredient.name.toLowerCase().includes(search.trim().toLowerCase()),
+    const ingredientLimit = limits.savedIngredients;
+    const isAtLimit =
+        ingredientLimit !== null && ingredients.length >= ingredientLimit;
+
+    const matchingIngredients = ingredients.filter(
+        (ingredient) =>
+            ingredient.name
+                .toLowerCase()
+                .includes(search.trim().toLowerCase()) &&
+            (!favoritesOnly || ingredient.isFavorite),
     );
     const filteredIngredients = expiringOnly
         ? filterExpiringSoon(matchingIngredients)
         : matchingIngredients;
+
+    function handleAdd() {
+        if (isAtLimit) {
+            setShowLimitNotice(true);
+            return;
+        }
+        onAdd();
+    }
 
     /*
      * Cancel the pending long-press timer.
@@ -219,14 +247,25 @@ export default function MyIngredients({
     return (
         <main className="my-ingredients">
             <header className="list-page-header">
-                <h1>My Ingredients</h1>
+                <h1>Ingredients</h1>
                 <p>
-                    {ingredients.length === 1
-                        ? '1 saved ingredient'
-                        : `${ingredients.length} saved ingredients`}
+                    {ingredientLimit !== null
+                        ? `${ingredients.length} of ${ingredientLimit} saved`
+                        : ingredients.length === 1
+                          ? '1 saved ingredient'
+                          : `${ingredients.length} saved ingredients`}
                     {' · nutrition per 100g'}
                 </p>
             </header>
+
+            {showLimitNotice && isAtLimit && ingredientLimit !== null && (
+                <div className="ingredients-limit-notice">
+                    <UpgradeNotice
+                        feature="Ingredient limit reached"
+                        description={`The Free plan saves up to ${ingredientLimit} ingredients. Remove some, or upgrade for unlimited.`}
+                    />
+                </div>
+            )}
 
             <div className="ingredient-search-field">
                 <span className="ingredient-search-icon" aria-hidden="true">
@@ -246,19 +285,34 @@ export default function MyIngredients({
                 />
             </div>
 
-            {(hasExpiryDates || expiringOnly) && (
+            {(hasExpiryDates || expiringOnly || favoriteCount > 0) && (
                 <div className="ingredient-filters">
-                    <button
-                        type="button"
-                        className="ingredient-filter-chip"
-                        aria-pressed={expiringOnly}
-                        onClick={() => setExpiringOnly((value) => !value)}
-                    >
-                        Expiring soon
-                        <span className="ingredient-filter-count">
-                            {expiringCount}
-                        </span>
-                    </button>
+                    {(favoriteCount > 0 || favoritesOnly) && (
+                        <button
+                            type="button"
+                            className="ingredient-filter-chip"
+                            aria-pressed={favoritesOnly}
+                            onClick={() => setFavoritesOnly((value) => !value)}
+                        >
+                            Favourites
+                            <span className="ingredient-filter-count">
+                                {favoriteCount}
+                            </span>
+                        </button>
+                    )}
+                    {(hasExpiryDates || expiringOnly) && (
+                        <button
+                            type="button"
+                            className="ingredient-filter-chip"
+                            aria-pressed={expiringOnly}
+                            onClick={() => setExpiringOnly((value) => !value)}
+                        >
+                            Expiring soon
+                            <span className="ingredient-filter-count">
+                                {expiringCount}
+                            </span>
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -340,6 +394,30 @@ export default function MyIngredients({
                                             : '– kcal'}
                                     </span>
                                 </button>
+
+                                {onToggleFavorite && (
+                                    <button
+                                        type="button"
+                                        className={`ingredient-favorite${
+                                            ingredient.isFavorite
+                                                ? ' ingredient-favorite-on'
+                                                : ''
+                                        }`}
+                                        aria-pressed={!!ingredient.isFavorite}
+                                        aria-label={`Favourite ${ingredient.name}`}
+                                        onClick={() =>
+                                            onToggleFavorite(ingredient)
+                                        }
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            aria-hidden="true"
+                                            focusable="false"
+                                        >
+                                            <path d="m12 3.5 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" />
+                                        </svg>
+                                    </button>
+                                )}
                             </div>
                         );
                     })}
@@ -374,7 +452,7 @@ export default function MyIngredients({
                 <button
                     type="button"
                     className="floating-add-button"
-                    onClick={onAdd}
+                    onClick={handleAdd}
                     aria-label="Add ingredient"
                 >
                     <span aria-hidden="true">+</span>

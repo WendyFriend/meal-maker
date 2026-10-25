@@ -1,0 +1,157 @@
+/* =========================
+   Sheet (dialog on desktop, bottom sheet on phones)
+   ========================= */
+
+.sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    box-sizing: border-box;
+    background: rgb(27 51 47 / 40%);
+    animation: sheet-fade-in 160ms ease-out;
+}
+
+.sheet {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 580px;
+    max-height: min(780px, 90vh);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    outline: none;
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+    text-align: left;
+    animation: sheet-rise 200ms ease-out;
+}
+
+.sheet-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.sheet-heading h2 {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.25;
+}
+
+.sheet-heading p {
+    margin: 2px 0 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.sheet-close {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-muted);
+    color: var(--text-h);
+    cursor: pointer;
+}
+
+.sheet-close svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.sheet-close:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.sheet-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+@keyframes sheet-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes sheet-rise {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+}
+
+@media (max-width: 640px) {
+    .sheet-backdrop {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .sheet {
+        max-width: none;
+        max-height: 92dvh;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        animation-name: sheet-slide-up;
+    }
+
+    .sheet-header {
+        padding: var(--space-4);
+    }
+
+    /* Grab-handle hint */
+    .sheet-header::before {
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border);
+        content: '';
+        transform: translateX(-50%);
+    }
+
+    .sheet {
+        position: relative;
+    }
+}
+
+@keyframes sheet-slide-up {
+    from {
+        transform: translateY(40px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet-backdrop,
+    .sheet {
+        animation: none;
+    }
+}

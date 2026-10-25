@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { getUserIngredients } from './services/ingredientService';
+import { clearMatchCache } from './services/matchService';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
 
 vi.mock('./auth/AuthContext', () => ({
@@ -18,6 +19,30 @@ vi.mock('./services/recipeService', () => ({
     getRecipes: vi.fn().mockResolvedValue([]),
     saveRecipe: vi.fn(),
     deleteRecipe: vi.fn(),
+    countRecipes: vi.fn().mockResolvedValue(0),
+}));
+// These import lib/supabase, which throws without env.
+vi.mock('./services/profileService', async () => {
+    const { DEFAULT_PROFILE } = await import('../shared/types/profile');
+
+    return {
+        getProfile: vi
+            .fn()
+            .mockResolvedValue({ ...DEFAULT_PROFILE, plan: 'pro' }),
+        startTrial: vi.fn(),
+        switchDevTier: vi.fn(),
+        updateProfile: vi.fn(),
+    };
+});
+vi.mock('./services/usageService', () => ({
+    getGenerationsToday: vi.fn().mockResolvedValue(0),
+    recordGeneration: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('./services/mealPlanService', () => ({
+    addEntry: vi.fn(),
+    toDateKey: (date: Date) => date.toISOString().slice(0, 10),
+    addDays: (date: Date, days: number) =>
+        new Date(date.getFullYear(), date.getMonth(), date.getDate() + days),
 }));
 
 const spinach = {
@@ -38,6 +63,7 @@ const tofu = {
 };
 
 beforeEach(() => {
+    clearMatchCache();
     mockPickerEnvironment();
     vi.mocked(getUserIngredients).mockResolvedValue([spinach, tofu]);
 });
@@ -46,25 +72,30 @@ afterEach(() => {
 });
 
 it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual additions in the generation request', async () => {
-    const fetch = vi.fn().mockResolvedValue({
+    // Paprika isn't a saved ingredient, so it's looked up; USDA has no match.
+    const fetch = vi.fn<
+        (url: string, init: { body: string }) => Promise<unknown>
+    >(async (url) => ({
         status: 200,
         ok: true,
-        json: async () => ({
-            mealName: 'Spinach and tofu bowl',
-            instructions: ['Cook and serve.'],
-            ingredients: [{ ...spinach, weight: 100 }],
-        }),
-    });
+        json: async () =>
+            url === '/api/match-ingredients'
+                ? { matches: [] }
+                : {
+                      mealName: 'Spinach and tofu bowl',
+                      instructions: ['Cook and serve.'],
+                      ingredients: [{ ...spinach, weight: 100 }],
+                  },
+    }));
     vi.stubGlobal('fetch', fetch);
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialPage="meal-maker" />);
     await user.click(screen.getByRole('button', { name: 'Vegetables' }));
     expect(fetch).not.toHaveBeenCalled();
     await user.click(
-        await within(screen.getByRole('dialog', { name: 'Vegetables' })).findByRole(
-            'button',
-            { name: 'Spinach' },
-        ),
+        await within(
+            screen.getByRole('dialog', { name: 'Vegetables' }),
+        ).findByRole('button', { name: 'Spinach' }),
     );
     await user.keyboard('{Escape}');
 
@@ -91,9 +122,14 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     await user.type(search, 'Tofu{Enter}');
     await user.type(search, 'Paprika{Enter}');
     await user.click(screen.getByRole('button', { name: 'Create my meal' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    const [url, request] = fetch.mock.calls[0];
-    expect(url).toBe('/api/generate-meal');
+    await waitFor(() =>
+        expect(fetch.mock.calls.map(([url]) => url)).toContain(
+            '/api/generate-meal',
+        ),
+    );
+    const [, request] = fetch.mock.calls.find(
+        ([url]) => url === '/api/generate-meal',
+    )!;
     expect(JSON.parse(request.body)).toEqual({
         ingredients: [
             { ...spinach, caloriesPer100g: 50 },

@@ -1,0 +1,206 @@
+/* Preparation and food-safety notes: in the meal form and on the result. */
+
+.prep-notes {
+    min-width: 0;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.prep-notes *,
+.prep-notes *::before,
+.prep-notes *::after {
+    box-sizing: border-box;
+}
+
+/* A step of its own in the meal form, divided like the calorie goal */
+.meal-maker-form > .prep-notes {
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border-hairline);
+}
+
+.prep-notes-header {
+    margin-bottom: var(--space-3);
+}
+
+.prep-notes-header h3 {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.3;
+}
+
+.prep-notes-header p {
+    margin: 2px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.prep-notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.prep-note {
+    --prep-color: var(--deep-green);
+    --prep-tint: color-mix(in srgb, var(--soft-sage) 45%, var(--surface));
+    --prep-line: color-mix(in srgb, var(--soft-sage) 90%, var(--border));
+
+    overflow: hidden;
+    border: 1px solid var(--prep-line);
+    border-left: 4px solid var(--prep-color);
+    border-radius: var(--radius-md);
+    background: var(--prep-tint);
+}
+
+.prep-note-required {
+    --prep-color: var(--accent);
+    --prep-tint: color-mix(in srgb, var(--accent-bg) 75%, var(--surface));
+    --prep-line: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.prep-note-recommended {
+    --prep-color: #d9a441;
+    --prep-tint: #fdf8ec;
+    --prep-line: #f1d9a8;
+}
+
+.prep-note summary {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    min-height: 44px;
+    padding: 10px var(--space-3);
+    cursor: pointer;
+    list-style: none;
+}
+
+.prep-note summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Chevron on the right, rotated when open */
+.prep-note summary::after {
+    content: '';
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    margin: 8px 2px 0 auto;
+    border-right: 1.5px solid var(--text-muted);
+    border-bottom: 1.5px solid var(--text-muted);
+    transform: rotate(45deg);
+    transition: transform 150ms ease;
+}
+
+.prep-note[open] summary::after {
+    margin-top: 11px;
+    transform: rotate(-135deg);
+}
+
+.prep-note summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.prep-note-badge {
+    flex-shrink: 0;
+    margin-top: 1px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--deep-green);
+    color: #fff;
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    text-transform: uppercase;
+}
+
+.prep-note-required .prep-note-badge {
+    background: var(--accent);
+}
+
+.prep-note-recommended .prep-note-badge {
+    background: #fbecd0;
+    color: #8a5a12;
+}
+
+.prep-note-tip .prep-note-badge {
+    background: var(--soft-sage);
+    color: var(--deep-green);
+}
+
+.prep-note-heading {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.prep-note-title {
+    color: var(--text-h-strong);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.35;
+}
+
+.prep-note-ingredients {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.prep-note-body {
+    padding: 0 var(--space-3) var(--space-3);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.prep-note-body p {
+    margin: 0;
+}
+
+.prep-note-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: var(--space-2) 0 0;
+    padding-left: 20px;
+    list-style: decimal;
+}
+
+.prep-note-steps li::marker {
+    color: var(--prep-color);
+    font-weight: var(--font-weight-bold);
+}
+
+.prep-note-body .prep-note-compounds {
+    margin-top: var(--space-2);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+    .meal-maker-form > .prep-notes {
+        margin-top: var(--space-4);
+        padding-top: var(--space-4);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .prep-note summary::after {
+        transition: none;
+    }
+}

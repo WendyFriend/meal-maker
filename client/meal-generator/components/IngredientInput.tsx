@@ -4,6 +4,8 @@ import './IngredientInput.css';
 import './MealFormField.css';
 import QuickAddIngredientPicker from './QuickAddIngredientPicker';
 import DietSelector from './DietSelector';
+import IngredientSources from './IngredientSources';
+import type { IngredientSource } from './ingredientMatching';
 import { describeDietConflicts, getDietConflicts } from '../../utils/diet';
 import { normalizeIngredientName } from '../../utils/Ingredient';
 import { useNutritionSearch } from '../../hooks/useNutritionSearch';
@@ -21,6 +23,11 @@ type IngredientInputProps = {
     // Diet chosen before picking ingredients; shown only with onDietaryChange.
     dietary?: DietaryPreference[];
     onDietaryChange?: (dietary: DietaryPreference[]) => void;
+    // Where each ingredient's nutrition comes from, by normalized name. Marks
+    // the chips and lists them under "Nutrition data".
+    nutritionSources?: Record<string, IngredientSource>;
+    // Called with AI_ESTIMATE to let the AI estimate an ingredient instead.
+    onSelectNutritionSource?: (ingredient: string, optionIndex: number) => void;
 };
 
 // "Chicken", "Chicken and Salmon", "Chicken, Salmon and Ham"
@@ -38,6 +45,8 @@ function IngredientInput({
     onIngredientClick,
     dietary = [],
     onDietaryChange,
+    nutritionSources,
+    onSelectNutritionSource,
 }: IngredientInputProps) {
     const [input, setInput] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -516,6 +525,10 @@ function IngredientInput({
                     {ingredients.map((ingredient, index) => {
                         const isDeleting = deletingIngredient === ingredient;
                         const conflicts = getDietConflicts(ingredient, dietary);
+                        const sourceKind =
+                            nutritionSources?.[
+                                normalizeIngredientName(ingredient)
+                            ]?.kind;
 
                         return (
                             <div
@@ -554,6 +567,28 @@ function IngredientInput({
                                     >
                                         {ingredient}
                                     </button>
+                                    {sourceKind === 'usda' && (
+                                        <span
+                                            className="ingredient-chip-source"
+                                            title="Nutrition from USDA"
+                                            aria-hidden="true"
+                                        >
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                focusable="false"
+                                            >
+                                                <path d="M5 12.5l4.5 4.5L19 7.5" />
+                                            </svg>
+                                            USDA
+                                        </span>
+                                    )}
+                                    {sourceKind === 'matching' && (
+                                        <span
+                                            className="ingredient-chip-matching"
+                                            title="Finding USDA nutrition"
+                                            aria-hidden="true"
+                                        />
+                                    )}
                                     <button
                                         type="button"
                                         className="ingredient-chip-delete"
@@ -606,6 +641,14 @@ function IngredientInput({
                         {conflictingIngredients.length === 1 ? 'it' : 'them'}
                     </button>
                 </div>
+            )}
+
+            {nutritionSources && onSelectNutritionSource && (
+                <IngredientSources
+                    ingredients={ingredients}
+                    sources={nutritionSources}
+                    onSelect={onSelectNutritionSource}
+                />
             )}
 
             <QuickAddIngredientPicker

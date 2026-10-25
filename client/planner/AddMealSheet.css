@@ -1,0 +1,719 @@
+/* =========================
+   Add-meal sheet (Recommend / Saved meals)
+   ========================= */
+
+.add-sheet-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.add-sheet-tab {
+    min-height: 46px;
+    padding: 0 var(--space-4);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition:
+        color 150ms ease,
+        border-color 150ms ease;
+}
+
+.add-sheet-tab[aria-selected='true'] {
+    border-bottom-color: var(--accent);
+    color: var(--text-h-strong);
+}
+
+.add-sheet-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.add-sheet-tabpanel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.add-sheet-tabpanel[hidden] {
+    display: none;
+}
+
+.add-sheet-panel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.add-sheet-scroll {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-height: 0;
+    padding: var(--space-4) var(--space-5);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.add-sheet-scroll-list {
+    padding-top: var(--space-2);
+}
+
+/* Budget summary */
+.add-sheet-budget-card {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--accent-bg);
+}
+
+.add-sheet-budget {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+}
+
+.add-sheet-focus {
+    margin: 2px 0 0;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.add-sheet-section h3 {
+    margin: 0 0 var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.add-sheet-hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* Ingredient chips */
+.add-sheet-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+}
+
+.add-sheet-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease,
+        color 150ms ease;
+}
+
+.add-sheet-chip[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+
+@media (hover: hover) {
+    .add-sheet-chip[aria-pressed='false']:hover {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+    }
+}
+
+.add-sheet-chip:focus-visible,
+.add-sheet-chip button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.add-sheet-chip-selected {
+    padding-right: 6px;
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    cursor: default;
+}
+
+.add-sheet-chip-selected button {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.add-sheet-chip-selected button:hover {
+    background: var(--surface);
+    color: var(--danger);
+}
+
+.add-sheet-chip-selected svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+}
+
+/* Ingredient search */
+.planner-picker-control {
+    position: relative;
+}
+
+.planner-picker-icon {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.planner-picker-input,
+.add-sheet-search {
+    width: 100%;
+    height: 44px;
+    padding: 0 var(--space-3) 0 42px;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-tint);
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-md);
+}
+
+.add-sheet-search {
+    padding-left: var(--space-3);
+}
+
+.planner-picker-input::placeholder,
+.add-sheet-search::placeholder {
+    color: var(--text-muted);
+}
+
+.planner-picker-input:focus,
+.add-sheet-search:focus,
+.add-sheet-servings select:focus {
+    border-color: var(--border-focus);
+    outline: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    outline-offset: 0;
+}
+
+.planner-picker-list {
+    max-height: 232px;
+    margin-top: var(--space-2);
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.planner-picker-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    box-sizing: border-box;
+    border: 0;
+    border-bottom: 1px solid var(--border-hairline);
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.planner-picker-option:last-child {
+    border-bottom: 0;
+}
+
+.planner-picker-option small {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.planner-picker-option:hover,
+.planner-picker-option-active {
+    background: var(--accent-bg);
+}
+
+.planner-picker-status {
+    padding: var(--space-3);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* Footer actions */
+.add-sheet-actions {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--border-hairline);
+    background: var(--surface);
+}
+
+.add-sheet-primary,
+.add-sheet-secondary {
+    min-height: 44px;
+    padding: 0 var(--space-5);
+    border-radius: 999px;
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease;
+}
+
+.add-sheet-primary {
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+
+.add-sheet-secondary {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-h);
+}
+
+.add-sheet-primary:disabled,
+.add-sheet-secondary:disabled {
+    border-color: var(--border);
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+    cursor: default;
+}
+
+.add-sheet-primary:focus-visible,
+.add-sheet-secondary:focus-visible,
+.add-sheet-text-button:focus-visible {
+    outline: 2px solid var(--deep-green);
+    outline-offset: 2px;
+}
+
+.add-sheet-text-button {
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.add-sheet-text-button:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.add-sheet-allowance {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.add-sheet-error {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: var(--font-size-sm);
+}
+
+/* Saved meals */
+.add-sheet-filter {
+    display: flex;
+    flex-shrink: 0;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5) var(--space-2);
+}
+
+.add-sheet-filter .add-sheet-search {
+    flex: 1;
+    min-width: 0;
+}
+
+.add-sheet-servings {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.add-sheet-servings select {
+    height: 44px;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-tint);
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-md);
+    text-transform: none;
+}
+
+.add-sheet-meals {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.add-sheet-meal {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.add-sheet-meal:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+@media (hover: hover) {
+    .add-sheet-meal:not(:disabled):hover {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+    }
+}
+
+.add-sheet-meal:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.add-sheet-meal-top,
+.add-sheet-meal-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.add-sheet-meal-top strong {
+    min-width: 0;
+    color: var(--text-h);
+    font-weight: var(--font-weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.add-sheet-meal-bottom {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.add-sheet-fits {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--soft-sage);
+    color: var(--deep-green);
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+}
+
+.add-sheet-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-10) var(--space-6);
+    text-align: center;
+}
+
+.add-sheet-empty-title {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+}
+
+.add-sheet-empty .add-sheet-secondary {
+    margin-top: var(--space-2);
+}
+
+.add-sheet-no-match {
+    padding: var(--space-6) 0;
+    text-align: center;
+}
+
+/* Generated meal preview */
+.meal-preview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.meal-preview-name {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-size: var(--font-size-lg);
+    line-height: 1.25;
+}
+
+.meal-preview-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+
+.meal-preview-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-tint);
+    font-variant-numeric: tabular-nums;
+}
+
+.meal-preview-stat-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.meal-preview-stat strong {
+    color: var(--text-h-strong);
+    font-size: var(--font-size-lg);
+    line-height: 1.2;
+}
+
+.meal-preview-stat strong small {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+}
+
+.meal-preview-stat-budget {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.meal-preview-stat-bar {
+    display: block;
+    height: 4px;
+    margin-top: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--border-hairline);
+}
+
+.meal-preview-stat-bar span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--deep-green);
+}
+
+.meal-preview-stat-under .meal-preview-stat-bar span {
+    background: var(--accent);
+}
+
+.meal-preview-stat-over .meal-preview-stat-bar span {
+    background: var(--danger);
+}
+
+.meal-preview-section h4 {
+    margin: 0 0 var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.meal-preview-ingredients {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.meal-preview-ingredients li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-hairline);
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+}
+
+.meal-preview-ingredients li:last-child {
+    border-bottom: 0;
+}
+
+.meal-preview-ingredients li span:last-child {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.meal-preview-notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.meal-preview-note {
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-tint);
+    font-size: 13px;
+}
+
+.meal-preview-note strong {
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+}
+
+.meal-preview-note p {
+    margin: 2px 0 var(--space-2);
+}
+
+.meal-preview-note ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.meal-preview-note-required {
+    border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+    background: var(--danger-bg);
+}
+
+.meal-preview-note-required strong {
+    color: var(--danger);
+}
+
+.meal-preview-details {
+    border-top: 1px solid var(--border-hairline);
+    padding-top: var(--space-3);
+}
+
+.meal-preview-details summary {
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.meal-preview-details summary span {
+    margin-left: 4px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    font-size: 11px;
+}
+
+.meal-preview-details[open] summary {
+    margin-bottom: var(--space-3);
+}
+
+.meal-preview-method {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+}
+
+.meal-preview-method li + li {
+    margin-top: var(--space-2);
+}
+
+@media (max-width: 640px) {
+    .add-sheet-scroll {
+        padding: var(--space-4);
+    }
+
+    .add-sheet-actions {
+        padding: var(--space-3) var(--space-4)
+            calc(var(--space-3) + env(safe-area-inset-bottom));
+    }
+
+    .add-sheet-filter {
+        padding: var(--space-3) var(--space-4) var(--space-2);
+    }
+
+    .meal-preview-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .add-sheet-actions .add-sheet-primary {
+        flex: 1;
+    }
+}

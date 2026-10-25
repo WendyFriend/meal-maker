@@ -13,16 +13,11 @@ export type MealPlanEntryRow = {
     plan_date: string;
     slot: MealPlanSlot;
     recipe_id: string;
+    servings?: number | null;
     created_at: string;
     updated_at: string;
 };
 
-export const MEAL_PLAN_SLOTS: MealPlanSlot[] = [
-    'breakfast',
-    'lunch',
-    'dinner',
-    'snack',
-];
 
 const devEntries = devTable<MealPlanEntryRow>('meal_plan_entries');
 
@@ -32,6 +27,13 @@ export function toDateKey(date: Date): string {
     const day = String(date.getDate()).padStart(2, '0');
 
     return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/* Inverse of toDateKey: local midnight of a YYYY-MM-DD key. */
+export function fromDateKey(key: string): Date {
+    const [year, month, day] = key.split('-').map(Number);
+
+    return new Date(year, month - 1, day);
 }
 
 export function addDays(date: Date, days: number): Date {
@@ -76,8 +78,14 @@ export async function addEntry(
     planDate: string,
     slot: MealPlanSlot,
     recipeId: string,
+    servings = 1,
 ) {
-    const values = { plan_date: planDate, slot, recipe_id: recipeId };
+    const values = {
+        plan_date: planDate,
+        slot,
+        recipe_id: recipeId,
+        servings,
+    };
 
     if (isDevSessionActive()) {
         return toMealPlanEntry(devEntries.insert(values));
@@ -86,6 +94,27 @@ export async function addEntry(
     const { data, error } = await supabase
         .from('meal_plan_entries')
         .insert(values)
+        .select()
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return toMealPlanEntry(data as MealPlanEntryRow);
+}
+
+export async function updateEntryServings(id: string, servings: number) {
+    const values = { servings, updated_at: new Date().toISOString() };
+
+    if (isDevSessionActive()) {
+        return toMealPlanEntry(devEntries.update(id, values));
+    }
+
+    const { data, error } = await supabase
+        .from('meal_plan_entries')
+        .update(values)
+        .eq('id', id)
         .select()
         .single();
 
@@ -127,5 +156,6 @@ export function toMealPlanEntry(row: MealPlanEntryRow): MealPlanEntry {
         planDate: row.plan_date,
         slot: row.slot,
         recipeId: row.recipe_id,
+        servings: Number(row.servings ?? 1),
     };
 }

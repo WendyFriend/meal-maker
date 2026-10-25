@@ -2,11 +2,26 @@ import { useMemo, useState } from 'react';
 import './NewMealResult.css';
 import type {
     GenerateMealResponse,
+    MealIngredient,
+    MealType,
     MealVariation,
 } from '../../../shared/types/types';
+import { sumMicronutrients } from '../../../shared/nutrition/nutrients';
+import { getPrepConsiderations } from '../../../shared/nutrition/prepGuidance';
 import { IngredientWeightInput } from './IngredientWeightInput';
 import IngredientNutritionSheet from './IngredientNutritionSheet';
-import { deleteRecipe, saveRecipe } from '../../services/recipeService';
+import NutrientList from './NutrientList';
+import PrepNotes from './PrepNotes';
+import AddToPlanSheet, { type AddToPlanResult } from './AddToPlanSheet';
+import { getIngredientMicronutrients, hasMicronutrients } from './nutrientRows';
+import {
+    countRecipes,
+    deleteRecipe,
+    saveRecipe,
+} from '../../services/recipeService';
+import { addEntry } from '../../services/mealPlanService';
+import { usePlan } from '../../plan/PlanContext';
+import UpgradeNotice from '../../plan/UpgradeNotice';
 
 type MealResultProps = {
     meal: GenerateMealResponse;
@@ -18,6 +33,12 @@ type MealResultProps = {
     /* Re-run generation with a tweak ("Try another" etc.). Hidden when
        omitted, e.g. on the recipe detail page. */
     onRegenerate?: (variation: MealVariation) => void;
+    /* The meal type chosen for the meal; saved with it and used to pick the
+       meal period in "Add to plan". */
+    mealType?: MealType;
+    /* Id of the stored recipe when the meal is already saved (the recipe
+       detail page), so "Add to plan" does not save a second copy. */
+    savedRecipeId?: string;
     /* Ingredients whose nutrition the server estimated; each gets an
        "Add nutrition" action. */
     estimatedIngredients?: string[];
@@ -30,11 +51,25 @@ type MealResultProps = {
     };
 };
 
-const REGENERATE_ACTIONS: { variation: MealVariation; label: string }[] = [
+const REGENERATE_ACTIONS: {
+    variation: MealVariation;
+    label: string;
+    // Needs a plan with limits.variations.
+    gated?: boolean;
+}[] = [
     { variation: 'different', label: 'Try another' },
-    { variation: 'higher-protein', label: 'Higher protein' },
-    { variation: 'lower-calorie', label: 'Lower calorie' },
+    { variation: 'higher-protein', label: 'Higher protein', gated: true },
+    { variation: 'lower-calorie', label: 'Lower calorie', gated: true },
 ];
+
+const SOURCE_LABELS: Record<
+    NonNullable<MealIngredient['nutritionSource']>,
+    string
+> = {
+    usda: 'USDA',
+    user: 'Yours',
+    estimated: 'Estimated',
+};
 
 type MacroKey = 'carbohydrate' | 'protein' | 'fat';
 
@@ -50,14 +85,6 @@ const MACROS: MacroConfig[] = [
     { key: 'fat', label: 'Fat', colorClassName: 'macro-fat' },
 ];
 
-type KeyNutrientKey = 'sugarPer100g' | 'saturatedFatPer100g' | 'fiberPer100g';
-
-const KEY_NUTRIENTS: { key: KeyNutrientKey; label: string }[] = [
-    { key: 'sugarPer100g', label: 'Sugar' },
-    { key: 'saturatedFatPer100g', label: 'Saturated fat' },
-    { key: 'fiberPer100g', label: 'Fibre' },
-];
-
 function normalizeName(name: string): string {
     return name.trim().toLowerCase();
 }
@@ -68,6 +95,8 @@ export default function MealResult({
     onChange,
     showBookmark = true,
     onRegenerate,
+    mealType,
+    savedRecipeId: initialSavedRecipeId,
     estimatedIngredients,
     onAddEstimatedNutrition,
     saveChanges,
@@ -109,31 +138,36 @@ export default function MealResult({
         };
     }, [nutrition]);
 
-    // Totals for the optional nutrients. `partial` means some ingredients
-    // have no value, so the total is a lower bound.
-    const keyNutrients = useMemo(
+    // Vitamins, minerals and fats for one serving, and how many of the
+    // ingredients have data behind them.
+    const nutrientAmounts = useMemo(
         () =>
-            KEY_NUTRIENTS.map(({ key, label }) => {
-                let total = 0;
-                let known = 0;
-
-                meal.ingredients.forEach((ingredient) => {
-                    const value = ingredient[key];
-
-                    if (typeof value === 'number') {
-                        total += value * (ingredient.weight / 100);
-                        known += 1;
-                    }
-                });
-
-                return {
-                    key,
-                    label,
-                    total: known > 0 ? total : undefined,
-                    partial: known > 0 && known < meal.ingredients.length,
-                };
-            }),
+            sumMicronutrients(
+                meal.ingredients.map((ingredient) => ({
+                    weight: ingredient.weight,
+                    micronutrientsPer100g:
+                        getIngredientMicronutrients(ingredient),
+                })),
+            ),
         [meal.ingredients],
+    );
+    const nutrientCoverage = useMemo(
+        () => ({
+            known: meal.ingredients.filter(hasMicronutrients).length,
+            total: meal.ingredients.length,
+        }),
+        [meal.ingredients],
+    );
+
+    // Preparation guidance comes with the meal; saved and older meals work
+    // it out from the ingredient names.
+    const considerations = useMemo(
+        () =>
+            meal.considerations ??
+            getPrepConsiderations(
+                meal.ingredients.map((ingredient) => ingredient.name),
+            ),
+        [meal.considerations, meal.ingredients],
     );
 
     const estimatedNames = useMemo(
@@ -162,9 +196,15 @@ export default function MealResult({
     const [detailsInitiallyOpen] = useState(
         () => window.matchMedia?.('(min-width: 901px)').matches ?? false,
     );
-    const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
+    const { limits, openPlans } = usePlan();
+    const [savedRecipeId, setSavedRecipeId] = useState<string | null>(
+        initialSavedRecipeId ?? null,
+    );
     const [isSavingMeal, setIsSavingMeal] = useState(false);
     const [bookmarkError, setBookmarkError] = useState<string | null>(null);
+    // The plan's saved-meal limit stopped the last save.
+    const [isSaveLimitReached, setIsSaveLimitReached] = useState(false);
+    const [isAddToPlanOpen, setIsAddToPlanOpen] = useState(false);
     const [nutritionSheetIngredient, setNutritionSheetIngredient] = useState<
         number | null
     >(null);
@@ -235,6 +275,36 @@ export default function MealResult({
 
     const isBookmarked = savedRecipeId !== null;
 
+    // Stores the meal as a saved recipe unless it already is one. Returns
+    // null (and flags the limit) when the plan's saved-meal limit is reached.
+    async function ensureSaved(): Promise<string | null> {
+        if (savedRecipeId) return savedRecipeId;
+
+        if (
+            limits.savedMeals !== null &&
+            (await countRecipes()) >= limits.savedMeals
+        ) {
+            setIsSaveLimitReached(true);
+            return null;
+        }
+
+        const savedRecipe = await saveRecipe({
+            recipeName: meal.mealName,
+            ingredients: meal.ingredients,
+            instructions: meal.instructions,
+            servings: meal.servings,
+            source: 'generated',
+            mealType,
+        });
+
+        if (!savedRecipe.id) {
+            throw new Error('saveRecipe did not return a recipe id');
+        }
+
+        setSavedRecipeId(savedRecipe.id);
+        return savedRecipe.id;
+    }
+
     // Saving writes the meal to the recipes table; un-saving deletes the row.
     // The icon only flips after the database call succeeds, so it always
     // reflects what is actually stored.
@@ -242,6 +312,7 @@ export default function MealResult({
         if (isSavingMeal) return;
 
         setBookmarkError(null);
+        setIsSaveLimitReached(false);
         setIsSavingMeal(true);
 
         try {
@@ -249,18 +320,7 @@ export default function MealResult({
                 await deleteRecipe(savedRecipeId);
                 setSavedRecipeId(null);
             } else {
-                const savedRecipe = await saveRecipe({
-                    recipeName: meal.mealName,
-                    ingredients: meal.ingredients,
-                    instructions: meal.instructions,
-                    servings: meal.servings,
-                });
-
-                if (!savedRecipe.id) {
-                    throw new Error('saveRecipe did not return a recipe id');
-                }
-
-                setSavedRecipeId(savedRecipe.id);
+                await ensureSaved();
             }
         } catch (error) {
             console.error('Failed to toggle saved meal:', error);
@@ -272,6 +332,33 @@ export default function MealResult({
         } finally {
             setIsSavingMeal(false);
         }
+    }
+
+    // Saves the meal first if needed, then puts it on the chosen day.
+    async function addToPlan(
+        planDate: string,
+        slot: string,
+    ): Promise<AddToPlanResult> {
+        try {
+            const recipeId = await ensureSaved();
+
+            if (!recipeId) return 'limit';
+
+            await addEntry(planDate, slot, recipeId, 1);
+            return 'added';
+        } catch (error) {
+            console.error('Failed to add meal to plan:', error);
+            return 'error';
+        }
+    }
+
+    function regenerate(variation: MealVariation, gated: boolean | undefined) {
+        if (gated && !limits.variations) {
+            openPlans('Meal variations');
+            return;
+        }
+
+        onRegenerate?.(variation);
     }
 
     function resetWeights() {
@@ -368,29 +455,96 @@ export default function MealResult({
                 )}
             </p>
 
-            {onRegenerate && (
-                <div
-                    className="meal-regenerate"
-                    role="group"
-                    aria-label="Generate a different version"
+            <div className="meal-result-toolbar">
+                <button
+                    type="button"
+                    className="meal-add-to-plan-button"
+                    onClick={() => setIsAddToPlanOpen(true)}
                 >
-                    {REGENERATE_ACTIONS.map(({ variation, label }) => (
-                        <button
-                            key={variation}
-                            type="button"
-                            className="meal-regenerate-button"
-                            onClick={() => onRegenerate(variation)}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-            )}
+                    <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <rect x="4" y="5" width="16" height="15" rx="2.5" />
+                        <path d="M4 10h16M8 3v4M16 3v4M12 13v4M10 15h4" />
+                    </svg>
+                    Add to plan
+                </button>
+
+                {onRegenerate && (
+                    <div
+                        className="meal-regenerate"
+                        role="group"
+                        aria-label="Generate a different version"
+                    >
+                        {REGENERATE_ACTIONS.map(
+                            ({ variation, label, gated }) => {
+                                const isLocked = gated && !limits.variations;
+
+                                return (
+                                    <button
+                                        key={variation}
+                                        type="button"
+                                        className={`meal-regenerate-button${
+                                            isLocked
+                                                ? ' meal-regenerate-button-locked'
+                                                : ''
+                                        }`}
+                                        onClick={() =>
+                                            regenerate(variation, gated)
+                                        }
+                                        title={
+                                            isLocked
+                                                ? 'Included with Pro'
+                                                : undefined
+                                        }
+                                    >
+                                        {isLocked && (
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                aria-hidden="true"
+                                                focusable="false"
+                                            >
+                                                <rect
+                                                    x="5"
+                                                    y="11"
+                                                    width="14"
+                                                    height="9"
+                                                    rx="2"
+                                                />
+                                                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                                            </svg>
+                                        )}
+                                        {label}
+                                        {isLocked && (
+                                            <span className="visually-hidden">
+                                                {' '}
+                                                (Pro feature)
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            },
+                        )}
+                    </div>
+                )}
+            </div>
 
             {bookmarkError && (
                 <p className="meal-bookmark-error" role="alert">
                     {bookmarkError}
                 </p>
+            )}
+
+            {isSaveLimitReached && (
+                <div className="meal-save-limit">
+                    <UpgradeNotice
+                        feature="Saved meal limit reached"
+                        description={`Your plan keeps up to ${limits.savedMeals} saved meals. Upgrade for unlimited, or delete one you no longer need.`}
+                        compact
+                    />
+                </div>
             )}
 
             {/* Nutrition at a glance: totals plus the energy split */}
@@ -556,6 +710,24 @@ export default function MealResult({
                                                     protein
                                                 </span>
 
+                                                {ingredient.nutritionSource &&
+                                                    !isEstimated && (
+                                                        <span
+                                                            className={`ingredient-source-tag ingredient-source-${ingredient.nutritionSource}`}
+                                                            title={
+                                                                ingredient.usda
+                                                                    ?.description
+                                                            }
+                                                        >
+                                                            {
+                                                                SOURCE_LABELS[
+                                                                    ingredient
+                                                                        .nutritionSource
+                                                                ]
+                                                            }
+                                                        </span>
+                                                    )}
+
                                                 {isEstimated && (
                                                     <button
                                                         type="button"
@@ -663,6 +835,14 @@ export default function MealResult({
                         </div>
                     </section>
 
+                    <div className="meal-prep">
+                        <PrepNotes
+                            considerations={considerations}
+                            heading="Preparation & safety"
+                            description="Worth knowing before you cook."
+                        />
+                    </div>
+
                     <section className="meal-instructions">
                         <h3>How to make it</h3>
 
@@ -685,7 +865,8 @@ export default function MealResult({
                                     Nutrition details
                                 </span>
                                 <span className="nutrition-details-hint">
-                                    By ingredient, totals and key nutrients
+                                    By ingredient, plus fats, minerals and
+                                    vitamins
                                 </span>
                             </span>
                         </summary>
@@ -779,33 +960,18 @@ export default function MealResult({
                             </p>
 
                             <h4 className="key-nutrients-title">
-                                Key nutrients
+                                Fats, minerals and vitamins
                             </h4>
 
-                            <dl className="key-nutrients">
-                                {keyNutrients.map((nutrient) => (
-                                    <div
-                                        className="key-nutrient"
-                                        key={nutrient.key}
-                                    >
-                                        <dt>{nutrient.label}</dt>
-                                        {nutrient.total !== undefined ? (
-                                            <dd>
-                                                {nutrient.total.toFixed(1)} g
-                                                {nutrient.partial && (
-                                                    <span className="key-nutrient-partial">
-                                                        some missing
-                                                    </span>
-                                                )}
-                                            </dd>
-                                        ) : (
-                                            <dd className="key-nutrient-unavailable">
-                                                Not available
-                                            </dd>
-                                        )}
-                                    </div>
-                                ))}
-                            </dl>
+                            <NutrientList
+                                amounts={nutrientAmounts}
+                                coverage={nutrientCoverage}
+                                basis={
+                                    (meal.servings ?? 1) > 1
+                                        ? 'per serving'
+                                        : 'for this meal'
+                                }
+                            />
                         </div>
                     </details>
                 </aside>
@@ -815,6 +981,15 @@ export default function MealResult({
                 <IngredientNutritionSheet
                     ingredient={meal.ingredients[nutritionSheetIngredient]}
                     onClose={() => setNutritionSheetIngredient(null)}
+                />
+            )}
+
+            {isAddToPlanOpen && (
+                <AddToPlanSheet
+                    mealName={meal.mealName}
+                    mealType={mealType}
+                    onAdd={addToPlan}
+                    onClose={() => setIsAddToPlanOpen(false)}
                 />
             )}
         </section>

@@ -3,14 +3,14 @@ import type {
     NutritionSearchResult,
 } from '../../shared/types/types.ts';
 import { mapUSDAFoodToIngredientNutrition } from './usda/mapper.ts';
-import type { USDASearchResponse } from './usda/types.ts';
+import type { USDAFood, USDASearchResponse } from './usda/types.ts';
 
 const MAX_RESULTS = 8;
 const MIN_QUERY_LENGTH = 2;
 // Fetch extra so deduplication still leaves up to MAX_RESULTS.
 const USDA_PAGE_SIZE = 50;
 
-type SearchFoods = (params: {
+export type SearchFoods = (params: {
     query: string;
     dataType?: string[];
     pageSize?: number;
@@ -19,7 +19,7 @@ type SearchFoods = (params: {
 }) => Promise<USDASearchResponse>;
 
 // Imported lazily: the USDA client throws at load time without an API key.
-const defaultSearchFoods: SearchFoods = async (params) => {
+export const defaultSearchFoods: SearchFoods = async (params) => {
     const { searchFoods } = await import('./usda/client.ts');
     return searchFoods(params);
 };
@@ -102,6 +102,62 @@ export function scoreFood(description: string, query: string): number {
     return score;
 }
 
+/*
+ * Search USDA for the query and return distinct, ranked foods. `rank`
+ * lets callers apply a different scoring than the default text match.
+ */
+export async function searchRankedFoods(
+    query: string,
+    searchFoods: SearchFoods,
+    options: {
+        requireAllWords?: boolean;
+        limit?: number;
+        rank?: (food: USDAFood, query: string) => number;
+    } = {},
+): Promise<NutritionSearchResult[]> {
+    const {
+        requireAllWords = true,
+        limit = MAX_RESULTS,
+        rank = (food, q) => scoreFood(food.description, q),
+    } = options;
+    const data = await searchFoods({
+        query,
+        dataType: ['SR Legacy', 'Foundation'],
+        pageSize: USDA_PAGE_SIZE,
+        sortBy: 'relevance',
+        requireAllWords,
+    });
+
+    const foods = [...(data.foods ?? [])].sort(
+        (a, b) => rank(b, query) - rank(a, query),
+    );
+    const seen = new Set<string>();
+    const results: NutritionSearchResult[] = [];
+
+    for (const food of foods) {
+        const name = cleanFoodName(food.description);
+        const key = name.toLowerCase();
+
+        if (seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+
+        results.push({
+            ...mapUSDAFoodToIngredientNutrition(food),
+            name,
+            source: 'usda',
+            description: food.description,
+        });
+
+        if (results.length >= limit) {
+            break;
+        }
+    }
+
+    return results;
+}
+
 export async function searchNutrition(
     query: string | undefined,
     searchFoods: SearchFoods = defaultSearchFoods,
@@ -113,40 +169,7 @@ export async function searchNutrition(
     }
 
     try {
-        const data = await searchFoods({
-            query: q,
-            dataType: ['SR Legacy', 'Foundation'],
-            pageSize: USDA_PAGE_SIZE,
-            sortBy: 'relevance',
-            requireAllWords: true,
-        });
-
-        const foods = [...(data.foods ?? [])].sort(
-            (a, b) => scoreFood(b.description, q) - scoreFood(a.description, q),
-        );
-        const seen = new Set<string>();
-        const results: NutritionSearchResult[] = [];
-
-        for (const food of foods) {
-            const name = cleanFoodName(food.description);
-            const key = name.toLowerCase();
-
-            if (seen.has(key)) {
-                continue;
-            }
-            seen.add(key);
-
-            results.push({
-                ...mapUSDAFoodToIngredientNutrition(food),
-                name,
-                source: 'usda',
-                description: food.description,
-            });
-
-            if (results.length >= MAX_RESULTS) {
-                break;
-            }
-        }
+        const results = await searchRankedFoods(q, searchFoods);
 
         return { status: 200, body: { results } };
     } catch (error) {

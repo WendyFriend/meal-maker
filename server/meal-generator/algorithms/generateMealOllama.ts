@@ -1,13 +1,26 @@
 import type {
+    DayContext,
     DietaryPreference,
     GenerateMealRequest,
     GenerateMealResponse,
-    IngredientInfo,
     MealType,
 } from '../../../shared/types/types.ts';
+import {
+    formatConsiderationsForPrompt,
+    getPrepConsiderations,
+} from '../../../shared/nutrition/prepGuidance.ts';
 import { OllamaAiClient } from '../../ai/OllamaAiClient.js';
+import { matchIngredient } from '../../nutrition/matchIngredients.ts';
 import { isGenerateMealResponse } from './validateMealResponse.js';
 import { calibrateMeal, getMealTotals } from '../calibrateMeal.js';
+import {
+    enrichIngredients,
+    getEstimatedIngredients,
+    namesForGuidance,
+    reattachNutrition,
+    type EnrichedIngredient,
+    type MatchLookup,
+} from '../authoritativeNutrition.ts';
 
 const DEFAULT_PROTEIN_PERCENTAGE = 15;
 // Carbs and fat share the remaining energy in the default 55:30 ratio.
@@ -38,6 +51,30 @@ const DIETARY_GUIDANCE: Record<DietaryPreference, string> = {
     'dairy-free': 'dairy-free (no milk, cheese, butter, yoghurt or cream)',
     'gluten-free': 'gluten-free (no wheat, barley, rye or regular oats)',
 };
+
+// Pantry staples the model may add beyond the user's ingredients.
+const MAX_ADDED_STAPLES = 3;
+
+/* The day-planner context as prompt lines, so the dish fits the gap the
+   other meals leave. The calorie and protein targets are already this
+   meal's share; the daily figures are background. */
+function describeDayContext(dayContext: DayContext): string {
+    const { dailyTargets: day, plannedSoFar: planned } = dayContext;
+    const stillToCome = Math.max(0, Math.round(day.fiberG - planned.fiberG));
+    const lines = [
+        `- This is the ${dayContext.slotLabel} of a planned day. The target calories and protein above are already this meal's share; the rest is context.`,
+        `- Daily targets: ${Math.round(day.calories)} kcal, ${Math.round(day.proteinG)} g protein, ${Math.round(day.carbsG)} g carbs, ${Math.round(day.fatG)} g fat, ${Math.round(day.fiberG)} g fibre.`,
+        `- Already planned in the day's other meals: ${Math.round(planned.calories)} kcal, ${Math.round(planned.proteinG)} g protein, ${Math.round(planned.carbsG)} g carbs, ${Math.round(planned.fatG)} g fat, ${Math.round(planned.fiberG)} g fibre (${stillToCome} g fibre still to come).`,
+    ];
+
+    if (dayContext.focusNutrients && dayContext.focusNutrients.length > 0) {
+        lines.push(
+            `- The day is short on: ${dayContext.focusNutrients.join(', ')}. Favour preparations and pairings that supply these (e.g. keep skins on, finish with citrus for vitamin C) without leaving the ingredient list or calorie target.`,
+        );
+    }
+
+    return lines.join('\n');
+}
 
 export function buildMealPrompts(input: GenerateMealRequest): {
     systemPrompt: string;
@@ -83,6 +120,16 @@ export function buildMealPrompts(input: GenerateMealRequest): {
         );
     }
 
+    if (requirements.dayContext) {
+        rules.push(
+            `\nDay context:\n${describeDayContext(requirements.dayContext)}`,
+        );
+    }
+
+    const prepGuidance = formatConsiderationsForPrompt(
+        getPrepConsiderations(input.ingredients.map(({ name }) => name)),
+    );
+
     const systemPrompt = `
 You are MealMaker, a meal-planning assistant.
 
@@ -90,8 +137,8 @@ Create one realistic, balanced meal from the provided ingredients.
 
 Priorities, in order:
 1. Never break a dietary requirement (if any are given).
-2. Use all and only the provided ingredients (except any left out for dietary reasons).
-3. Hit the target calories per serving: the total must be within 5% of it.
+2. Use all of the provided ingredients (except any left out for dietary reasons). You may add up to ${MAX_ADDED_STAPLES} pantry staples if the dish needs them (oil, salt, pepper, garlic, herbs or spices, lemon or lime, vinegar, stock); nothing else.
+3. Hit the target calories per serving: the total must be within 5% of it, staples included.
 4. Aim for approximately ${split.carbs}% carbs, ${split.protein}% protein, and ${split.fat}% fat by energy.
 5. Keep ingredient portions realistic and practical.
 
@@ -101,10 +148,22 @@ Rules:
 - Use raw (uncooked) weights, and give nutrition per 100 g for that same raw state (e.g. dry rice, dry oats, raw chicken).
 - If no target calories are given, use sensible portions for one person.
 - Round ingredient weights to the nearest 5 or 10 g.
-- Use provided nutrition data exactly; never change it.
-- For missing nutrition, look it up if possible; otherwise estimate it.
+- Ingredients with a "nutritionSource" ("usda" or "user") carry authoritative per-100 g data, including fibre. Copy it exactly and never change it.
+- For ingredients without a "nutritionSource", and for any staples you add, estimate nutrition per 100 g.
 - Return nutrition per 100 g for every ingredient.
 - Return only valid JSON. Do not use Markdown code fences.
+
+Preparation and nutrient absorption (build these into the instructions):
+- The instructions are the cooking method, so write every safety or preparation step explicitly, with quantities and times (e.g. "Soak the dried kidney beans for 8-12 hours, discard the soaking water, then boil hard for 10 minutes before simmering until soft").${
+        prepGuidance
+            ? `
+- REQUIRED guidance below must appear as its own explicit step(s); follow the recommended guidance too:
+${prepGuidance}`
+            : ''
+    }
+- Choose cooking methods that reduce anti-nutrients: blanch or boil high-oxalate greens (spinach, chard, beet greens) and discard the water rather than serving them raw in large amounts, rinse quinoa before cooking, cook legumes and grains fully.
+- Where it suits the dish, pair foods for absorption: vitamin C (lemon, tomato, peppers) with plant iron, calcium sources with oxalate-rich foods.
+- Keep the instructions concise and practical: about 4-8 steps. Don't state ingredient weights in the steps (portions are adjusted after you answer); times, temperatures and water ratios are fine.
 ${rules.join('\n')}
 
 Response shape:
@@ -117,7 +176,8 @@ Response shape:
       "caloriesPer100g": 0,
       "proteinPer100g": 0,
       "carbohydratePer100g": 0,
-      "fatPer100g": 0
+      "fatPer100g": 0,
+      "fiberPer100g": 0
     }
   ],
   "instructions": ["string"]
@@ -134,10 +194,24 @@ Do not return meal-level nutrition totals.
         dietary: dietary.length > 0 ? dietary : undefined,
         variation,
         previousMealName: requirements.previousMealName,
-        ingredients: input.ingredients,
+        ingredients: input.ingredients.map(toPromptIngredient),
     });
 
     return { systemPrompt, userPrompt };
+}
+
+/* Authoritative per-100 g macros and fibre for the model. Micronutrients
+   stay server-side and are re-attached after generation. */
+function toPromptIngredient(ingredient: EnrichedIngredient) {
+    return {
+        name: ingredient.name,
+        caloriesPer100g: ingredient.caloriesPer100g,
+        proteinPer100g: ingredient.proteinPer100g,
+        carbohydratePer100g: ingredient.carbohydratePer100g,
+        fatPer100g: ingredient.fatPer100g,
+        fiberPer100g: ingredient.fiberPer100g,
+        nutritionSource: ingredient.nutritionSource,
+    };
 }
 
 /*
@@ -170,22 +244,20 @@ export function calibrateToRequirements(
     return calibrateMeal(ingredients, { calories, proteinPercentage });
 }
 
-/* Names of ingredients the caller gave us without calories or protein, so
-   the model had to estimate them. */
-export function getEstimatedIngredients(
-    ingredients: IngredientInfo[],
-): string[] {
-    return ingredients
-        .filter(
-            (ingredient) =>
-                typeof ingredient.caloriesPer100g !== 'number' ||
-                typeof ingredient.proteinPer100g !== 'number',
-        )
-        .map((ingredient) => ingredient.name);
-}
+// A USDA outage shouldn't fail the meal: those ingredients are estimated.
+const lookupMatch: MatchLookup = async (name) => {
+    try {
+        return await matchIngredient(name);
+    } catch (error) {
+        console.error(`USDA match for "${name}" failed:`, error);
+
+        return null;
+    }
+};
 
 export async function generateMealWithOllama(
     input: GenerateMealRequest,
+    lookup: MatchLookup = lookupMatch,
 ): Promise<GenerateMealResponse> {
     const apiKey = process.env.OLLAMA_API_KEY;
     const model = process.env.OLLAMA_MODEL;
@@ -200,7 +272,12 @@ export async function generateMealWithOllama(
 
     const ai = new OllamaAiClient(apiKey, model);
 
-    const { systemPrompt, userPrompt } = buildMealPrompts(input);
+    // Cross-reference every ingredient with USDA before the model sees it.
+    const enriched = await enrichIngredients(input.ingredients, lookup);
+    const { systemPrompt, userPrompt } = buildMealPrompts({
+        ...input,
+        ingredients: enriched,
+    });
 
     const response = await ai.generate(systemPrompt, userPrompt, 'json');
 
@@ -222,21 +299,35 @@ export async function generateMealWithOllama(
         throw new Error('AI returned an invalid meal response');
     }
 
-    const estimatedIngredients = getEstimatedIngredients(input.ingredients);
-    const ingredients = calibrateToRequirements(
+    // The model's own nutrition numbers never override USDA or user data.
+    const authoritative = await reattachNutrition(
         parsed.ingredients,
+        enriched,
+        lookup,
+    );
+    const ingredients = calibrateToRequirements(
+        authoritative,
         input.requirements,
     );
+    const estimatedIngredients = getEstimatedIngredients(ingredients);
+    const considerations = getPrepConsiderations(
+        namesForGuidance(
+            ingredients.map(({ name }) => name),
+            input.ingredients.map(({ name }) => name),
+        ),
+    );
 
-    // Computed server-side; ignore anything the model put in this field.
+    // Computed server-side; ignore anything the model put in these fields.
     const meal: GenerateMealResponse = { ...parsed };
     delete meal.estimatedIngredients;
+    delete meal.considerations;
 
     return {
         ...meal,
         ingredients,
         servings: input.requirements.servings ?? 1,
         ...(estimatedIngredients.length > 0 && { estimatedIngredients }),
+        considerations,
     };
 }
 

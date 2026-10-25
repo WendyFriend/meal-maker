@@ -547,3 +547,47 @@
 .ingredient-suggestion-loading {
     padding: 12px var(--space-4);
 }
+
+/* Where a chip's nutrition came from: a small USDA check, or a spinner
+   while the match is being looked up. */
+
+.ingredient-chip-source {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px 1px 4px;
+    border-radius: 999px;
+    background: var(--soft-sage);
+    color: var(--deep-green);
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+}
+
+.ingredient-chip-source svg {
+    width: 10px;
+    height: 10px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ingredient-chip-matching {
+    flex-shrink: 0;
+    width: 11px;
+    height: 11px;
+    border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: inline-loading-spin 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-chip-matching {
+        animation-duration: 2s;
+    }
+}

@@ -1,0 +1,315 @@
+/* "Add to plan": a bottom sheet on phones, a centered dialog on desktop
+   (same presentation as the ingredient nutrition sheet). */
+
+.add-plan-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.add-plan-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1101;
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    box-sizing: border-box;
+    max-height: 90dvh;
+    padding: var(--space-6) var(--space-5)
+        calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+
+    background: var(--surface);
+    box-shadow: 0 -4px 24px rgb(15 30 48 / 18%);
+
+    text-align: left;
+    outline: none;
+
+    animation: add-plan-sheet-in 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.add-plan-sheet *,
+.add-plan-sheet *::before,
+.add-plan-sheet *::after {
+    box-sizing: border-box;
+}
+
+.add-plan-title {
+    margin: 0;
+
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+}
+
+.add-plan-meal {
+    margin: 2px 0 0;
+
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+}
+
+.add-plan-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.add-plan-label {
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.add-plan-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+/* Days run into a long list; keep them on one scrolling row. */
+.add-plan-days {
+    flex-wrap: nowrap;
+    margin: 0 calc(var(--space-5) * -1);
+    padding: 2px var(--space-5);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.add-plan-days::-webkit-scrollbar {
+    display: none;
+}
+
+.add-plan-chip {
+    flex-shrink: 0;
+    min-height: 40px;
+    padding: 6px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    background: var(--surface);
+    color: var(--text-h);
+
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+
+    cursor: pointer;
+    transition:
+        background-color 140ms ease,
+        border-color 140ms ease,
+        color 140ms ease;
+}
+
+.add-plan-chip[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: var(--font-weight-semibold);
+}
+
+@media (hover: hover) {
+    .add-plan-chip:hover {
+        border-color: var(--accent);
+    }
+}
+
+.add-plan-chip:focus-visible,
+.add-plan-later input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.add-plan-later {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.add-plan-later input {
+    min-height: 40px;
+    padding: 6px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+
+    background: var(--surface);
+    color: var(--text-h);
+
+    font: inherit;
+    font-size: var(--font-size-sm);
+}
+
+.add-plan-error {
+    margin: 0;
+
+    color: var(--error);
+    font-size: var(--font-size-sm);
+}
+
+.add-plan-actions {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--space-3);
+}
+
+.add-plan-primary,
+.add-plan-secondary {
+    min-height: 46px;
+    padding: 0 var(--space-5);
+
+    border: none;
+    border-radius: var(--radius-md);
+
+    font: inherit;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+
+    cursor: pointer;
+}
+
+.add-plan-primary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.add-plan-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.add-plan-secondary {
+    background: var(--surface-muted);
+    color: var(--text-h);
+}
+
+.add-plan-primary:focus-visible,
+.add-plan-secondary:focus-visible {
+    outline: 2px solid var(--deep-green);
+    outline-offset: 2px;
+}
+
+/* Confirmation */
+.add-plan-done {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) 0 0;
+
+    text-align: center;
+}
+
+.add-plan-done-icon {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+
+    border-radius: 50%;
+
+    background: var(--soft-sage);
+    color: var(--deep-green);
+}
+
+.add-plan-done-icon svg {
+    width: 26px;
+    height: 26px;
+
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.add-plan-done h4 {
+    margin: var(--space-2) 0 0;
+
+    color: var(--text-h-strong);
+    font-size: var(--font-size-lg);
+}
+
+.add-plan-done p {
+    margin: 0 0 var(--space-4);
+
+    color: var(--text);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+}
+
+.add-plan-done .add-plan-primary {
+    width: 100%;
+}
+
+@media (min-width: 601px) {
+    .add-plan-sheet {
+        inset: 0;
+
+        width: 420px;
+        height: fit-content;
+        margin: auto;
+        padding: var(--space-6);
+
+        border-radius: var(--radius-lg);
+
+        box-shadow: var(--shadow-md);
+
+        animation: add-plan-popover-in 150ms ease-out;
+    }
+
+    .add-plan-days {
+        margin: 0 calc(var(--space-6) * -1);
+        padding: 2px var(--space-6);
+    }
+}
+
+@keyframes add-plan-sheet-in {
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+@keyframes add-plan-popover-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .add-plan-sheet {
+        animation: none;
+    }
+
+    .add-plan-chip {
+        transition: none;
+    }
+}

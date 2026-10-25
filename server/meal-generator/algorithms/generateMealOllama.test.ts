@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GenerateMealRequest } from '../../../shared/types/types.ts';
-import {
-    buildMealPrompts,
-    getEstimatedIngredients,
-    getMacroSplit,
-} from './generateMealOllama.ts';
+import { buildMealPrompts, getMacroSplit } from './generateMealOllama.ts';
 
 const chicken = {
     name: 'Chicken',
@@ -78,22 +74,5 @@ describe('buildMealPrompts', () => {
         const { systemPrompt } = build({});
         expect(systemPrompt).not.toContain('HARD rule');
         expect(systemPrompt).not.toContain('20% lower');
-    });
-});
-
-describe('getEstimatedIngredients', () => {
-    it('lists ingredients missing calories or protein', () => {
-        expect(
-            getEstimatedIngredients([
-                chicken,
-                { name: 'Rice', caloriesPer100g: 130 },
-                { name: 'Oil', proteinPer100g: 0 },
-                { name: 'Salt' },
-            ]),
-        ).toEqual(['Rice', 'Oil', 'Salt']);
-    });
-
-    it('is empty when all have nutrition', () => {
-        expect(getEstimatedIngredients([chicken])).toEqual([]);
     });
 });

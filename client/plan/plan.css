@@ -1,0 +1,147 @@
+/* Header plan pill */
+.plan-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 6px 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.plan-badge-cta {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+}
+
+.plan-badge-trial .plan-badge-cta {
+    background: var(--soft-sage);
+    color: var(--deep-green);
+}
+
+.plan-badge-pro {
+    padding: 0 12px;
+    border-color: var(--deep-green);
+    background: var(--deep-green);
+    color: #fff;
+}
+
+@media (hover: hover) {
+    .plan-badge:not(.plan-badge-pro):hover {
+        border-color: var(--accent);
+    }
+}
+
+.plan-badge:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+    .plan-badge-cta {
+        display: none;
+    }
+
+    .plan-badge {
+        padding: 0 10px;
+    }
+}
+
+/* Inline "locked feature" card */
+.upgrade-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--border));
+    border-radius: var(--radius-md, 14px);
+    background: color-mix(in srgb, var(--accent-bg) 60%, var(--surface));
+}
+
+.upgrade-notice-icon {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--accent);
+}
+
+.upgrade-notice-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.upgrade-notice-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 140%;
+}
+
+.upgrade-notice-text strong {
+    color: var(--text-h);
+    font-size: 14px;
+}
+
+.upgrade-notice-button {
+    flex-shrink: 0;
+    min-height: 34px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.upgrade-notice-button:focus-visible {
+    outline: 2px solid var(--deep-green);
+    outline-offset: 2px;
+}
+
+.upgrade-notice-compact {
+    padding: var(--space-2) var(--space-3);
+}
+
+.upgrade-notice-compact .upgrade-notice-icon {
+    width: 26px;
+    height: 26px;
+}
+
+@media (max-width: 480px) {
+    .upgrade-notice {
+        flex-wrap: wrap;
+    }
+
+    .upgrade-notice-button {
+        width: 100%;
+    }
+}

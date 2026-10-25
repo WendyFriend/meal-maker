@@ -178,6 +178,86 @@
     background: var(--accent-bg);
 }
 
+/* Add to plan sits beside the regenerate pills */
+.meal-result-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    margin: 0 0 var(--space-5);
+}
+
+.meal-result-toolbar .meal-regenerate {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+}
+
+.meal-add-to-plan-button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 0 16px 0 14px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgb(244 121 108 / 25%);
+    transition: background-color 140ms ease;
+}
+
+.meal-add-to-plan-button svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.meal-add-to-plan-button:hover {
+    background: #ed6d60;
+}
+
+.meal-add-to-plan-button:focus-visible {
+    outline: 2px solid var(--deep-green);
+    outline-offset: 2px;
+}
+
+/* Variations that need a higher plan carry a small lock */
+.meal-regenerate-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.meal-regenerate-button svg {
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.meal-regenerate-button-locked {
+    border-style: dashed;
+    color: var(--text-muted);
+}
+
+/* The plan's saved-meal limit stopped a save */
+.meal-save-limit {
+    margin: 0 0 var(--space-4);
+}
+
 /* =========================
    Summary: totals and energy split
    ========================= */
@@ -460,6 +540,24 @@ button.ingredient-name-button:focus-visible {
     line-height: var(--line-height-normal);
 }
 
+/* Where an ingredient's nutrition comes from, quietly after the numbers */
+.ingredient-source-tag {
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--disabled-bg);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.04em;
+    line-height: 1.7;
+    text-transform: uppercase;
+}
+
+.ingredient-source-usda {
+    background: var(--soft-sage);
+    color: var(--deep-green);
+}
+
 .ingredient-add-nutrition {
     padding: 2px 6px;
     margin: -2px 0;
@@ -651,6 +749,18 @@ button.ingredient-name-button:focus-visible {
 }
 
 /* =========================
+   Preparation & safety
+   ========================= */
+
+.meal-prep {
+    margin-bottom: var(--space-8);
+}
+
+.meal-prep:empty {
+    display: none;
+}
+
+/* =========================
    How to make it
    ========================= */
 
@@ -836,45 +946,6 @@ button.ingredient-name-button:focus-visible {
     font-weight: var(--font-weight-semibold);
 }
 
-.key-nutrients {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-2);
-    margin: 0;
-}
-
-.key-nutrient {
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    background: var(--surface-muted);
-}
-
-.key-nutrient dt {
-    color: var(--text-muted);
-    font-size: var(--font-size-xs);
-}
-
-.key-nutrient dd {
-    margin: 2px 0 0;
-    color: var(--text-h);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-}
-
-.key-nutrient dd.key-nutrient-unavailable {
-    color: var(--text-muted);
-    font-size: var(--font-size-xs);
-    font-style: italic;
-    font-weight: var(--font-weight-normal);
-}
-
-.key-nutrient-partial {
-    display: block;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: var(--font-weight-normal);
-}
-
 /* =========================
    Responsive
    ========================= */
@@ -895,8 +966,20 @@ button.ingredient-name-button:focus-visible {
         font-size: var(--font-size-lg);
     }
 
-    .meal-regenerate {
+    .meal-result-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-3);
         margin-bottom: var(--space-4);
+    }
+
+    .meal-add-to-plan-button {
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    .meal-prep {
+        margin-bottom: var(--space-6);
     }
 
     .meal-summary {
@@ -945,10 +1028,6 @@ button.ingredient-name-button:focus-visible {
 
     .meal-instructions {
         margin-bottom: var(--space-6);
-    }
-
-    .key-nutrients {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 

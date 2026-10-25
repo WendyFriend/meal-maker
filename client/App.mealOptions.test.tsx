@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { getUserIngredients } from './services/ingredientService';
+import { clearMatchCache } from './services/matchService';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
 
 vi.mock('./auth/AuthContext', () => ({
@@ -19,6 +20,30 @@ vi.mock('./services/recipeService', () => ({
     saveRecipe: vi.fn(),
     updateRecipe: vi.fn(),
     deleteRecipe: vi.fn(),
+    countRecipes: vi.fn().mockResolvedValue(0),
+}));
+// These import lib/supabase, which throws without env.
+vi.mock('./services/profileService', async () => {
+    const { DEFAULT_PROFILE } = await import('../shared/types/profile');
+
+    return {
+        getProfile: vi
+            .fn()
+            .mockResolvedValue({ ...DEFAULT_PROFILE, plan: 'pro' }),
+        startTrial: vi.fn(),
+        switchDevTier: vi.fn(),
+        updateProfile: vi.fn(),
+    };
+});
+vi.mock('./services/usageService', () => ({
+    getGenerationsToday: vi.fn().mockResolvedValue(0),
+    recordGeneration: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('./services/mealPlanService', () => ({
+    addEntry: vi.fn(),
+    toDateKey: (date: Date) => date.toISOString().slice(0, 10),
+    addDays: (date: Date, days: number) =>
+        new Date(date.getFullYear(), date.getMonth(), date.getDate() + days),
 }));
 
 const tofuMeal = {
@@ -30,25 +55,36 @@ const tofuMeal = {
     weight: 150,
 };
 
+// Routes by URL: USDA matching finds nothing, so ingredients go to the
+// generator as typed. `fetch.generateCalls` are the generate-meal requests.
 function mockFetch(estimatedIngredients?: string[]) {
-    const fetch = vi.fn().mockResolvedValue({
+    const fetch = vi.fn(async (url: string) => ({
         status: 200,
         ok: true,
-        json: async () => ({
-            mealName: 'Tofu bowl',
-            instructions: ['Cook and serve.'],
-            ingredients: [tofuMeal],
-            servings: 2,
-            estimatedIngredients,
-        }),
-    });
+        json: async () =>
+            url === '/api/match-ingredients'
+                ? { matches: [] }
+                : {
+                      mealName: 'Tofu bowl',
+                      instructions: ['Cook and serve.'],
+                      ingredients: [tofuMeal],
+                      servings: 2,
+                      estimatedIngredients,
+                  },
+    }));
     vi.stubGlobal('fetch', fetch);
-    return fetch;
+    return Object.assign(fetch, {
+        generateCalls: () =>
+            fetch.mock.calls.filter(
+                ([url]) => url === '/api/generate-meal',
+            ) as unknown as [string, { body: string }][],
+    });
 }
 
 beforeEach(() => {
     // The diet choice is remembered in localStorage.
     localStorage.clear();
+    clearMatchCache();
     mockPickerEnvironment();
     vi.mocked(getUserIngredients).mockResolvedValue([]);
 });
@@ -59,7 +95,7 @@ afterEach(() => {
 it('sends the chosen options and offers variations of the result', async () => {
     const fetch = mockFetch();
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialPage="meal-maker" />);
 
     await user.type(screen.getByRole('combobox'), 'Tofu{Enter}');
     await user.click(screen.getByRole('button', { name: /More options/ }));
@@ -69,8 +105,8 @@ it('sends the chosen options and offers variations of the result', async () => {
     await user.click(screen.getByRole('button', { name: 'Gluten-free' }));
     await user.click(screen.getByRole('button', { name: 'Create my meal' }));
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    expect(JSON.parse(fetch.mock.calls[0][1].body).requirements).toEqual({
+    await waitFor(() => expect(fetch.generateCalls()).toHaveLength(1));
+    expect(JSON.parse(fetch.generateCalls()[0][1].body).requirements).toEqual({
         servings: 2,
         mealType: 'dinner',
         dietary: ['vegan', 'gluten-free'],
@@ -81,8 +117,8 @@ it('sends the chosen options and offers variations of the result', async () => {
 
     await user.click(screen.getByRole('button', { name: 'Higher protein' }));
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    const second = JSON.parse(fetch.mock.calls[1][1].body);
+    await waitFor(() => expect(fetch.generateCalls()).toHaveLength(2));
+    const second = JSON.parse(fetch.generateCalls()[1][1].body);
     expect(second.ingredients).toEqual([{ name: 'Tofu' }]);
     expect(second.requirements).toEqual({
         servings: 2,
@@ -96,7 +132,7 @@ it('sends the chosen options and offers variations of the result', async () => {
 it('lists estimated ingredients with an Add nutrition action', async () => {
     mockFetch(['Tofu']);
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialPage="meal-maker" />);
 
     await user.type(screen.getByRole('combobox'), 'Tofu{Enter}');
     await user.click(screen.getByRole('button', { name: 'Create my meal' }));
@@ -115,7 +151,7 @@ it('lists estimated ingredients with an Add nutrition action', async () => {
 it('flags ingredients that clash with the diet and leaves them out', async () => {
     const fetch = mockFetch();
     const user = userEvent.setup();
-    render(<App />);
+    render(<App initialPage="meal-maker" />);
 
     await user.click(screen.getByRole('button', { name: 'Vegan' }));
     await user.type(screen.getByRole('combobox'), 'Chicken breast{Enter}');
@@ -132,8 +168,8 @@ it('flags ingredients that clash with the diet and leaves them out', async () =>
     expect(localStorage.getItem('mealmaker-diet')).toBe('["vegan"]');
 
     await user.click(screen.getByRole('button', { name: 'Create my meal' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    expect(JSON.parse(fetch.mock.calls[0][1].body).ingredients).toEqual([
+    await waitFor(() => expect(fetch.generateCalls()).toHaveLength(1));
+    expect(JSON.parse(fetch.generateCalls()[0][1].body).ingredients).toEqual([
         { name: 'Tofu' },
     ]);
 

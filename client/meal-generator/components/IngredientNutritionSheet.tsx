@@ -2,17 +2,37 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import './IngredientNutritionSheet.css';
 import type { IngredientNutrition } from '../../../shared/types/types';
+import { sumMicronutrients } from '../../../shared/nutrition/nutrients';
+import NutrientList from './NutrientList';
+import { getIngredientMicronutrients } from './nutrientRows';
 
 type IngredientNutritionSheetProps = {
-    ingredient: IngredientNutrition;
+    // With a weight, vitamins and minerals are shown for that amount.
+    ingredient: IngredientNutrition & { weight?: number };
     onClose: () => void;
 };
+
+function describeSource({ nutritionSource, usda }: IngredientNutrition) {
+    if (usda) return `USDA: ${usda.description}`;
+    if (nutritionSource === 'user') return 'Your saved nutrition';
+    if (nutritionSource === 'estimated') return 'Estimated by AI';
+
+    return undefined;
+}
 
 function IngredientNutritionSheet({
     ingredient,
     onClose,
 }: IngredientNutritionSheetProps) {
     const panelRef = useRef<HTMLDivElement>(null);
+    const source = describeSource(ingredient);
+    const weight = ingredient.weight ?? 100;
+    const amounts = sumMicronutrients([
+        {
+            weight,
+            micronutrientsPer100g: getIngredientMicronutrients(ingredient),
+        },
+    ]);
 
     useEffect(() => {
         function handleKeyDown(event: KeyboardEvent) {
@@ -48,6 +68,10 @@ function IngredientNutritionSheet({
             >
                 <h4 className="ingredient-nutrition-name">{ingredient.name}</h4>
 
+                {source && (
+                    <p className="ingredient-nutrition-source">{source}</p>
+                )}
+
                 <p className="ingredient-nutrition-caption">
                     Nutrition per 100g
                 </p>
@@ -79,6 +103,14 @@ function IngredientNutritionSheet({
                         <strong>{ingredient.fatPer100g.toFixed(1)} g</strong>
                     </div>
                 </div>
+
+                <h5 className="ingredient-nutrition-subtitle">
+                    {ingredient.weight === undefined
+                        ? 'Fats, minerals and vitamins per 100 g'
+                        : `In your ${Math.round(weight)} g`}
+                </h5>
+
+                <NutrientList amounts={amounts} />
             </div>
         </>,
         document.body,

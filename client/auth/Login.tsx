@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { isDevAuthAvailable } from './devAuth';
+import type { PlanTier } from '../../shared/plans';
 import './Login.css';
+
+const DEV_TIERS: { tier: PlanTier; label: string }[] = [
+    { tier: 'free', label: 'Free' },
+    { tier: 'trial', label: 'Trial' },
+    { tier: 'pro', label: 'Pro' },
+];
 
 export default function Login() {
     const { signIn, signUp, signInWithGoogle, signInAsDev } = useAuth();
@@ -201,13 +208,23 @@ export default function Login() {
                 </button>
 
                 {isDevAuthAvailable && (
-                    <button
-                        type="button"
-                        className="dev-login-button"
-                        onClick={signInAsDev}
-                    >
-                        Dev login (skip Supabase)
-                    </button>
+                    <div className="dev-login" aria-label="Dev login">
+                        <span className="dev-login-label">
+                            Dev login · skips Supabase
+                        </span>
+                        <div className="dev-login-options">
+                            {DEV_TIERS.map(({ tier, label }) => (
+                                <button
+                                    key={tier}
+                                    type="button"
+                                    className="dev-login-button"
+                                    onClick={() => signInAsDev(tier)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 )}
             </section>
         </main>

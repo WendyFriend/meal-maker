@@ -6,6 +6,10 @@ import type {
     PantryDetails,
     UserIngredient,
 } from '../../shared/types/types';
+import type { Micronutrients } from '../../shared/nutrition/nutrients';
+
+type IngredientValuesInput = IngredientInfo &
+    PantryDetails & { isFavorite?: boolean };
 
 export type UserIngredientRow = {
     id: string;
@@ -21,15 +25,17 @@ export type UserIngredientRow = {
     quantity?: number | null;
     unit?: string | null;
     expires_on?: string | null;
+    is_favorite?: boolean | null;
+    usda_fdc_id?: number | null;
+    usda_description?: string | null;
+    micronutrients?: Micronutrients | null;
     created_at: string;
     updated_at: string;
 };
 
 const devIngredients = devTable<UserIngredientRow>('user_ingredients');
 
-export async function saveUserIngredient(
-    ingredient: IngredientInfo & PantryDetails,
-) {
+export async function saveUserIngredient(ingredient: IngredientValuesInput) {
     const values = toUserIngredientValues(ingredient);
 
     if (isDevSessionActive()) {
@@ -96,6 +102,31 @@ export async function updateUserIngredient(
     return toUserIngredient(data as UserIngredientRow);
 }
 
+/* Favourites are offered first when building a meal in the day planner. */
+export async function setIngredientFavorite(id: string, isFavorite: boolean) {
+    const values = {
+        is_favorite: isFavorite,
+        updated_at: new Date().toISOString(),
+    };
+
+    if (isDevSessionActive()) {
+        return toUserIngredient(devIngredients.update(id, values));
+    }
+
+    const { data, error } = await supabase
+        .from('user_ingredients')
+        .update(values)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return toUserIngredient(data as UserIngredientRow);
+}
+
 export async function deleteUserIngredient(ingredient: UserIngredient) {
     if (isDevSessionActive()) {
         return toUserIngredient(devIngredients.remove(ingredient.ingredientId));
@@ -129,12 +160,19 @@ export function toUserIngredient(row: UserIngredientRow): UserIngredient {
         quantity: row.quantity ?? undefined,
         unit: row.unit ?? undefined,
         expiresOn: row.expires_on ?? undefined,
+        isFavorite: row.is_favorite ?? false,
+        micronutrientsPer100g: row.micronutrients ?? undefined,
+        usda:
+            row.usda_fdc_id != null
+                ? {
+                      fdcId: row.usda_fdc_id,
+                      description: row.usda_description ?? row.name,
+                  }
+                : undefined,
     };
 }
 
-export function toUserIngredientValues(
-    ingredient: IngredientInfo & PantryDetails,
-) {
+export function toUserIngredientValues(ingredient: IngredientValuesInput) {
     return {
         name: ingredient.name,
         calories_per_100g: ingredient.caloriesPer100g,
@@ -148,5 +186,10 @@ export function toUserIngredientValues(
         quantity: ingredient.quantity ?? null,
         unit: ingredient.unit || null,
         expires_on: ingredient.expiresOn || null,
+        // Left undefined (unchanged / column default) unless given.
+        is_favorite: ingredient.isFavorite,
+        usda_fdc_id: ingredient.usda?.fdcId,
+        usda_description: ingredient.usda?.description,
+        micronutrients: ingredient.micronutrientsPer100g,
     };
 }

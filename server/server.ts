@@ -1,6 +1,7 @@
 import { createServer, ServerResponse } from 'node:http';
 import type { GenerateMealRequest } from '../shared/types/types.ts';
 import { handleGenerateMealOllama } from './meal-generator/algorithms/generateMealOllama.ts';
+import { matchIngredientsRoute } from './nutrition/matchIngredients.ts';
 import { searchNutrition } from './nutrition/searchNutrition.ts';
 
 const server = createServer(async (req, res) => {
@@ -24,6 +25,22 @@ const server = createServer(async (req, res) => {
     }
 
     const url = new URL(req.url ?? '/', 'http://localhost');
+
+    if (req.method === 'POST' && url.pathname === '/api/match-ingredients') {
+        let body: unknown;
+
+        try {
+            body = JSON.parse(await readRequestBody(req));
+        } catch {
+            body = undefined;
+        }
+
+        const result = await matchIngredientsRoute(body);
+
+        sendJson(res, result.status, result.body);
+
+        return;
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/nutrition') {
         const result = await searchNutrition(url.searchParams.get('q') ?? '');

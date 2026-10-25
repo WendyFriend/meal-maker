@@ -79,7 +79,9 @@
 
 .ingredient-row-wrapper {
     display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 1fr;
+    background: var(--surface);
     overflow: hidden;
     opacity: 1;
     transition:
@@ -309,4 +311,52 @@
     border-radius: 999px;
     background: var(--danger-bg);
     color: var(--danger);
+}
+
+/* Favourite star beside each row */
+.ingredient-favorite {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    border: 0;
+    background: var(--surface);
+    color: var(--border);
+    cursor: pointer;
+    transition: color 150ms ease;
+}
+
+.ingredient-favorite svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+}
+
+.ingredient-favorite-on {
+    color: #e9a23b;
+}
+
+.ingredient-favorite-on svg {
+    fill: currentColor;
+}
+
+@media (hover: hover) {
+    .ingredient-favorite:not(.ingredient-favorite-on):hover {
+        color: #e9a23b;
+    }
+}
+
+.ingredient-favorite:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -4px;
+}
+
+.ingredient-row-wrapper-selected .ingredient-favorite {
+    background: var(--accent-bg);
+}
+
+.ingredients-limit-notice {
+    margin-bottom: var(--space-4);
 }
