@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
+import { isDevAuthAvailable } from './devAuth';
 import './Login.css';
 
 export default function Login() {
-    const { signIn, signUp, signInWithGoogle } = useAuth();
+    const { signIn, signUp, signInWithGoogle, signInAsDev } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -77,9 +78,9 @@ export default function Login() {
                 <h2>{isSignUp ? 'Create an account' : 'Welcome back'}</h2>
 
                 <p className="login-subtitle">
-                    {/* {isSignUp
+                    {isSignUp
                         ? 'Create an account to save your ingredients and meals.'
-                        : 'Sign in to access your saved ingredients and meals.'} */}
+                        : 'Sign in to access your saved ingredients and meals.'}
                 </p>
 
                 <button
@@ -88,7 +89,29 @@ export default function Login() {
                     onClick={handleGoogleLogin}
                     disabled={isLoading}
                 >
-                    <span className="google-icon">G</span>
+                    <svg
+                        className="google-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <path
+                            fill="#4285F4"
+                            d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5c-.3 1.5-1.1 2.7-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.7z"
+                        />
+                        <path
+                            fill="#34A853"
+                            d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1C3.4 21.4 7.4 24 12 24z"
+                        />
+                        <path
+                            fill="#FBBC05"
+                            d="M5.4 14.4c-.2-.7-.4-1.5-.4-2.4s.1-1.6.4-2.4V6.5h-4C.5 8.2 0 10 0 12s.5 3.8 1.4 5.5l4-3.1z"
+                        />
+                        <path
+                            fill="#EA4335"
+                            d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.6 1.4 6.5l4 3.1c.9-2.8 3.5-4.8 6.6-4.8z"
+                        />
+                    </svg>
                     Continue with Google
                 </button>
 
@@ -97,28 +120,40 @@ export default function Login() {
                 </div>
 
                 <form className="login-form" onSubmit={handleSubmit}>
-                    <label htmlFor="email">Email</label>
-                    <input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        required
-                        autoComplete="email"
-                    />
+                    <div className="login-field">
+                        <label htmlFor="email">Email</label>
+                        <input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            placeholder="you@example.com"
+                            required
+                            autoComplete="email"
+                        />
+                    </div>
 
-                    <label htmlFor="password">Password</label>
-                    <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        required
-                        minLength={6}
-                        autoComplete={
-                            isSignUp ? 'new-password' : 'current-password'
-                        }
-                    />
+                    <div className="login-field">
+                        <label htmlFor="password">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(event) =>
+                                setPassword(event.target.value)
+                            }
+                            placeholder={
+                                isSignUp
+                                    ? 'At least 6 characters'
+                                    : 'Your password'
+                            }
+                            required
+                            minLength={6}
+                            autoComplete={
+                                isSignUp ? 'new-password' : 'current-password'
+                            }
+                        />
+                    </div>
 
                     {error && (
                         <div className="login-error" role="alert">
@@ -154,10 +189,26 @@ export default function Login() {
                         setMessage(undefined);
                     }}
                 >
-                    {isSignUp
-                        ? 'Already have an account? Sign in'
-                        : "Don't have an account? Create one"}
+                    {isSignUp ? (
+                        <>
+                            Already have an account? <strong>Sign in</strong>
+                        </>
+                    ) : (
+                        <>
+                            New here? <strong>Create an account</strong>
+                        </>
+                    )}
                 </button>
+
+                {isDevAuthAvailable && (
+                    <button
+                        type="button"
+                        className="dev-login-button"
+                        onClick={signInAsDev}
+                    >
+                        Dev login (skip Supabase)
+                    </button>
+                )}
             </section>
         </main>
     );

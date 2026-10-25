@@ -2,11 +2,16 @@ import { useState } from 'react';
 import type { Recipe } from '../shared/types/recipe';
 import type { GenerateMealResponse } from '../shared/types/types';
 import MealResult from './meal-generator/components/NewMealResult';
+import { updateRecipe } from './services/recipeService';
 import './RecipeDetail.css';
 
 type RecipeDetailProps = {
     recipe: Recipe;
+    /* Called with the stored recipe after "Save changes" succeeds. */
+    onRecipeUpdated?: (recipe: Recipe) => void;
 };
+
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 /*
  * Maps a saved recipe to the meal shape rendered by MealResult.
@@ -18,39 +23,93 @@ function toMeal(recipe: Recipe): GenerateMealResponse {
             ...ingredient,
         })),
         instructions: [...recipe.instructions],
+        servings: recipe.servings,
     };
 }
 
+function haveSameWeights(
+    a: GenerateMealResponse,
+    b: GenerateMealResponse,
+): boolean {
+    return (
+        a.ingredients.length === b.ingredients.length &&
+        a.ingredients.every(
+            (ingredient, index) =>
+                ingredient.weight === b.ingredients[index].weight,
+        )
+    );
+}
+
 /*
- * Read-only detail page for a saved recipe.
+ * Detail page for a saved recipe.
  *
  * Renders the same sections as the meal result on the meal maker page:
  * Ingredients, Nutrition (macro donut + tables), Instructions, Key
  * nutrients, and Ingredient Nutrition Information.
  *
- * The bookmark button is hidden — the recipe is already saved. The
- * ingredient weight controls remain interactive: tweaks are kept in local
- * state only, so the saved recipe in the database is left untouched.
+ * The bookmark button is hidden — the recipe is already saved. Ingredient
+ * weight tweaks stay local until the user presses "Save changes", which
+ * writes them to the saved recipe.
  */
-export default function RecipeDetail({ recipe }: RecipeDetailProps) {
+export default function RecipeDetail({
+    recipe,
+    onRecipeUpdated,
+}: RecipeDetailProps) {
     /*
-     * The saved meal is captured once on mount. MealResult's Reset button
-     * restores weights from `originalMeal`, so it must stay frozen while
-     * `meal` below is edited — passing `meal` itself would make Reset
-     * restore the already-tweaked values.
+     * The saved meal. MealResult's Reset button restores weights from
+     * `originalMeal`, so it must stay frozen while `meal` below is edited —
+     * passing `meal` itself would make Reset restore the already-tweaked
+     * values. It only changes when the edits are saved.
      */
-    const [originalMeal] = useState<GenerateMealResponse>(() => toMeal(recipe));
+    const [originalMeal, setOriginalMeal] = useState<GenerateMealResponse>(() =>
+        toMeal(recipe),
+    );
 
     // Local copy of the recipe so weight tweaks stay on this page.
     const [meal, setMeal] = useState<GenerateMealResponse>(originalMeal);
+    const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+
+    const hasChanges = !haveSameWeights(meal, originalMeal);
+
+    async function saveChanges() {
+        if (!recipe.id || saveStatus === 'saving') return;
+
+        setSaveStatus('saving');
+
+        try {
+            const updated = await updateRecipe(recipe.id, {
+                ...recipe,
+                ingredients: meal.ingredients,
+            });
+
+            setOriginalMeal(toMeal(updated));
+            setSaveStatus('saved');
+            onRecipeUpdated?.(updated);
+        } catch (error) {
+            console.error('Failed to save recipe changes:', error);
+            setSaveStatus('error');
+        }
+    }
 
     return (
         <div className="recipe-detail">
             <MealResult
                 meal={meal}
                 originalMeal={originalMeal}
-                onChange={setMeal}
+                onChange={(next) => {
+                    setMeal(next);
+                    setSaveStatus('idle');
+                }}
                 showBookmark={false}
+                saveChanges={
+                    recipe.id
+                        ? {
+                              hasChanges,
+                              status: saveStatus,
+                              onSave: saveChanges,
+                          }
+                        : undefined
+                }
             />
         </div>
     );

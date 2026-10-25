@@ -4,7 +4,13 @@ import type {
     UserIngredient,
 } from '../../../shared/types/types';
 import './NutritionDialog.css';
-import { NutritionField, type NutritionFieldConfig, type NutritionFieldId } from './NutritionField';
+import {
+    NutritionField,
+    type NutritionFieldConfig,
+    type NutritionFieldId,
+} from './NutritionField';
+import { PantryFields } from './PantryFields';
+import { parsePantryInputs, toPantryInputs } from '../../utils/pantry';
 
 type NutritionValues = Record<NutritionFieldId, string>;
 
@@ -60,12 +66,16 @@ type NutritionDialogProps = {
         ingredient: UserIngredient | IngredientInfo,
         saveToUserIngredients: boolean,
     ) => Promise<void>;
+    // Adds an optional "On hand" section (quantity, unit, expiry). Off by
+    // default so the Create Meal usage is unchanged.
+    showPantry?: boolean;
 };
 
 function NutritionDialog({
     ingredientInfo,
     onClose,
     onSave,
+    showPantry = false,
 }: NutritionDialogProps) {
     const [ingredientName, setIngredientName] = useState(ingredientInfo.name);
 
@@ -78,6 +88,10 @@ function NutritionDialog({
         saturatedFatPer100g: String(ingredientInfo.saturatedFatPer100g ?? ''),
         fiberPer100g: String(ingredientInfo.fiberPer100g ?? ''),
     });
+
+    const [pantryInputs, setPantryInputs] = useState(() =>
+        toPantryInputs(ingredientInfo as UserIngredient),
+    );
 
     const [saveToUserIngredients, setSaveToUserIngredients] = useState(true);
     const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -120,6 +134,7 @@ function NutritionDialog({
         return {
             ...ingredientInfo,
             ...nutrition,
+            ...(showPantry ? parsePantryInputs(pantryInputs) : {}),
             name: ingredientName.trim() || ingredientInfo.name,
         };
     }
@@ -201,16 +216,31 @@ function NutritionDialog({
                     ))}
                 </div>
 
-                <label className="save-ingredient-option">
-                    <input
-                        type="checkbox"
-                        checked={saveToUserIngredients}
-                        onChange={(event) =>
-                            setSaveToUserIngredients(event.target.checked)
-                        }
-                    />
-                    Save to Ingredients
-                </label>
+                {showPantry && (
+                    <section
+                        className="nutrition-dialog-pantry"
+                        aria-label="On hand"
+                    >
+                        <p className="nutrition-dialog-description">On hand</p>
+                        <PantryFields
+                            values={pantryInputs}
+                            onChange={setPantryInputs}
+                        />
+                    </section>
+                )}
+
+                {!showPantry && (
+                    <label className="save-ingredient-option">
+                        <input
+                            type="checkbox"
+                            checked={saveToUserIngredients}
+                            onChange={(event) =>
+                                setSaveToUserIngredients(event.target.checked)
+                            }
+                        />
+                        Save to Ingredients
+                    </label>
+                )}
 
                 <button
                     type="button"

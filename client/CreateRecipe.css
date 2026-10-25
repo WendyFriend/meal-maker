@@ -1,0 +1,383 @@
+/* Manual recipe builder. Reuses the meal form's step headers, field style,
+   weight steppers and nutrition tiles. */
+
+.create-recipe {
+    width: 100%;
+    max-width: 760px;
+    /* .app-card has no padding of its own; match the Create Meal card. */
+    margin: var(--space-8) auto var(--space-12);
+    padding: var(--space-7) var(--space-8) var(--space-8);
+    box-sizing: border-box;
+    text-align: left;
+}
+
+@media (max-width: 600px) {
+    .create-recipe {
+        margin-block: var(--space-4) var(--space-8);
+        padding: var(--space-5) var(--space-4);
+    }
+}
+
+.create-recipe *,
+.create-recipe *::before,
+.create-recipe *::after {
+    box-sizing: border-box;
+}
+
+.create-recipe-header h2 {
+    margin: 0 0 var(--space-1);
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: clamp(22px, 2vw, 28px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.create-recipe-header p {
+    margin: 0 0 var(--space-6);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.create-recipe-section {
+    margin-bottom: var(--space-8);
+}
+
+.create-recipe-label {
+    display: block;
+    margin-bottom: var(--space-1);
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.create-recipe-input {
+    width: 100%;
+}
+
+textarea.create-recipe-input {
+    resize: vertical;
+    min-height: 56px;
+}
+
+.create-recipe-error {
+    margin: var(--space-2) 0;
+    color: var(--error);
+    font-size: var(--font-size-sm);
+}
+
+.create-recipe-hint {
+    margin: var(--space-2) 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* Ingredient rows */
+
+.create-recipe-ingredients {
+    margin: 0 0 var(--space-5);
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid rgb(170 170 170 / 35%);
+    border-bottom: 1px solid rgb(170 170 170 / 35%);
+}
+
+.create-recipe-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 60px;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid rgb(170 170 170 / 25%);
+}
+
+.create-recipe-row:last-child {
+    border-bottom: none;
+}
+
+.create-recipe-row-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.create-recipe-row-name {
+    color: var(--text-h);
+    font-weight: var(--font-weight-medium);
+    overflow-wrap: anywhere;
+}
+
+.create-recipe-row-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.create-recipe-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.create-recipe-icon-button:hover:not(:disabled) {
+    background: var(--accent-bg);
+    color: var(--accent);
+}
+
+.create-recipe-icon-button:focus-visible,
+.create-recipe-option:focus-visible,
+.create-recipe-link-button:focus-visible,
+.create-recipe-primary:focus-visible,
+.create-recipe-secondary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.create-recipe-icon-button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* Picker */
+
+.create-recipe-group {
+    margin: var(--space-4) 0 var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.create-recipe-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.create-recipe-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.create-recipe-option span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.create-recipe-option small {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.create-recipe-option:hover {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+}
+
+.create-recipe-link-button {
+    margin-top: var(--space-3);
+    padding: var(--space-2) 0;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.create-recipe-manual {
+    min-width: 0;
+    margin: var(--space-3) 0 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-lg);
+    background: var(--surface-tint);
+}
+
+.create-recipe-manual legend {
+    padding: 0 var(--space-2);
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.create-recipe-manual-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+}
+
+.create-recipe-manual-wide {
+    grid-column: 1 / -1;
+}
+
+.create-recipe-manual-field label {
+    display: block;
+    margin-bottom: var(--space-1);
+    color: var(--text);
+    font-size: var(--font-size-xs);
+}
+
+.create-recipe-manual-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+/* Servings and totals */
+
+.create-recipe-servings {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    color: var(--text-h);
+    font-weight: var(--font-weight-semibold);
+}
+
+.create-recipe-servings output {
+    min-width: 32px;
+    color: var(--text-h);
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+}
+
+.ingredient-weight-control button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.create-recipe-totals {
+    margin-bottom: 0;
+}
+
+/* Instruction steps */
+
+.create-recipe-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.create-recipe-step {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-2);
+}
+
+.create-recipe-step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-top: 10px;
+    border-radius: 50%;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.create-recipe-step-actions {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Footer buttons */
+
+.create-recipe-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
+.create-recipe-primary,
+.create-recipe-secondary {
+    min-height: 44px;
+    padding: 0 var(--space-5);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.create-recipe-primary {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+}
+
+.create-recipe-primary:hover:not(:disabled) {
+    filter: brightness(0.96);
+}
+
+.create-recipe-primary:disabled {
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+    cursor: not-allowed;
+}
+
+.create-recipe-secondary {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-h);
+}
+
+@media (max-width: 600px) {
+    /* Name and remove button on the first line, weight stepper below. */
+    .create-recipe-row {
+        flex-wrap: wrap;
+    }
+
+    .create-recipe-row .create-recipe-icon-button {
+        order: 2;
+    }
+
+    .create-recipe-row .ingredient-weight-control {
+        order: 3;
+        margin-left: auto;
+    }
+
+    .create-recipe-footer button {
+        flex: 1;
+    }
+}

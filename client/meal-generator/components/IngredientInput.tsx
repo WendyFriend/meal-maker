@@ -3,8 +3,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import './IngredientInput.css';
 import './MealFormField.css';
 import QuickAddIngredientPicker from './QuickAddIngredientPicker';
+import DietSelector from './DietSelector';
+import { describeDietConflicts, getDietConflicts } from '../../utils/diet';
 import { normalizeIngredientName } from '../../utils/Ingredient';
-import type { UserIngredient } from '../../../shared/types/types';
+import { useNutritionSearch } from '../../hooks/useNutritionSearch';
+import type {
+    DietaryPreference,
+    UserIngredient,
+} from '../../../shared/types/types';
 
 type IngredientInputProps = {
     ingredients: string[];
@@ -12,7 +18,17 @@ type IngredientInputProps = {
     onChange: (ingredients: string[]) => void;
     removeIngredient: (ingredient: string) => void;
     onIngredientClick: (index: number) => void;
+    // Diet chosen before picking ingredients; shown only with onDietaryChange.
+    dietary?: DietaryPreference[];
+    onDietaryChange?: (dietary: DietaryPreference[]) => void;
 };
+
+// "Chicken", "Chicken and Salmon", "Chicken, Salmon and Ham"
+function formatList(items: string[]) {
+    return items.length <= 1
+        ? (items[0] ?? '')
+        : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
 
 function IngredientInput({
     ingredients,
@@ -20,6 +36,8 @@ function IngredientInput({
     onChange,
     removeIngredient,
     onIngredientClick,
+    dietary = [],
+    onDietaryChange,
 }: IngredientInputProps) {
     const [input, setInput] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -49,6 +67,20 @@ function IngredientInput({
         return selectedNames.has(normalizeIngredientName(name));
     }
 
+    const conflictingIngredients = ingredients.filter(
+        (ingredient) => getDietConflicts(ingredient, dietary).length > 0,
+    );
+
+    function renderDietTag(name: string) {
+        const conflicts = getDietConflicts(name, dietary);
+
+        return conflicts.length > 0 ? (
+            <span className="ingredient-suggestion-diet">
+                {describeDietConflicts(conflicts)}
+            </span>
+        ) : null;
+    }
+
     const suggestions =
         normalizedInput.length === 0
             ? []
@@ -68,14 +100,33 @@ function IngredientInput({
     const canAddCustom =
         normalizedInput.length > 0 && !exactMatch && !isDuplicate(input);
 
+    // USDA lookup, shown after the saved suggestions. Names the user has
+    // already saved are skipped so they don't appear twice.
+    const { results: usdaResults, isLoading: isSearchingUsda } =
+        useNutritionSearch(input, showSuggestions);
+    const savedNames = new Set(
+        savedIngredients.map((ingredient) =>
+            normalizeIngredientName(ingredient.name),
+        ),
+    );
+    const usdaSuggestions = usdaResults
+        .filter(
+            (result) => !savedNames.has(normalizeIngredientName(result.name)),
+        )
+        .slice(0, 6);
+
     // The dropdown rows the keyboard navigates through: saved suggestions,
-    // plus the custom "+ add" row when it is visible.
+    // then USDA suggestions, plus the custom "+ add" row when it is visible.
     const suggestionRows: { key: string; name: string }[] = [
         ...suggestions.map((ingredient) => ({
             key: ingredient.ingredientId,
             name: ingredient.name,
         })),
-        ...(canAddCustom ? [{ key: '__custom__', name: input }] : []),
+        ...usdaSuggestions.map((result, index) => ({
+            key: `usda-${index}`,
+            name: result.name,
+        })),
+        ...(canAddCustom ? [{ key: 'custom', name: input }] : []),
     ];
 
     // Clamp the highlight inside the list as the query changes; derived
@@ -242,11 +293,11 @@ function IngredientInput({
 
     return (
         <div className="ingredient-input">
-            <div className="ingredient-input-header">
-                <span className="ingredient-step-number" aria-hidden="true">
+            <div className="meal-step-header">
+                <span className="meal-step-number" aria-hidden="true">
                     1
                 </span>
-                <div className="ingredient-heading-copy">
+                <div className="meal-step-copy">
                     <h3>Choose your ingredients</h3>
                     <p>
                         Search and add what you have. You can also use your
@@ -254,6 +305,10 @@ function IngredientInput({
                     </p>
                 </div>
             </div>
+
+            {onDietaryChange && (
+                <DietSelector value={dietary} onChange={onDietaryChange} />
+            )}
 
             <div
                 className={`ingredient-input-field ${
@@ -338,10 +393,79 @@ function IngredientInput({
                                 >
                                     {ingredient.name}
 
-                                    {added && (
+                                    {added ? (
                                         <span className="ingredient-suggestion-added-badge">
                                             Added
                                         </span>
+                                    ) : (
+                                        renderDietTag(ingredient.name)
+                                    )}
+                                </button>
+                            );
+                        })}
+
+                        {(usdaSuggestions.length > 0 || isSearchingUsda) && (
+                            <div
+                                className="ingredient-suggestion-group"
+                                role="presentation"
+                            >
+                                From USDA
+                            </div>
+                        )}
+
+                        {isSearchingUsda && (
+                            <div
+                                className="ingredient-suggestion-loading"
+                                role="status"
+                            >
+                                <span className="inline-loading">
+                                    Searching USDA…
+                                </span>
+                            </div>
+                        )}
+
+                        {usdaSuggestions.map((result, usdaIndex) => {
+                            const index = suggestions.length + usdaIndex;
+                            const added = isDuplicate(result.name);
+                            const highlighted =
+                                index === activeHighlightedIndex;
+
+                            return (
+                                <button
+                                    key={`usda-${usdaIndex}`}
+                                    id={`ingredient-option-usda-${usdaIndex}`}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={highlighted}
+                                    className={`ingredient-suggestion ${
+                                        added
+                                            ? 'ingredient-suggestion-added'
+                                            : ''
+                                    } ${
+                                        highlighted
+                                            ? 'ingredient-suggestion-highlighted'
+                                            : ''
+                                    }`}
+                                    onPointerDown={(event) => {
+                                        event.preventDefault();
+                                        addIngredient(result.name);
+                                    }}
+                                >
+                                    <span>{result.name}</span>
+
+                                    {added ? (
+                                        <span className="ingredient-suggestion-added-badge">
+                                            Added
+                                        </span>
+                                    ) : (
+                                        (renderDietTag(result.name) ?? (
+                                            <span className="ingredient-suggestion-kcal">
+                                                {Math.round(
+                                                    result.caloriesPer100g,
+                                                )}{' '}
+                                                kcal
+                                            </span>
+                                        ))
                                     )}
                                 </button>
                             );
@@ -372,7 +496,7 @@ function IngredientInput({
                             </button>
                         )}
 
-                        {suggestions.length === 0 && !canAddCustom && (
+                        {suggestionRows.length === 0 && (
                             <div className="ingredient-suggestion-empty">
                                 Already added
                             </div>
@@ -391,6 +515,7 @@ function IngredientInput({
                 <div className="ingredient-chips">
                     {ingredients.map((ingredient, index) => {
                         const isDeleting = deletingIngredient === ingredient;
+                        const conflicts = getDietConflicts(ingredient, dietary);
 
                         return (
                             <div
@@ -404,12 +529,27 @@ function IngredientInput({
                                     handleDeleteAnimationEnd(event, ingredient)
                                 }
                             >
-                                <span className="ingredient-chip">
+                                <span
+                                    className={`ingredient-chip ${
+                                        conflicts.length > 0
+                                            ? 'ingredient-chip-conflict'
+                                            : ''
+                                    }`}
+                                    title={
+                                        conflicts.length > 0
+                                            ? describeDietConflicts(conflicts)
+                                            : undefined
+                                    }
+                                >
                                     <button
                                         type="button"
                                         className="ingredient-chip-label"
                                         onClick={() => onIngredientClick(index)}
-                                        aria-label={`Edit nutrition for ${ingredient}`}
+                                        aria-label={`Edit nutrition for ${ingredient}${
+                                            conflicts.length > 0
+                                                ? ` (${describeDietConflicts(conflicts).toLowerCase()})`
+                                                : ''
+                                        }`}
                                         disabled={isDeleting}
                                     >
                                         {ingredient}
@@ -447,7 +587,29 @@ function IngredientInput({
                 )}
             </div>
 
+            {conflictingIngredients.length > 0 && (
+                <div className="ingredient-diet-notice" role="status">
+                    <p>
+                        {formatList(conflictingIngredients)}{' '}
+                        {conflictingIngredients.length === 1
+                            ? "doesn't"
+                            : "don't"}{' '}
+                        fit your diet and will be left out of the meal.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() =>
+                            conflictingIngredients.forEach(removeIngredient)
+                        }
+                    >
+                        Remove{' '}
+                        {conflictingIngredients.length === 1 ? 'it' : 'them'}
+                    </button>
+                </div>
+            )}
+
             <QuickAddIngredientPicker
+                dietary={dietary}
                 savedIngredients={savedIngredients}
                 selectedIngredients={ingredients}
                 onToggleIngredient={(name) => {

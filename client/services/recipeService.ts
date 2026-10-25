@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { devTable } from '../lib/devStore';
+import { isDevSessionActive } from '../auth/devAuth';
 import type { Recipe } from '../../shared/types/recipe';
 import type { MealIngredient } from '../../shared/types/types';
 
@@ -8,23 +10,28 @@ export type RecipeRow = {
     recipe_name: string;
     ingredients: MealIngredient[];
     instructions: string[];
+    servings: number;
     created_at: string;
     updated_at: string;
 };
 
 export type RecipeInput = Pick<
     Recipe,
-    'recipeName' | 'ingredients' | 'instructions'
+    'recipeName' | 'ingredients' | 'instructions' | 'servings'
 >;
 
+const devRecipes = devTable<RecipeRow>('recipes');
+
 export async function saveRecipe(recipe: RecipeInput) {
+    const values = toRecipeValues(recipe);
+
+    if (isDevSessionActive()) {
+        return toRecipe(devRecipes.insert(values));
+    }
+
     const { data, error } = await supabase
         .from('recipes')
-        .insert({
-            recipe_name: recipe.recipeName,
-            ingredients: recipe.ingredients,
-            instructions: recipe.instructions,
-        })
+        .insert(values)
         .select()
         .single();
 
@@ -36,6 +43,13 @@ export async function saveRecipe(recipe: RecipeInput) {
 }
 
 export async function getRecipes() {
+    if (isDevSessionActive()) {
+        return devRecipes
+            .list()
+            .sort((a, b) => b.created_at.localeCompare(a.created_at))
+            .map(toRecipe);
+    }
+
     const { data, error } = await supabase
         .from('recipes')
         .select('*')
@@ -49,14 +63,18 @@ export async function getRecipes() {
 }
 
 export async function updateRecipe(id: string, recipe: Recipe) {
+    const values = {
+        ...toRecipeValues(recipe),
+        updated_at: new Date().toISOString(),
+    };
+
+    if (isDevSessionActive()) {
+        return toRecipe(devRecipes.update(id, values));
+    }
+
     const { data, error } = await supabase
         .from('recipes')
-        .update({
-            recipe_name: recipe.recipeName,
-            ingredients: recipe.ingredients,
-            instructions: recipe.instructions,
-            updated_at: new Date().toISOString(),
-        })
+        .update(values)
         .eq('id', id)
         .select()
         .single();
@@ -69,6 +87,10 @@ export async function updateRecipe(id: string, recipe: Recipe) {
 }
 
 export async function deleteRecipe(id: string) {
+    if (isDevSessionActive()) {
+        return toRecipe(devRecipes.remove(id));
+    }
+
     const { data, error } = await supabase
         .from('recipes')
         .delete()
@@ -90,7 +112,15 @@ export function toRecipe(row: RecipeRow): Recipe {
         recipeName: row.recipe_name,
         ingredients: row.ingredients,
         instructions: row.instructions,
+        servings: row.servings ?? 1,
     };
 }
 
-// To Do: make a function to convert Recipe to RecipeRow
+function toRecipeValues(recipe: RecipeInput) {
+    return {
+        recipe_name: recipe.recipeName,
+        ingredients: recipe.ingredients,
+        instructions: recipe.instructions,
+        servings: recipe.servings ?? 1,
+    };
+}

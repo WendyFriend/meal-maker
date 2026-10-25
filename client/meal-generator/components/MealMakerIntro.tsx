@@ -48,7 +48,9 @@ export function MealMakerIntro() {
         <div className="meal-maker-intro">
             <h2>
                 <span>Turn your ingredients</span>{' '}
-                <span>into a delicious meal.</span>
+                <span>
+                    into a <em className="intro-highlight">delicious meal.</em>
+                </span>
             </h2>
             <p className="intro-description">
                 <span className="intro-description-full">
@@ -99,21 +101,66 @@ export function MealMakerIntro() {
     );
 }
 
-export function MealMakerSteps() {
+type MealMakerStepsProps = {
+    hasIngredients?: boolean;
+    hasCalorieGoal?: boolean;
+    isGenerating?: boolean;
+    hasMeal?: boolean;
+};
+
+type StepState = 'done' | 'active' | 'idle';
+
+export function MealMakerSteps({
+    hasIngredients = false,
+    hasCalorieGoal = false,
+    isGenerating = false,
+    hasMeal = false,
+}: MealMakerStepsProps) {
+    // Step 2 is optional, so it is only ever done or neutral.
+    const states: StepState[] = [
+        hasIngredients ? 'done' : 'idle',
+        hasCalorieGoal ? 'done' : 'idle',
+        isGenerating ? 'active' : hasMeal ? 'done' : 'idle',
+        hasMeal ? 'done' : 'idle',
+    ];
+
     return (
         <ol className="intro-steps">
-            {homeSteps.map((step, index) => (
-                <li className="intro-step" key={step.title}>
-                    <span className="intro-step-icon" aria-hidden="true">
-                        {step.icon}
-                    </span>
-                    <span className="intro-step-copy">
-                        <strong>
-                            {index + 1}. {step.title}
-                        </strong>
-                    </span>
-                </li>
-            ))}
+            {homeSteps.map((step, index) => {
+                const state = states[index];
+                return (
+                    <li
+                        className={`intro-step intro-step-${state}`}
+                        key={step.title}
+                        aria-current={state === 'active' ? 'step' : undefined}
+                    >
+                        <span className="intro-step-icon" aria-hidden="true">
+                            {state === 'done' ? (
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    aria-hidden="true"
+                                    focusable="false"
+                                >
+                                    <path d="m5 12.5 4.5 4.5L19 7.5" />
+                                </svg>
+                            ) : (
+                                step.icon
+                            )}
+                        </span>
+                        <span className="intro-step-copy">
+                            <strong>
+                                {index + 1}. {step.title}
+                                {state === 'done' && (
+                                    <span className="visually-hidden">
+                                        {' '}
+                                        (done)
+                                    </span>
+                                )}
+                            </strong>
+                        </span>
+                    </li>
+                );
+            })}
         </ol>
     );
 }

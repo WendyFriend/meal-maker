@@ -5,6 +5,35 @@ import NutritionDialog from './meal-generator/components/NutritionDialog';
 import ActionMenu from './meal-generator/components/ActionMenu';
 import './MyIngredients.css';
 import { isUserIngredient } from './utils/Ingredient';
+import {
+    expiryTone,
+    filterExpiringSoon,
+    formatPantrySummary,
+} from './utils/pantry';
+
+// Soft avatar tints, picked per ingredient name so each row is
+// recognisable at a glance.
+const AVATAR_TINTS = [
+    { background: '#fde4df', color: '#c4523f' },
+    { background: '#dce9e8', color: '#2f5f59' },
+    { background: '#f7ead2', color: '#9a6a1f' },
+    { background: '#e6e4f4', color: '#5a5394' },
+    { background: '#e2efd9', color: '#4b7a33' },
+];
+
+function getAvatarTint(name: string) {
+    let hash = 0;
+
+    for (const char of name) {
+        hash = (hash * 31 + char.charCodeAt(0)) | 0;
+    }
+
+    return AVATAR_TINTS[Math.abs(hash) % AVATAR_TINTS.length];
+}
+
+function formatGrams(value: number | undefined) {
+    return value === undefined ? '–' : `${Math.round(value * 10) / 10}g`;
+}
 
 type MyIngredientsProps = {
     ingredients: UserIngredient[];
@@ -23,6 +52,8 @@ export default function MyIngredients({
     onAdd,
 }: MyIngredientsProps) {
     const [search, setSearch] = useState('');
+    // Show only items expiring within a week (or already expired).
+    const [expiringOnly, setExpiringOnly] = useState(false);
     // Ingredient currently being edited.
     const [selectedIngredient, setSelectedIngredient] =
         useState<UserIngredient | null>(null);
@@ -55,9 +86,17 @@ export default function MyIngredients({
      */
     const didLongPress = useRef(false);
 
-    const filteredIngredients = ingredients.filter((ingredient) =>
+    const hasExpiryDates = ingredients.some(
+        (ingredient) => ingredient.expiresOn,
+    );
+    const expiringCount = filterExpiringSoon(ingredients).length;
+
+    const matchingIngredients = ingredients.filter((ingredient) =>
         ingredient.name.toLowerCase().includes(search.trim().toLowerCase()),
     );
+    const filteredIngredients = expiringOnly
+        ? filterExpiringSoon(matchingIngredients)
+        : matchingIngredients;
 
     /*
      * Cancel the pending long-press timer.
@@ -179,6 +218,16 @@ export default function MyIngredients({
 
     return (
         <main className="my-ingredients">
+            <header className="list-page-header">
+                <h1>My Ingredients</h1>
+                <p>
+                    {ingredients.length === 1
+                        ? '1 saved ingredient'
+                        : `${ingredients.length} saved ingredients`}
+                    {' · nutrition per 100g'}
+                </p>
+            </header>
+
             <div className="ingredient-search-field">
                 <span className="ingredient-search-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none">
@@ -197,77 +246,126 @@ export default function MyIngredients({
                 />
             </div>
 
+            {(hasExpiryDates || expiringOnly) && (
+                <div className="ingredient-filters">
+                    <button
+                        type="button"
+                        className="ingredient-filter-chip"
+                        aria-pressed={expiringOnly}
+                        onClick={() => setExpiringOnly((value) => !value)}
+                    >
+                        Expiring soon
+                        <span className="ingredient-filter-count">
+                            {expiringCount}
+                        </span>
+                    </button>
+                </div>
+            )}
+
             {filteredIngredients.length > 0 ? (
                 <div className="ingredients-list">
-                    {filteredIngredients.map((ingredient) => (
-                        <div
-                            key={ingredient.ingredientId ?? ingredient.name}
-                            className={`ingredient-row-wrapper ${
-                                deletingIngredientId ===
-                                ingredient.ingredientId
-                                    ? 'ingredient-row-wrapper-deleting'
-                                    : ''
-                            } ${
-                                actionMenuIngredient?.ingredientId ===
-                                ingredient.ingredientId
-                                    ? 'ingredient-row-wrapper-selected'
-                                    : ''
-                            }`}
-                        >
-                            <button
-                                type="button"
-                                className="ingredient-row"
-                                onPointerDown={() =>
-                                    handlePointerDown(ingredient)
-                                }
-                                onPointerUp={handlePointerUp}
-                                onPointerCancel={handlePointerUp}
-                                onPointerLeave={handlePointerUp}
-                                onClick={() =>
-                                    handleIngredientClick(ingredient)
-                                }
+                    {filteredIngredients.map((ingredient) => {
+                        const pantrySummary = formatPantrySummary(ingredient);
+                        const tone = expiryTone(ingredient.expiresOn);
+
+                        return (
+                            <div
+                                key={ingredient.ingredientId ?? ingredient.name}
+                                className={`ingredient-row-wrapper ${
+                                    deletingIngredientId ===
+                                    ingredient.ingredientId
+                                        ? 'ingredient-row-wrapper-deleting'
+                                        : ''
+                                } ${
+                                    actionMenuIngredient?.ingredientId ===
+                                    ingredient.ingredientId
+                                        ? 'ingredient-row-wrapper-selected'
+                                        : ''
+                                }`}
                             >
-                                <span
-                                    className="ingredient-icon"
-                                    aria-hidden="true"
+                                <button
+                                    type="button"
+                                    className="ingredient-row"
+                                    onPointerDown={() =>
+                                        handlePointerDown(ingredient)
+                                    }
+                                    onPointerUp={handlePointerUp}
+                                    onPointerCancel={handlePointerUp}
+                                    onPointerLeave={handlePointerUp}
+                                    onClick={() =>
+                                        handleIngredientClick(ingredient)
+                                    }
                                 >
-                                    🥕
-                                </span>
+                                    <span
+                                        className="ingredient-icon"
+                                        style={getAvatarTint(ingredient.name)}
+                                        aria-hidden="true"
+                                    >
+                                        {ingredient.name.trim().charAt(0)}
+                                    </span>
 
-                                <span className="ingredient-row-info">
-                                    <strong>{ingredient.name}</strong>
+                                    <span className="ingredient-row-info">
+                                        <strong>{ingredient.name}</strong>
 
-                                    <span>
+                                        <span>
+                                            {formatGrams(
+                                                ingredient.proteinPer100g,
+                                            )}{' '}
+                                            protein ·{' '}
+                                            {formatGrams(
+                                                ingredient.carbohydratePer100g,
+                                            )}{' '}
+                                            carbs ·{' '}
+                                            {formatGrams(ingredient.fatPer100g)}{' '}
+                                            fat
+                                        </span>
+
+                                        {pantrySummary && (
+                                            <span
+                                                className={`ingredient-pantry-line ${
+                                                    tone
+                                                        ? `ingredient-pantry-line-${tone}`
+                                                        : ''
+                                                }`}
+                                            >
+                                                {pantrySummary}
+                                            </span>
+                                        )}
+                                    </span>
+
+                                    <span className="list-row-kcal">
                                         {ingredient.caloriesPer100g !==
                                         undefined
-                                            ? `${ingredient.caloriesPer100g} kcal`
-                                            : 'Calories not set'}
-                                        {' · '}
-                                        {ingredient.proteinPer100g !==
-                                        undefined
-                                            ? `${ingredient.proteinPer100g}g protein`
-                                            : 'Protein not set'}
-                                        {' / 100g'}
+                                            ? `${Math.round(ingredient.caloriesPer100g)} kcal`
+                                            : '– kcal'}
                                     </span>
-                                </span>
-                            </button>
-                        </div>
-                    ))}
+                                </button>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="ingredients-empty">
                     <div className="ingredients-empty-icon" aria-hidden="true">
-                        {ingredients.length === 0 ? '🥕' : '🔎'}
+                        {ingredients.length === 0
+                            ? '🥕'
+                            : expiringOnly && !search.trim()
+                              ? '✅'
+                              : '🔎'}
                     </div>
                     <p className="ingredients-empty-title">
                         {ingredients.length === 0
                             ? 'No ingredients yet'
-                            : 'No matching ingredients'}
+                            : expiringOnly && !search.trim()
+                              ? 'Nothing expiring soon'
+                              : 'No matching ingredients'}
                     </p>
                     <p className="ingredients-empty-hint">
                         {ingredients.length === 0
                             ? 'Add an ingredient to start building your pantry.'
-                            : 'Try a different search.'}
+                            : expiringOnly && !search.trim()
+                              ? 'Nothing is expiring in the next 7 days.'
+                              : 'Try a different search.'}
                     </p>
                 </div>
             )}
@@ -294,6 +392,7 @@ export default function MyIngredients({
                             await handleSave(ingredient);
                         }
                     }}
+                    showPantry
                     // showSaveOption={false}
                     // disabled={isSaving}
                 />

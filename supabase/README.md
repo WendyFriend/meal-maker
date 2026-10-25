@@ -11,6 +11,11 @@ schema can be evolved independently of the original project
   - Tables: `user_ingredients`, `recipes`
   - RLS enabled: users can only read/write their own rows
   - `updated_at` triggers + indexes
+- Migration: `migrations/20261025010000_pantry_plan_shopping.sql`
+  - `user_id` defaults to `auth.uid()` (the client never sends it)
+  - `user_ingredients`: `quantity`, `unit`, `expires_on`
+  - `recipes`: `servings`
+  - New tables `meal_plan_entries`, `shopping_list_items` (RLS as above)
 
 The migration was **inferred from the app code** (`client/services/*.ts`,
 `shared/types/*.ts`), not dumped from the original database. If the original
@@ -31,8 +36,8 @@ supabase db push
 ```
 
 Or, without the CLI: open your project's **SQL Editor** in the Supabase
-dashboard, paste the contents of
-`migrations/20261025000000_initial_schema.sql`, and run it.
+dashboard, paste the contents of each file in `migrations/` (oldest first),
+and run them.
 
 ## To diff against the original project (optional, needs access)
 

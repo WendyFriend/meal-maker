@@ -7,6 +7,12 @@ import {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import {
+    endDevSession,
+    getDevSession,
+    isDevSessionActive,
+    startDevSession,
+} from './devAuth';
 
 type AuthContextValue = {
     user: User | null;
@@ -15,6 +21,7 @@ type AuthContextValue = {
     signIn: (email: string, password: string) => Promise<void>;
     signUp: (email: string, password: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
+    signInAsDev: () => void;
     signOut: () => Promise<void>;
 };
 
@@ -30,6 +37,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     useEffect(() => {
         async function loadSession() {
+            const devSession = getDevSession();
+
+            if (devSession) {
+                setSession(devSession);
+                setLoading(false);
+                return;
+            }
+
             const {
                 data: { session },
             } = await supabase.auth.getSession();
@@ -43,6 +58,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
+            // The dev session lives outside Supabase; don't let it be cleared.
+            if (isDevSessionActive()) {
+                return;
+            }
+
             setSession(session);
             setLoading(false);
         });
@@ -90,7 +110,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }
 
+    function signInAsDev() {
+        setSession(startDevSession());
+    }
+
     async function signOut() {
+        if (isDevSessionActive()) {
+            endDevSession();
+            setSession(null);
+            return;
+        }
+
         const { error } = await supabase.auth.signOut();
 
         if (error) {
@@ -105,6 +135,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         signIn,
         signUp,
         signInWithGoogle,
+        signInAsDev,
         signOut,
     };
 

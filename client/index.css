@@ -72,6 +72,7 @@
     --space-4: 16px;
     --space-5: 20px;
     --space-6: 24px;
+    --space-7: 28px;
     --space-8: 32px;
     --space-10: 40px;
     --space-12: 48px;
@@ -209,5 +210,37 @@ button {
 @media (max-width: 600px) {
     .app-card {
         border-radius: var(--radius-lg);
+    }
+}
+
+/* Small inline spinner with a label, e.g. "Searching USDA…" */
+.inline-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.inline-loading::before {
+    content: '';
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: inline-loading-spin 700ms linear infinite;
+}
+
+@keyframes inline-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .inline-loading::before {
+        animation-duration: 2s;
     }
 }

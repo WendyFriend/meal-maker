@@ -57,12 +57,18 @@ function Calories({ value, onChange }: CaloriesProps) {
 
     return (
         <div className="calories">
-            <h3>
-                <span className="calories-heading-icon" aria-hidden="true">
-                    ◎
+            <div className="meal-step-header">
+                <span className="meal-step-number" aria-hidden="true">
+                    2
                 </span>
-                Optional: Set a calorie goal
-            </h3>
+                <div className="meal-step-copy">
+                    <h3>
+                        Set a calorie goal{' '}
+                        <span className="calories-optional">Optional</span>
+                    </h3>
+                    <p>Skip this if you don't have a target.</p>
+                </div>
+            </div>
 
             <button
                 type="button"

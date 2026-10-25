@@ -10,11 +10,15 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useMobilePicker } from '../../hooks/useMobilePicker';
-import type { UserIngredient } from '../../../shared/types/types';
+import type {
+    DietaryPreference,
+    UserIngredient,
+} from '../../../shared/types/types';
+import { getDietConflicts } from '../../utils/diet';
 import { normalizeIngredientName } from '../../utils/Ingredient';
 import { positionPopover } from '../../utils/positionPopover';
 import {
-    groupQuickAddIngredients,
+    getQuickAddOptions,
     quickAddCategories,
     type QuickAddCategory,
     type QuickAddCategoryId,
@@ -236,12 +240,15 @@ function PickerOverlay({
 type QuickAddIngredientPickerProps = {
     savedIngredients: UserIngredient[];
     selectedIngredients: string[];
+    // Hide options that don't fit these diets (unless already selected).
+    dietary?: DietaryPreference[];
     onToggleIngredient: (name: string) => void;
 };
 
 export default function QuickAddIngredientPicker({
     savedIngredients,
     selectedIngredients,
+    dietary = [],
     onToggleIngredient,
 }: QuickAddIngredientPickerProps) {
     const [active, setActive] = useState<{
@@ -251,11 +258,18 @@ export default function QuickAddIngredientPicker({
     const mobile = useMobilePicker();
     const categoriesRef = useRef<HTMLDivElement>(null);
     const id = useId();
-    const groups = useMemo(
-        () => groupQuickAddIngredients(savedIngredients),
-        [savedIngredients],
-    );
     const selected = new Set(selectedIngredients.map(normalizeIngredientName));
+    const options = useMemo(
+        () =>
+            active
+                ? getQuickAddOptions(savedIngredients, active.category.id)
+                : [],
+        [savedIngredients, active],
+    ).filter(
+        (option) =>
+            selected.has(normalizeIngredientName(option.name)) ||
+            getDietConflicts(option.name, dietary).length === 0,
+    );
     const close = useCallback(() => setActive(null), []);
 
     return (
@@ -318,18 +332,18 @@ export default function QuickAddIngredientPicker({
                         role="group"
                         aria-label={`${active.category.name} ingredients`}
                     >
-                        {groups[active.category.id].map((ingredient) => {
+                        {options.map((option) => {
                             const isSelected = selected.has(
-                                normalizeIngredientName(ingredient.name),
+                                normalizeIngredientName(option.name),
                             );
                             return (
                                 <button
                                     type="button"
-                                    key={ingredient.ingredientId}
+                                    key={option.key}
                                     className="quick-add-option"
                                     aria-pressed={isSelected}
                                     onClick={() =>
-                                        onToggleIngredient(ingredient.name)
+                                        onToggleIngredient(option.name)
                                     }
                                 >
                                     <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -341,17 +355,19 @@ export default function QuickAddIngredientPicker({
                                             }
                                         />
                                     </svg>
-                                    <span>{ingredient.name.trim()}</span>
+                                    <span>{option.name}</span>
+                                    {option.saved && (
+                                        <small
+                                            className="quick-add-saved"
+                                            aria-hidden="true"
+                                            title="Saved in My Ingredients"
+                                        >
+                                            saved
+                                        </small>
+                                    )}
                                 </button>
                             );
                         })}
-                        {groups[active.category.id].length === 0 && (
-                            <p className="quick-add-empty">
-                                No saved ingredients in this category yet. Use
-                                search to add an ingredient, or save one in My
-                                Ingredients.
-                            </p>
-                        )}
                     </div>
                 </PickerOverlay>
             )}

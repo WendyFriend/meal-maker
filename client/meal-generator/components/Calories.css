@@ -1,33 +1,28 @@
 .calories {
     display: flex;
-    align-items: center;
-    gap: var(--space-4);
+    flex-direction: column;
     width: 100%;
     box-sizing: border-box;
     text-align: left;
 }
 
-.calories h3 {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0;
-    color: var(--deep-green);
-    font-size: 13px;
+.calories-optional {
+    display: inline-block;
+    margin-left: var(--space-1);
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 11px;
     font-weight: var(--font-weight-semibold);
-    white-space: nowrap;
-}
-
-.calories-heading-icon {
-    color: var(--accent);
-    font-size: 20px;
-    line-height: 1;
+    letter-spacing: 0.2px;
+    vertical-align: 2px;
 }
 
 .calories-field {
     display: flex;
     align-items: center;
-    width: 190px;
+    width: 100%;
     min-width: 0;
     text-align: left;
     cursor: pointer;
@@ -108,22 +103,6 @@
 .calories-picker-wrapper [data-rwp-highlight-item] {
     color: var(--accent);
     font-weight: var(--font-weight-semibold);
-}
-
-@media (max-width: 640px) {
-    .calories {
-        align-items: stretch;
-        flex-direction: column;
-        gap: var(--space-1);
-    }
-
-    .calories h3 {
-        font-size: 12px;
-    }
-
-    .calories-field {
-        width: 100%;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

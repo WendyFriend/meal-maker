@@ -23,6 +23,11 @@
     background: var(--surface);
     box-shadow: 0 12px 32px rgb(15 30 48 / 25%);
 
+    /* The optional On hand section can make the dialog taller than a phone. */
+    max-height: calc(100dvh - 2 * var(--space-3));
+    overflow-y: auto;
+    box-sizing: border-box;
+
     text-align: left;
 }
 
@@ -90,4 +95,16 @@
     .nutrition-dialog {
         padding: var(--space-5);
     }
+}
+
+.nutrition-dialog-pantry {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-hairline);
+}
+
+.nutrition-dialog-pantry .nutrition-dialog-description {
+    margin: 0 0 var(--space-3);
+    color: var(--text-h);
+    font-weight: var(--font-weight-semibold);
 }

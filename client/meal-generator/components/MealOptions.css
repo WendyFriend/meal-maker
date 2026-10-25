@@ -1,0 +1,200 @@
+.meal-options {
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border-hairline);
+    text-align: left;
+}
+
+.meal-options-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.meal-options-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+}
+
+.meal-options-toggle-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.meal-options-title {
+    color: var(--text-h-strong);
+    font-size: 15px;
+    font-weight: var(--font-weight-bold);
+}
+
+.meal-options-summary {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.meal-options-chevron {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin: 0 6px 4px 0;
+    border-right: 1.5px solid var(--text);
+    border-bottom: 1.5px solid var(--text);
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+}
+
+.meal-options-toggle[aria-expanded='true'] .meal-options-chevron {
+    margin-bottom: -2px;
+    transform: rotate(-135deg);
+}
+
+.meal-options-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    margin-top: var(--space-4);
+}
+
+.meal-options-label,
+.meal-options-protein .protein h3 {
+    margin: 0 0 var(--space-2);
+    color: var(--text-h);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.meal-options-optional {
+    margin-left: 4px;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+}
+
+.meal-options-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.meal-options-chip {
+    min-height: 36px;
+    padding: 6px 14px;
+    border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 13px;
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition:
+        background-color 140ms ease,
+        border-color 140ms ease,
+        color 140ms ease;
+}
+
+.meal-options-chip[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: var(--font-weight-bold);
+}
+
+.meal-options-chip:focus-visible,
+.meal-options-stepper button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.meal-options-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.meal-options-stepper button {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.meal-options-stepper button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.meal-options-stepper output {
+    min-width: 32px;
+    color: var(--text-h-strong);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    text-align: center;
+}
+
+/* Reuse the Protein picker without its standalone page padding. */
+.meal-options-protein .protein {
+    margin: 0;
+    padding: 0;
+}
+
+.meal-options-protein .protein-field {
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--warm-cream) 45%, var(--surface));
+    font-size: var(--font-size-sm);
+}
+
+.meal-options-protein .protein-field::after {
+    display: none;
+}
+
+.meal-options-protein .protein-field:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.meal-options-protein .protein-field-content {
+    justify-content: space-between;
+    width: 100%;
+}
+
+.meal-options-hint {
+    margin: var(--space-2) 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .meal-options-chevron,
+    .meal-options-chip {
+        transition: none;
+    }
+}

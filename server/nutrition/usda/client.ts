@@ -11,8 +11,10 @@ type FoodSearchParams = {
     dataType?: string[];
     pageSize?: number;
     pageNumber?: number;
-    sortBy?: string;
+    // 'relevance' leaves sorting to USDA's search score.
+    sortBy?: string | 'relevance';
     sortOrder?: 'asc' | 'desc';
+    requireAllWords?: boolean;
 };
 
 export async function searchFoods(
@@ -27,6 +29,15 @@ export async function searchFoods(
         sortOrder: params.sortOrder ?? 'asc',
         api_key: USDA_API_KEY!,
     });
+
+    if (params.requireAllWords) {
+        searchParams.set('requireAllWords', 'true');
+    }
+
+    if (params.sortBy === 'relevance') {
+        searchParams.delete('sortBy');
+        searchParams.delete('sortOrder');
+    }
 
     const response = await fetch(
         `https://api.nal.usda.gov/fdc/v1/foods/search?${searchParams}`,

@@ -17,6 +17,21 @@ function getTotalCalories(ingredients: MealIngredient[]): number {
     );
 }
 
+function ListHeader({ count }: { count?: number }) {
+    return (
+        <header className="list-page-header">
+            <h1>My Recipes</h1>
+            <p>
+                {count === undefined
+                    ? 'Meals you have saved'
+                    : count === 1
+                      ? '1 saved recipe'
+                      : `${count} saved recipes`}
+            </p>
+        </header>
+    );
+}
+
 type MyRecipesProps = {
     onOpenRecipe: (recipe: Recipe) => void;
     onCreateRecipe: () => void;
@@ -70,8 +85,12 @@ export default function MyRecipes({
         return (
             <>
                 <main className="my-recipes">
+                    <ListHeader />
                     <div className="my-recipes-status" role="status">
-                        <span className="my-recipes-spinner" aria-hidden="true" />
+                        <span
+                            className="my-recipes-spinner"
+                            aria-hidden="true"
+                        />
                         <p>Loading your recipes...</p>
                     </div>
                 </main>
@@ -83,6 +102,7 @@ export default function MyRecipes({
     return (
         <>
             <main className="my-recipes">
+                <ListHeader count={error ? undefined : recipes.length} />
                 {error ? (
                     <div className="my-recipes-error" role="alert">
                         <p>{error}</p>
@@ -119,8 +139,7 @@ export default function MyRecipes({
                             <button
                                 type="button"
                                 key={
-                                    recipe.id ??
-                                    `${recipe.recipeName}-${index}`
+                                    recipe.id ?? `${recipe.recipeName}-${index}`
                                 }
                                 className="recipe-row"
                                 onClick={() => onOpenRecipe(recipe)}
@@ -134,18 +153,18 @@ export default function MyRecipes({
                                 <span className="recipe-row-info">
                                     <strong>{recipe.recipeName}</strong>
                                     <span>
-                                        {recipe.ingredients.length}{' '}
-                                        {recipe.ingredients.length === 1
-                                            ? 'ingredient'
-                                            : 'ingredients'}{' '}
-                                        •{' '}
-                                        {Math.round(
-                                            getTotalCalories(
-                                                recipe.ingredients,
-                                            ),
-                                        )}
-                                        kcal
+                                        {recipe.ingredients
+                                            .map(
+                                                (ingredient) => ingredient.name,
+                                            )
+                                            .join(', ')}
                                     </span>
+                                </span>
+                                <span className="list-row-kcal">
+                                    {Math.round(
+                                        getTotalCalories(recipe.ingredients),
+                                    )}{' '}
+                                    kcal
                                 </span>
                             </button>
                         ))}

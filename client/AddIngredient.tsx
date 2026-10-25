@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import './AddIngredient.css';
-import type { IngredientInfo } from '../shared/types/types';
+import type {
+    IngredientInfo,
+    NutritionSearchResult,
+    PantryDetails,
+} from '../shared/types/types';
+import { useNutritionSearch } from './hooks/useNutritionSearch';
+import { parsePantryInputs, toPantryInputs } from './utils/pantry';
+import { PantryFields } from './meal-generator/components/PantryFields';
 import checkmarkAnimation from './assets/animations/checkmark.svg';
 import {
     NutritionField,
@@ -52,7 +59,7 @@ const nutritionFields: NutritionFieldConfig[] = [
 
 type AddIngredientProps = {
     onBack: () => void;
-    onSave: (ingredient: IngredientInfo) => Promise<void>;
+    onSave: (ingredient: IngredientInfo & PantryDetails) => Promise<void>;
     findExistingIngredient: (name: string) => string | undefined;
 };
 
@@ -75,6 +82,32 @@ function AddIngredient({
         fiberPer100g: '',
     });
 
+    // The name picked from the USDA list; no further lookups until edited.
+    const [pickedName, setPickedName] = useState<string | null>(null);
+    const [pantryInputs, setPantryInputs] = useState(() => toPantryInputs({}));
+    const { results: suggestions, isLoading: isSearching } = useNutritionSearch(
+        ingredientName,
+        ingredientName !== pickedName,
+    );
+
+    function pickSuggestion(result: NutritionSearchResult) {
+        const format = (value: number | undefined) =>
+            value === undefined ? '' : String(Math.round(value * 100) / 100);
+
+        setIngredientName(result.name);
+        setPickedName(result.name);
+        setNutritionValues((current) => ({
+            ...current,
+            caloriesPer100g: format(result.caloriesPer100g),
+            proteinPer100g: format(result.proteinPer100g),
+            carbohydratePer100g: format(result.carbohydratePer100g),
+            fatPer100g: format(result.fatPer100g),
+            sugarPer100g: format(result.sugarPer100g),
+            saturatedFatPer100g: format(result.saturatedFatPer100g),
+            fiberPer100g: format(result.fiberPer100g),
+        }));
+    }
+
     function handleNutritionChange(field: NutritionFieldId, value: string) {
         setNutritionValues((current) => ({
             ...current,
@@ -82,7 +115,7 @@ function AddIngredient({
         }));
     }
 
-    function getIngredient(): IngredientInfo {
+    function getIngredient(): IngredientInfo & PantryDetails {
         const nutrition = nutritionFields.reduce<Partial<IngredientInfo>>(
             (current, field) => {
                 const rawValue = nutritionValues[field.id].trim();
@@ -106,6 +139,7 @@ function AddIngredient({
         return {
             name: ingredientName.trim(),
             ...nutrition,
+            ...parsePantryInputs(pantryInputs),
         };
     }
 
@@ -160,6 +194,20 @@ function AddIngredient({
                                 autoFocus
                             />
                         </div>
+                        {(suggestions.length > 0 || isSearching) && (
+                            <span className="add-ingredient-hint">
+                                {isSearching ? (
+                                    <span
+                                        className="inline-loading"
+                                        role="status"
+                                    >
+                                        Searching USDA…
+                                    </span>
+                                ) : (
+                                    'Pick a match to fill in nutrition'
+                                )}
+                            </span>
+                        )}
                         {existingIngredientName && !isSaved && (
                             <span
                                 className="add-ingredient-inline-error"
@@ -170,6 +218,33 @@ function AddIngredient({
                             </span>
                         )}
                     </label>
+
+                    {suggestions.length > 0 && (
+                        <ul
+                            className="add-ingredient-suggestions"
+                            aria-label="USDA suggestions"
+                        >
+                            {suggestions.slice(0, 6).map((result) => (
+                                <li
+                                    key={`${result.name}-${result.description}`}
+                                >
+                                    <button
+                                        type="button"
+                                        className="add-ingredient-suggestion"
+                                        onClick={() => pickSuggestion(result)}
+                                    >
+                                        <span className="add-ingredient-suggestion-name">
+                                            {result.description || result.name}
+                                        </span>
+                                        <span className="add-ingredient-suggestion-kcal">
+                                            {Math.round(result.caloriesPer100g)}{' '}
+                                            kcal
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
 
                     <div className="add-ingredient-divider" />
 
@@ -191,6 +266,24 @@ function AddIngredient({
                                 />
                             ))}
                         </div>
+                    </section>
+
+                    <div className="add-ingredient-divider" />
+
+                    <section
+                        className="add-ingredient-pantry"
+                        aria-labelledby="pantry-heading"
+                    >
+                        <h2 id="pantry-heading">
+                            On hand{' '}
+                            <span className="add-ingredient-optional">
+                                optional
+                            </span>
+                        </h2>
+                        <PantryFields
+                            values={pantryInputs}
+                            onChange={setPantryInputs}
+                        />
                     </section>
                 </div>
 

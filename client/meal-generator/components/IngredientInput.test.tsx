@@ -218,9 +218,9 @@ describe('ingredient Quick add integration', () => {
             }),
         ).toHaveFocus();
         await user.tab({ shift: true });
-        expect(
-            within(picker).getByRole('button', { name: 'Broccoli' }),
-        ).toHaveFocus();
+        // Shift+Tab wraps to the last option, which is now a starter.
+        const options = within(picker).getAllByRole('button');
+        expect(options[options.length - 1]).toHaveFocus();
         await user.tab();
         expect(
             within(picker).getByRole('button', {
@@ -239,21 +239,41 @@ describe('ingredient Quick add integration', () => {
         expect(spinach).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('uses only existing records, including a useful empty state, without fetching', async () => {
+    it('offers starter names (and no nutrition) to new users without fetching', async () => {
         const fetch = vi.fn();
         vi.stubGlobal('fetch', fetch);
         const user = userEvent.setup();
         render(<Form saved={[]} />);
         await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        const picker = screen.getByRole('dialog');
+        expect(within(picker).queryByText(/No saved ingredients/)).toBeNull();
+        // Close button plus 8-12 starters.
         expect(
-            within(screen.getByRole('dialog')).getByText(
-                /No saved ingredients/,
-            ),
+            within(picker).getAllByRole('button').length,
+        ).toBeGreaterThanOrEqual(1 + 8);
+        await user.click(
+            within(picker).getByRole('button', { name: 'Broccoli' }),
+        );
+        expect(
+            screen.getByRole('button', { name: 'Remove Broccoli' }),
         ).toBeInTheDocument();
-        expect(
-            within(screen.getByRole('dialog')).getAllByRole('button'),
-        ).toHaveLength(1);
         expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('lists saved ingredients first with a marker, then starters without duplicates', async () => {
+        const user = userEvent.setup();
+        render(<Form />);
+        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        const picker = screen.getByRole('dialog');
+        const names = within(picker)
+            .getAllByRole('button')
+            .slice(1)
+            .map((button) => button.textContent);
+        expect(names.slice(0, 2)).toEqual(['Spinachsaved', 'Broccolisaved']);
+        expect(
+            names.filter((name) => /^spinach/i.test(name ?? '')),
+        ).toHaveLength(1);
+        expect(names.length).toBeGreaterThan(2);
     });
 
     it('preserves saved search, duplicate prevention, manual entry and nutrition editing', async () => {
@@ -280,6 +300,98 @@ describe('ingredient Quick add integration', () => {
                 name: 'Spinach',
             }),
         ).toHaveAttribute('aria-pressed', 'true');
+    });
+});
+
+describe('USDA suggestions in ingredient search', () => {
+    const usda = (name: string) => ({
+        source: 'usda',
+        description: name.toUpperCase(),
+        name,
+        caloriesPer100g: 120,
+        proteinPer100g: 5,
+        carbohydratePer100g: 20,
+        fatPer100g: 2,
+    });
+
+    function stubUsda(names: string[]) {
+        const fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ results: names.map(usda) }),
+        });
+        vi.stubGlobal('fetch', fetch);
+        return fetch;
+    }
+
+    it('shows a debounced From USDA group after saved matches and adds by name', async () => {
+        const fetch = stubUsda(['Spinach', 'Spinach, frozen']);
+        const user = userEvent.setup();
+        render(<Form />);
+        await user.type(screen.getByRole('combobox'), 'spin');
+        // One debounced request for the settled query, not one per key.
+        const option = await screen.findByRole('option', {
+            name: /Spinach, frozen/,
+        });
+        expect(screen.getByText('From USDA')).toBeInTheDocument();
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetch.mock.calls[0][0]).toBe('/api/nutrition?q=spin');
+        // The saved "Spinach" is not repeated under USDA.
+        expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(
+            ['Spinach', 'Spinach, frozen120 kcal', '+ spin↵'],
+        );
+        fireEvent.pointerDown(option);
+        expect(
+            screen.getByRole('button', { name: 'Remove Spinach, frozen' }),
+        ).toBeInTheDocument();
+    });
+
+    it('does not look up fewer than 2 characters', async () => {
+        const fetch = stubUsda(['Tomato']);
+        const user = userEvent.setup();
+        render(<Form />);
+        await user.type(screen.getByRole('combobox'), 't');
+        await new Promise((resolve) => setTimeout(resolve, 450));
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('keyboard navigates across saved, USDA and custom rows', async () => {
+        stubUsda(['Spinach, frozen']);
+        const user = userEvent.setup();
+        render(<Form />);
+        await user.type(screen.getByRole('combobox'), 'spin');
+        await screen.findByRole('option', { name: /Spinach, frozen/ });
+        await user.keyboard('{ArrowDown}{ArrowDown}');
+        expect(
+            screen.getByRole('option', { name: /Spinach, frozen/ }),
+        ).toHaveAttribute('aria-selected', 'true');
+        await user.keyboard('{ArrowDown}');
+        expect(screen.getByRole('option', { name: /\+ spin/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+        await user.keyboard('{ArrowUp}{Enter}');
+        expect(
+            screen.getByRole('button', { name: 'Remove Spinach, frozen' }),
+        ).toBeInTheDocument();
+    });
+
+    it('degrades to saved suggestions when the lookup fails', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => ({ ok: false, status: 502 })),
+        );
+        const user = userEvent.setup();
+        render(<Form />);
+        await user.type(screen.getByRole('combobox'), 'spin');
+        await new Promise((resolve) => setTimeout(resolve, 450));
+        expect(screen.queryByText('From USDA')).toBeNull();
+        expect(
+            screen.getByRole('option', { name: /Spinach/ }),
+        ).toBeInTheDocument();
+        await user.keyboard('{Enter}');
+        expect(
+            screen.getByRole('button', { name: 'Remove Spinach' }),
+        ).toBeInTheDocument();
     });
 });
 

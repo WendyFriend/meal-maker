@@ -1,6 +1,7 @@
 import { createServer, ServerResponse } from 'node:http';
 import type { GenerateMealRequest } from '../shared/types/types.ts';
 import { handleGenerateMealOllama } from './meal-generator/algorithms/generateMealOllama.ts';
+import { searchNutrition } from './nutrition/searchNutrition.ts';
 
 const server = createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/generate-meal') {
@@ -22,13 +23,23 @@ const server = createServer(async (req, res) => {
         return;
     }
 
+    const url = new URL(req.url ?? '/', 'http://localhost');
+
+    if (req.method === 'GET' && url.pathname === '/api/nutrition') {
+        const result = await searchNutrition(url.searchParams.get('q') ?? '');
+
+        sendJson(res, result.status, result.body);
+
+        return;
+    }
+
     sendJson(res, 404, {
         error: 'Not found',
     });
 });
 
-server.listen(3001, () => {
-    console.log('Server listening on http://localhost:3001');
+server.listen(3010, () => {
+    console.log('Server listening on http://localhost:3010');
 });
 
 function sendJson(res: ServerResponse, statusCode: number, body: unknown) {

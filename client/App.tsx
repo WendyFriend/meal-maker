@@ -6,6 +6,9 @@ import {
     type GenerateMealRequest,
     type GenerateMealResponse,
     type IngredientInfo,
+    type MealRequirements,
+    type MealVariation,
+    type PantryDetails,
     type UserIngredient,
 } from '../shared/types/types';
 import MyIngredients from './MyIngredients';
@@ -17,6 +20,11 @@ import {
     MealMakerIntro,
     MealMakerSteps,
 } from './meal-generator/components/MealMakerIntro';
+import MealOptions from './meal-generator/components/MealOptions';
+import {
+    DEFAULT_MEAL_OPTIONS,
+    type MealOptionsValue,
+} from './meal-generator/components/mealOptionsValue';
 import MealResult from './meal-generator/components/NewMealResult';
 import { useAuth } from './auth/AuthContext';
 import Login from './auth/Login';
@@ -29,8 +37,16 @@ import {
 import type { Recipe } from '../shared/types/recipe';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
+import CreateRecipe from './CreateRecipe';
+import MealPlan from './MealPlan';
+import ShoppingList from './ShoppingList';
 import { isUserIngredient, normalizeIngredientName } from './utils/Ingredient';
 import { APP_VERSION } from './version';
+import {
+    getDietConflicts,
+    loadDietPreference,
+    saveDietPreference,
+} from './utils/diet';
 import cookingLoader from './assets/animations/cooking-loader.svg';
 
 type Page = keyof typeof pageConfig;
@@ -47,6 +63,14 @@ const pageConfig = {
     'my-recipes': {
         type: 'main',
         title: 'My Recipes',
+    },
+    'meal-plan': {
+        type: 'main',
+        title: 'Meal Plan',
+    },
+    'shopping-list': {
+        type: 'main',
+        title: 'Shopping List',
     },
     'add-ingredient': {
         type: 'sub',
@@ -77,6 +101,14 @@ const navigationItems: {
     {
         id: 'my-recipes',
         label: 'My Recipes',
+    },
+    {
+        id: 'meal-plan',
+        label: 'Meal Plan',
+    },
+    {
+        id: 'shopping-list',
+        label: 'Shopping List',
     },
 ];
 
@@ -165,16 +197,38 @@ function App() {
     >([]);
 
     const [caloriesGoal, setCaloriesGoal] = useState<number>();
+    const [mealOptions, setMealOptions] = useState<MealOptionsValue>(() => ({
+        ...DEFAULT_MEAL_OPTIONS,
+        dietary: loadDietPreference(),
+    }));
+
+    // Ingredients that fit the chosen diet; the rest are flagged in the
+    // ingredient step and left out of the request.
+    const mealIngredients = ingredients.filter(
+        (ingredient) =>
+            getDietConflicts(ingredient, mealOptions.dietary).length === 0,
+    );
 
     const [meal, setMeal] = useState<GenerateMealResponse | undefined>();
     const [originalMeal, setOriginalMeal] = useState<
         GenerateMealResponse | undefined
     >();
+    // Names of ingredients in the current meal whose nutrition was estimated.
+    const [estimatedIngredients, setEstimatedIngredients] = useState<string[]>(
+        [],
+    );
+    const [estimatedDialogName, setEstimatedDialogName] = useState<
+        string | null
+    >(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<AppError>();
 
     // Recipe opened from the My Recipes list; shown on the detail page.
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
+
+    // Bumped when a recipe is created or edited elsewhere, so the (kept
+    // mounted) My Recipes list remounts and reloads.
+    const [recipesVersion, setRecipesVersion] = useState(0);
 
     // Scroll target for the generated recipe; scrolls smoothly once the
     // result is ready (see handleCreate).
@@ -186,7 +240,15 @@ function App() {
         currentPage === 'my-recipes' ||
         subPageParent[currentPage] === 'my-recipes';
 
+    // Reload whenever the signed-in user changes; on first mount there may
+    // be no session yet, and RLS would return nothing.
+    const userId = user?.id;
+
     useEffect(() => {
+        if (!userId) {
+            return;
+        }
+
         async function loadIngredients() {
             try {
                 const ingredients = await getUserIngredients();
@@ -197,7 +259,7 @@ function App() {
         }
 
         loadIngredients();
-    }, []);
+    }, [userId]);
 
     // The browser back gesture (swipe from the left edge, Android back
     // button) pops the history entry navigateToPage pushed when a sub-page
@@ -275,7 +337,9 @@ function App() {
         );
     }
 
-    async function createUserIngredient(ingredient: IngredientInfo) {
+    async function createUserIngredient(
+        ingredient: IngredientInfo & PantryDetails,
+    ) {
         // update database user ingredients
         const created = await saveUserIngredientToDB(ingredient);
         // update local copy of user ingredients
@@ -355,17 +419,51 @@ function App() {
         );
     }
 
-    async function handleCreate() {
+    function buildRequirements(
+        variation?: MealVariation,
+        previousMealName?: string,
+    ): MealRequirements {
+        const requirements: MealRequirements = {};
+
+        if (caloriesGoal !== undefined) {
+            requirements.calories = caloriesGoal;
+        }
+        if (mealOptions.proteinPercentage !== undefined) {
+            requirements.proteinPercentage = mealOptions.proteinPercentage;
+        }
+        if (mealOptions.servings > 1) {
+            requirements.servings = mealOptions.servings;
+        }
+        if (mealOptions.mealType) {
+            requirements.mealType = mealOptions.mealType;
+        }
+        if (mealOptions.dietary.length > 0) {
+            requirements.dietary = mealOptions.dietary;
+        }
+        if (variation) {
+            requirements.variation = variation;
+            requirements.previousMealName = previousMealName;
+        }
+
+        return requirements;
+    }
+
+    // `variation` re-runs generation for "Try another" style tweaks, with
+    // the same ingredients and options.
+    async function handleCreate(variation?: MealVariation) {
+        const previousMealName = meal?.mealName;
+
         setIsGenerating(true);
         setMeal(undefined);
         setOriginalMeal(undefined);
+        setEstimatedIngredients([]);
         setError(undefined);
         try {
             const input: GenerateMealRequest = {
-                ingredients: ingredients.map(getIngredientInfoFromStoredData),
-                requirements: {
-                    calories: caloriesGoal,
-                },
+                ingredients: mealIngredients.map(
+                    getIngredientInfoFromStoredData,
+                ),
+                requirements: buildRequirements(variation, previousMealName),
             };
 
             const response = await fetch('/api/generate-meal', {
@@ -396,6 +494,7 @@ function App() {
 
             setMeal(mealResponse);
             setOriginalMeal(mealResponse);
+            setEstimatedIngredients(mealResponse.estimatedIngredients ?? []);
 
             // Bring the freshly generated recipe into view. Runs after the
             // result renders; falls back to a jump when motion is reduced.
@@ -419,6 +518,66 @@ function App() {
         } finally {
             setIsGenerating(false);
         }
+    }
+
+    // Saves nutrition entered for an estimated ingredient, then drops it from
+    // the result's "estimated" notice.
+    async function handleEstimatedNutritionSave(
+        savedIngredient: UserIngredient | IngredientInfo,
+        saveToUserIngredients: boolean,
+    ) {
+        const estimatedName = estimatedDialogName;
+        if (estimatedName === null) return;
+
+        try {
+            if (saveToUserIngredients) {
+                if (isUserIngredient(savedIngredient)) {
+                    await updateUserIngredient(
+                        savedIngredient.ingredientId,
+                        savedIngredient,
+                    );
+                } else {
+                    await createUserIngredient(savedIngredient);
+                }
+            } else {
+                setThisMealIngredients((current) => [
+                    ...current.filter(
+                        (ingredient) =>
+                            ingredient.name !== savedIngredient.name,
+                    ),
+                    savedIngredient,
+                ]);
+            }
+
+            setEstimatedIngredients((names) =>
+                names.filter((name) => name !== estimatedName),
+            );
+            setEstimatedDialogName(null);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // Per-100g values of an estimated ingredient, as shown on the result.
+    function getEstimatedIngredientInfo(name: string): IngredientInfo {
+        const normalizedName = normalizeIngredientName(name);
+        const mealIngredient = meal?.ingredients.find(
+            (ingredient) =>
+                normalizeIngredientName(ingredient.name) === normalizedName,
+        );
+
+        if (!mealIngredient) return { name };
+
+        return {
+            name: mealIngredient.name,
+            caloriesPer100g: mealIngredient.caloriesPer100g,
+            proteinPer100g: mealIngredient.proteinPer100g,
+            carbohydratePer100g: mealIngredient.carbohydratePer100g,
+            fatPer100g: mealIngredient.fatPer100g,
+            sugarPer100g: mealIngredient.sugarPer100g,
+            saturatedFatPer100g: mealIngredient.saturatedFatPer100g,
+            fiberPer100g: mealIngredient.fiberPer100g,
+        };
     }
 
     async function handleSignOut() {
@@ -552,6 +711,14 @@ function App() {
                                         onIngredientClick={
                                             setSelectedIngredientIndex
                                         }
+                                        dietary={mealOptions.dietary}
+                                        onDietaryChange={(dietary) => {
+                                            setMealOptions((options) => ({
+                                                ...options,
+                                                dietary,
+                                            }));
+                                            saveDietPreference(dietary);
+                                        }}
                                     />
 
                                     <section className="meal-maker-calories">
@@ -561,13 +728,18 @@ function App() {
                                         />
                                     </section>
 
+                                    <MealOptions
+                                        value={mealOptions}
+                                        onChange={setMealOptions}
+                                    />
+
                                     <button
                                         type="button"
                                         className="create-button meal-maker-create-button"
-                                        onClick={handleCreate}
+                                        onClick={() => handleCreate()}
                                         disabled={
                                             isGenerating ||
-                                            ingredients.length === 0
+                                            mealIngredients.length === 0
                                         }
                                     >
                                         {isGenerating ? (
@@ -589,7 +761,12 @@ function App() {
                                     </button>
                                 </div>
 
-                                <MealMakerSteps />
+                                <MealMakerSteps
+                                    hasIngredients={ingredients.length > 0}
+                                    hasCalorieGoal={caloriesGoal !== undefined}
+                                    isGenerating={isGenerating}
+                                    hasMeal={meal !== undefined}
+                                />
                             </div>
 
                             {selectedIngredientIndex !== null && (
@@ -601,6 +778,16 @@ function App() {
                                         setSelectedIngredientIndex(null)
                                     }
                                     onSave={handleIngredientSave}
+                                />
+                            )}
+
+                            {estimatedDialogName !== null && (
+                                <NutritionDialog
+                                    ingredientInfo={getEstimatedIngredientInfo(
+                                        estimatedDialogName,
+                                    )}
+                                    onClose={() => setEstimatedDialogName(null)}
+                                    onSave={handleEstimatedNutritionSave}
                                 />
                             )}
 
@@ -636,6 +823,13 @@ function App() {
                                         meal={meal}
                                         originalMeal={originalMeal}
                                         onChange={setMeal}
+                                        onRegenerate={handleCreate}
+                                        estimatedIngredients={
+                                            estimatedIngredients
+                                        }
+                                        onAddEstimatedNutrition={
+                                            setEstimatedDialogName
+                                        }
                                     />
                                 </div>
                             )}
@@ -662,6 +856,7 @@ function App() {
                     {isRecipesPage && (
                         <div hidden={currentPage !== 'my-recipes'}>
                             <MyRecipes
+                                key={recipesVersion}
                                 showAddButton={currentPage === 'my-recipes'}
                                 onCreateRecipe={() =>
                                     navigateToPage('create-recipe')
@@ -674,9 +869,38 @@ function App() {
                         </div>
                     )}
 
-                    {currentPage === 'recipe-detail' && selectedRecipe && (
-                        <RecipeDetail recipe={selectedRecipe} />
+                    {currentPage === 'create-recipe' && (
+                        <CreateRecipe
+                            savedIngredients={userIngredients}
+                            onCancel={() => navigateToPage('my-recipes')}
+                            onSaved={(recipe) => {
+                                setRecipesVersion((version) => version + 1);
+                                setSelectedRecipe(recipe);
+                                navigateToPage('recipe-detail');
+                            }}
+                        />
                     )}
+
+                    {currentPage === 'recipe-detail' && selectedRecipe && (
+                        <RecipeDetail
+                            recipe={selectedRecipe}
+                            onRecipeUpdated={(recipe) => {
+                                setSelectedRecipe(recipe);
+                                setRecipesVersion((version) => version + 1);
+                            }}
+                        />
+                    )}
+
+                    {currentPage === 'meal-plan' && (
+                        <MealPlan
+                            onOpenRecipe={(recipe) => {
+                                setSelectedRecipe(recipe);
+                                navigateToPage('recipe-detail');
+                            }}
+                        />
+                    )}
+
+                    {currentPage === 'shopping-list' && <ShoppingList />}
                 </main>
             </div>
         </div>

@@ -1,0 +1,68 @@
+/* Optional "On hand" inputs (quantity, unit, expiry) */
+
+.pantry-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-4);
+}
+
+.pantry-field {
+    display: grid;
+    align-content: start;
+    gap: var(--space-1);
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.pantry-field:focus-within {
+    color: var(--accent);
+}
+
+.pantry-quantity-row,
+.pantry-expiry-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+}
+
+.pantry-quantity-row .input-underline,
+.pantry-expiry-row .input-underline {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.pantry-unit {
+    flex: 0 0 auto;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-tint);
+    color: var(--text-h);
+    font: inherit;
+    font-size: var(--font-size-sm);
+}
+
+.pantry-unit:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.pantry-clear {
+    flex: 0 0 auto;
+    padding: 6px 4px;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+@media (max-width: 480px) {
+    .pantry-fields {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-3);
+    }
+}

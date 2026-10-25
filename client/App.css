@@ -199,6 +199,62 @@
 }
 
 /* =========================
+   List page header (My Ingredients / My Recipes)
+   ========================= */
+
+.list-page-header {
+    margin-bottom: var(--space-5);
+}
+
+.list-page-header h1 {
+    margin: 0 0 var(--space-1);
+
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.6px;
+}
+
+.list-page-header p {
+    margin: 0;
+
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* Calorie pill at the end of list rows */
+.list-row-kcal {
+    flex-shrink: 0;
+
+    padding: 4px 10px;
+
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--text-h);
+
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .list-page-header {
+        margin-bottom: var(--space-4);
+    }
+
+    .list-page-header h1 {
+        font-size: 24px;
+    }
+
+    .page-content {
+        padding-inline: var(--space-4);
+    }
+}
+
+/* =========================
    Floating add button (My Ingredients / My Recipes)
    ========================= */
 
@@ -278,7 +334,8 @@
     box-sizing: border-box;
 }
 
-.page-header-meal-maker .page-header-inner,
+/* Same frame on every page so the header doesn't shift when navigating. */
+.page-header-inner,
 .page-content-meal-maker {
     max-width: 1320px;
     padding-inline: clamp(var(--space-5), 3vw, 44px);
@@ -338,6 +395,11 @@
     line-height: 1.25;
     letter-spacing: -0.7px;
     text-wrap: balance;
+}
+
+.intro-highlight {
+    color: var(--accent);
+    font-style: normal;
 }
 
 .intro-description {
@@ -425,9 +487,9 @@
     margin: 0;
     padding: var(--space-5) var(--space-3);
     list-style: none;
-    border: 0;
-    border-radius: 8px;
-    background: rgb(255 255 255 / 42%);
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-lg);
+    background: rgb(255 255 255 / 55%);
 }
 
 .intro-step {
@@ -480,16 +542,53 @@
     line-height: 1.35;
 }
 
+/* Live progress: done = filled accent icon with a check, active = ring. */
+.intro-step-icon {
+    transition:
+        background-color 200ms ease,
+        border-color 200ms ease,
+        box-shadow 200ms ease;
+}
+
+.intro-step-done .intro-step-icon,
+.intro-step-done:first-child .intro-step-icon {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+
+.intro-step-done .intro-step-icon svg {
+    stroke-width: 2.4;
+}
+
+.intro-step-active .intro-step-icon {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.meal-maker-form > .meal-options {
+    margin-top: var(--space-6);
+}
+
 .meal-maker-form.app-card {
     grid-area: form;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    padding: var(--space-6) var(--space-8);
-    border: 1px solid #f4eee5;
-    border-radius: 9px;
-    background: linear-gradient(160deg, #fff 0%, #fffdf9 100%);
-    box-shadow: 0 8px 36px rgb(86 58 38 / 6%);
+    padding: var(--space-7) var(--space-8) var(--space-8);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
 }
 
 .meal-maker-form > * {
@@ -499,19 +598,28 @@
 }
 
 .meal-maker-calories {
-    margin-top: var(--space-5);
-    padding-top: var(--space-4);
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
     border-top: 1px solid var(--border-hairline);
 }
 
 .meal-maker-create-button {
-    min-height: 48px;
-    margin-top: var(--space-5);
+    min-height: 52px;
+    margin-top: var(--space-7);
 }
 
 .create-button.meal-maker-create-button {
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: linear-gradient(110deg, #ff7968, #ff685b);
+    box-shadow: 0 8px 20px rgb(244 121 108 / 28%);
+}
+
+/* Solid rather than translucent, so the sticky phone button never shows
+   the form through it. */
+.create-button.meal-maker-create-button:disabled {
+    background: #f7c4bc;
+    box-shadow: none;
+    opacity: 1;
 }
 
 /* =========================
@@ -730,33 +838,10 @@
         justify-self: start;
     }
 
-    .meal-maker-calories {
-        padding: 20px 0;
-        border: 0;
-        border-radius: 12px;
-    }
-
-    .meal-maker-calories .calories {
-        flex-wrap: wrap;
-    }
-
-    .meal-maker-calories .calories h3 {
-        font-size: 16px;
-    }
-
-    .meal-maker-calories .calories-heading-icon {
-        font-size: 26px;
-    }
-
-    .meal-maker-calories .calories-field {
-        flex: 1 1 190px;
-        min-height: 52px;
-        font-size: 16px;
-        background: var(--surface);
-    }
-
-    .meal-maker-calories .calories-field-unit {
-        font-size: 13px;
+    /* Roomier controls once there's space for them */
+    .meal-maker-form .meal-form-field {
+        min-height: 50px;
+        font-size: var(--font-size-md);
     }
 }
 
@@ -790,13 +875,8 @@
 
     .intro-steps {
         gap: 10px;
-        padding: 24px 12px 28px;
-        border-radius: 10px;
-        background: linear-gradient(
-            120deg,
-            rgb(255 255 255 / 80%),
-            rgb(255 253 249 / 45%)
-        );
+        margin-top: var(--space-6);
+        padding: 22px 12px 24px;
     }
 
     .intro-step {
@@ -890,21 +970,22 @@
 }
 
 @media (max-width: 640px) {
-    .page-header-meal-maker .page-header-inner {
+    /* Phone header: brand left, menu right. Log out lives in the drawer. */
+    .page-header-inner {
         height: 52px;
         padding-inline: 14px;
     }
 
-    .page-header-meal-maker .page-header-brand {
+    .page-header-brand {
         order: 1;
     }
 
-    .page-header-meal-maker .page-header-menu {
+    .page-header-menu {
         order: 2;
         margin-left: auto;
     }
 
-    .page-header-meal-maker .page-header-actions {
+    .page-header-actions {
         display: none;
     }
 
@@ -1029,6 +1110,7 @@
         gap: 6px;
         margin-top: -32px;
         padding: 0;
+        border: 0;
         background: transparent;
     }
 
@@ -1047,16 +1129,21 @@
     }
 
     .meal-maker-form.app-card {
-        margin-top: 32px;
-        padding-block: clamp(12px, 3.5vw, 18px);
-        padding-inline: clamp(18px, 5vw, 24px);
-        border-radius: 8px;
-        box-shadow: 0 5px 20px rgb(86 58 38 / 5%);
+        margin-top: 16px;
+        padding-block: clamp(16px, 4.5vw, 22px);
+        padding-inline: clamp(16px, 4.5vw, 22px);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
     }
 
     .meal-maker-calories {
-        margin-top: 14px;
-        padding-top: 12px;
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+
+    .meal-maker-form > .meal-options {
+        margin-top: 16px;
+        padding-top: 16px;
     }
 
     .meal-maker-create-button {
@@ -1067,10 +1154,33 @@
         left: 0;
         width: calc(100% - 2 * var(--meal-mobile-gutter));
         max-width: var(--meal-mobile-width);
-        min-height: 44px;
+        min-height: 50px;
         margin: 0 auto;
-        padding: 10px 12px;
-        font-size: 14px;
+        padding: 12px;
+        border-radius: 14px;
+        font-size: 15px;
+        box-shadow: 0 10px 24px rgb(244 121 108 / 32%);
+    }
+
+    .create-button.meal-maker-create-button:disabled {
+        box-shadow: 0 6px 16px rgb(86 58 38 / 10%);
+    }
+
+    /* Fade the form out behind the sticky button. */
+    .page-content-meal-maker::after {
+        content: '';
+        position: fixed;
+        z-index: 79;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: calc(110px + var(--meal-mobile-safe-area));
+        background: linear-gradient(
+            to top,
+            var(--bg) 55%,
+            color-mix(in srgb, var(--bg) 0%, transparent)
+        );
+        pointer-events: none;
     }
 }
 
@@ -1085,7 +1195,8 @@
         display: inline;
     }
 
-    .meal-maker-calories {
+    .meal-maker-calories,
+    .meal-maker-form > .meal-options {
         margin-top: 10px;
         padding-top: 10px;
     }

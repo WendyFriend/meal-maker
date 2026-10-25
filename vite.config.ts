@@ -61,16 +61,16 @@ export default defineConfig({
     },
     preview: {
         host: true,
-        port: 4173,
+        port: 4180,
         strictPort: true,
         https,
     },
     server: {
         host: 'localhost',
-        port: 5173,
+        port: 5180,
         strictPort: true,
         proxy: {
-            '/api': 'http://localhost:3001',
+            '/api': 'http://localhost:3010',
         },
     },
 });

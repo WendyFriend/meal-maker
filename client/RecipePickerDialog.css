@@ -1,0 +1,112 @@
+/* =========================
+   Recipe picker (dialog / bottom sheet)
+   ========================= */
+
+.recipe-picker-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    box-sizing: border-box;
+    background: rgb(27 51 47 / 40%);
+}
+
+.recipe-picker {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 440px;
+    max-height: min(560px, 80vh);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+    text-align: left;
+}
+
+.recipe-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.recipe-picker-header h2 {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+}
+
+.recipe-picker-close {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-muted);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.recipe-picker-list {
+    overflow-y: auto;
+}
+
+.recipe-picker-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 56px;
+    padding: var(--space-3) var(--space-4);
+    box-sizing: border-box;
+    border: 0;
+    border-bottom: 1px solid var(--border-hairline);
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+}
+
+.recipe-picker-row:last-child {
+    border-bottom: 0;
+}
+
+.recipe-picker-row:hover {
+    background: var(--accent-bg);
+}
+
+.recipe-picker-name {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--font-weight-semibold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .recipe-picker-backdrop {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .recipe-picker {
+        max-width: none;
+        max-height: 80vh;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+}
