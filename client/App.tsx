@@ -13,10 +13,8 @@ import MyRecipes from './MyRecipes';
 import RecipeDetail from './RecipeDetail';
 import IngredientInput from './meal-generator/components/IngredientInput';
 import Calories from './meal-generator/components/Calories';
-import {
-    MealMakerIntro,
-    MealMakerSteps,
-} from './meal-generator/components/MealMakerIntro';
+import { MealMakerIntro } from './meal-generator/components/MealMakerIntro';
+import './meal-generator/MealMaker.css';
 import MealResult from './meal-generator/components/NewMealResult';
 import { useAuth } from './auth/AuthContext';
 import Login from './auth/Login';
@@ -96,9 +94,23 @@ function Brand({ className }: { className: string }) {
     return (
         <div className={className}>
             <span className="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M4 10.5C4 6.9 7.1 4 11 4c1.1 0 2.1.25 3 .7V19c0 .6-.4 1-1 1h-4c-.6 0-1-.4-1-1v-8.3" />
-                    <path d="M13.2 12.5c1.7-1.9 4-3.9 6.3-3.4" />
+                <svg viewBox="0 0 36 36" focusable="false">
+                    <path
+                        fill="#628f64"
+                        d="M17 13C8 13 7 8 8 5c6-1 10 2 9 8Z"
+                    />
+                    <path
+                        fill="#eea66f"
+                        d="M18 13C17 5 22 2 28 3c0 7-4 11-10 10Z"
+                    />
+                    <path
+                        fill="#ff6552"
+                        d="M2 15h32c-1 10-8 18-16 18S3 25 2 15Z"
+                    />
+                    <path
+                        fill="#ff8c6f"
+                        d="M3 15h9c-1 8 2 14 7 18C10 33 4 25 3 15Z"
+                    />
                 </svg>
             </span>
             <span className="brand-name">Meal Maker</span>
@@ -179,6 +191,7 @@ function App() {
     // Scroll target for the generated recipe; scrolls smoothly once the
     // result is ready (see handleCreate).
     const mealResultRef = useRef<HTMLDivElement>(null);
+    const mealFormRef = useRef<HTMLDivElement>(null);
 
     const config = pageConfig[currentPage];
     const isMealMaker = currentPage === 'meal-maker';
@@ -540,10 +553,30 @@ function App() {
                 >
                     {isMealMaker && (
                         <div className="meal-maker-screen">
-                            <div className="meal-maker-hero">
-                                <MealMakerIntro />
+                            <MealMakerIntro
+                                onGetStarted={() => {
+                                    const form = mealFormRef.current;
+                                    form?.focus({ preventScroll: true });
+                                    form?.parentElement?.scrollIntoView({
+                                        behavior: window.matchMedia(
+                                            '(prefers-reduced-motion: reduce)',
+                                        ).matches
+                                            ? 'auto'
+                                            : 'smooth',
+                                        block: 'start',
+                                    });
+                                }}
+                            />
 
-                                <div className="meal-maker-form app-card">
+                            <section
+                                className="meal-maker-tool"
+                                aria-label="Meal maker"
+                            >
+                                <div
+                                    className="meal-maker-form"
+                                    ref={mealFormRef}
+                                    tabIndex={-1}
+                                >
                                     <IngredientInput
                                         ingredients={ingredients}
                                         savedIngredients={userIngredients}
@@ -587,10 +620,12 @@ function App() {
                                             </>
                                         )}
                                     </button>
+                                    <p className="meal-maker-form-note">
+                                        Ingredient amounts, steps and nutrition
+                                        included.
+                                    </p>
                                 </div>
-
-                                <MealMakerSteps />
-                            </div>
+                            </section>
 
                             {selectedIngredientIndex !== null && (
                                 <NutritionDialog

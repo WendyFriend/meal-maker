@@ -1,119 +1,82 @@
-import mealMakerImage from '../../assets/mealmaker3.jpg';
-
-/*
- * Compact "how it works" steps shown in the homepage intro column.
- */
 const homeSteps = [
     {
         title: 'Choose ingredients',
+        description: 'Use what you have.',
         icon: (
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M18.5 4.5c-8.5 0-13 4-13 10a5 5 0 0 0 5 5c6 0 10-4.5 8-15Z" />
-                <path d="M5.5 20c2-4.5 5-7.5 9.5-10" />
+            <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <path
+                    className="intro-carrot-leaves"
+                    d="M29 16c-1-9 2-13 5-12 3 2 0 8-5 12Zm1 1c6-8 11-9 12-5 0 4-6 6-12 5Zm-3-2c-5-5-6-10-3-11 4-1 5 5 3 11Z"
+                />
+                <path d="M27 15c-6-4-11 1-14 8L5 42l19-11c7-4 10-10 3-16Z" />
+                <path d="m17 20 5 4m-10 4 4 3m5-1 3 2M8 36l3 2" />
             </svg>
         ),
     },
     {
         title: 'Set a calorie goal',
+        description: 'Optional — make it yours.',
         icon: (
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="11" cy="13" r="8" />
-                <circle cx="11" cy="13" r="4" />
-                <path d="m11 13 9-10m-4 0h4v4" />
+            <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <circle cx="22" cy="26" r="17" />
+                <circle cx="22" cy="26" r="10" />
+                <path d="m22 26 20-21m-8 1 8-1-1 8" />
             </svg>
         ),
     },
     {
-        title: 'Create a recipe',
+        title: 'Create your meal',
+        description: 'Recipe, cooking steps and nutrition.',
         icon: (
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M4 15a4 4 0 0 1 3-6 5 5 0 0 1 9-2 4 4 0 0 1 4 6 4 4 0 0 1-2 7H6a4 4 0 0 1-2-5Z" />
-                <path d="M7 16v4m10-4v4" />
-            </svg>
-        ),
-    },
-    {
-        title: 'Cook and enjoy',
-        icon: (
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M5 3v8m3-8v8m3-8v8M8 11v10m10-18v18" />
-                <path d="M16 3c4 2 4 7 2 10" />
+            <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <path d="M12 30a9 9 0 1 1 4-17 9 9 0 0 1 17-1 9 9 0 1 1 4 18v13H12Z" />
+                <path d="M12 36h25M19 24v12m10-12v12" />
             </svg>
         ),
     },
 ] as const;
 
-export function MealMakerIntro() {
+export function MealMakerIntro({ onGetStarted }: { onGetStarted: () => void }) {
     return (
-        <div className="meal-maker-intro">
-            <h2>
-                <span>Turn your ingredients</span>{' '}
-                <span>into a delicious meal.</span>
-            </h2>
-            <p className="intro-description">
-                <span className="intro-description-full">
-                    Tell us what you have, set a calorie goal if you like, and
-                    get a personalised recipe with ingredient amounts, cooking
-                    instructions and nutrition breakdown.
-                </span>
-                <span className="intro-description-compact">
-                    Use what you have. Set a calorie goal, and get a
-                    personalised recipe with nutrition and cooking steps.
-                </span>
-            </p>
-            <div className="intro-art" aria-hidden="true">
-                <img
-                    className="intro-art-produce"
-                    src={mealMakerImage}
-                    alt=""
-                />
-                <span className="intro-art-note">
-                    <span className="intro-note-line">Good food.</span>
-                    <span className="intro-note-line">Made easy.</span>
+        <section
+            className="meal-maker-introduction"
+            aria-labelledby="meal-maker-heading"
+        >
+            <div className="meal-maker-intro">
+                <h1 id="meal-maker-heading">
+                    <span>Your ingredients.</span>
+                    <span>A delicious meal.</span>
                     <svg
-                        className="intro-note-doodles"
-                        viewBox="0 0 150 76"
-                        fill="none"
+                        className="intro-heading-strokes"
+                        viewBox="0 0 28 38"
                         aria-hidden="true"
                     >
-                        <path
-                            className="intro-note-mobile-strokes"
-                            d="M5 8 0 0M-1 18l-8-4"
-                        />
-                        <path
-                            className="intro-note-top-right-stroke"
-                            d="m124 12 5-8"
-                        />
-                        <path
-                            className="intro-note-heart"
-                            d="M137 32c-5-7-11 0-6 5l6 6 6-7c4-6-3-10-6-4Z"
-                        />
-                        <path
-                            className="intro-note-right-strokes"
-                            d="m134 58 8 6m-12 3 5 5"
-                        />
+                        <path d="m9 17 6-14m-1 24 11-6" />
                     </svg>
-                </span>
+                </h1>
+                <p className="intro-description">
+                    A personalised recipe that works for you, with simple
+                    guidance.
+                </p>
             </div>
-        </div>
-    );
-}
-
-export function MealMakerSteps() {
-    return (
-        <ol className="intro-steps">
-            {homeSteps.map((step, index) => (
-                <li className="intro-step" key={step.title}>
-                    <span className="intro-step-icon" aria-hidden="true">
-                        {step.icon}
-                    </span>
-                    <span className="intro-step-copy">
-                        <strong>
-                            {index + 1}. {step.title}
-                        </strong>
-                    </span>
-                </li>
-            ))}
-        </ol>
+            <ol className="intro-steps">
+                {homeSteps.map(({ title, description, icon }) => (
+                    <li className="intro-step" key={title}>
+                        <span className="intro-step-icon">{icon}</span>
+                        <div className="intro-step-copy">
+                            <h2>{title}</h2>
+                            <p>{description}</p>
+                        </div>
+                    </li>
+                ))}
+            </ol>
+            <button
+                className="meal-maker-get-started"
+                type="button"
+                onClick={onGetStarted}
+            >
+                Get started <span aria-hidden="true">↓</span>
+            </button>
+        </section>
     );
 }

@@ -5,9 +5,9 @@ import { normalizeIngredientName } from '../../utils/Ingredient';
 // only classify existing records; they never supply ingredients or nutrition.
 export const quickAddCategories = [
     { id: 'vegetables', name: 'Vegetables' },
-    { id: 'proteins', name: 'Proteins' },
+    { id: 'proteins', name: 'Protein' },
     { id: 'grains', name: 'Grains' },
-    { id: 'nuts-seeds', name: 'Nuts & Seeds' },
+    { id: 'nuts-seeds', name: 'More' },
 ] as const;
 
 export type QuickAddCategory = (typeof quickAddCategories)[number];

@@ -74,7 +74,7 @@ describe('responsive calorie selector', () => {
         render(<Calories value={undefined} onChange={vi.fn()} />);
         expect(
             screen.getByRole('button', { name: 'Calorie goal, no preference' }),
-        ).toHaveTextContent('e.g. 500');
+        ).toHaveTextContent('e.g. 600');
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 

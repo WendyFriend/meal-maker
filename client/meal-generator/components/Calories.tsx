@@ -49,7 +49,7 @@ function Calories({ value, onChange }: CaloriesProps) {
 
     const selectedValue = value === undefined ? 'none' : String(value);
 
-    const selectedLabel = value === undefined ? 'e.g. 500' : String(value);
+    const selectedLabel = value === undefined ? 'e.g. 600' : String(value);
 
     function onValueChange(value: string) {
         onChange(value === 'none' ? undefined : Number(value));
@@ -57,12 +57,11 @@ function Calories({ value, onChange }: CaloriesProps) {
 
     return (
         <div className="calories">
-            <h3>
-                <span className="calories-heading-icon" aria-hidden="true">
-                    ◎
-                </span>
-                Optional: Set a calorie goal
-            </h3>
+            <div className="calories-heading">
+                <h2>2. Calorie goal</h2>
+                <span className="calories-optional">Optional</span>
+            </div>
+            <p className="calories-hint">Leave blank if you prefer.</p>
 
             <button
                 type="button"

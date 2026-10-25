@@ -243,15 +243,8 @@ function IngredientInput({
     return (
         <div className="ingredient-input">
             <div className="ingredient-input-header">
-                <span className="ingredient-step-number" aria-hidden="true">
-                    1
-                </span>
                 <div className="ingredient-heading-copy">
-                    <h3>Choose your ingredients</h3>
-                    <p>
-                        Search and add what you have. You can also use your
-                        saved ingredients.
-                    </p>
+                    <h2>1. Choose your ingredients</h2>
                 </div>
             </div>
 
@@ -285,7 +278,7 @@ function IngredientInput({
                         }}
                         onKeyDown={handleKeyDown}
                         enterKeyHint="done"
-                        placeholder="Search for an ingredient..."
+                        placeholder="Search ingredients..."
                         aria-label="Search or add an ingredient"
                         role="combobox"
                         aria-expanded={

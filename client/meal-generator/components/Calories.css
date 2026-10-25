@@ -7,23 +7,6 @@
     text-align: left;
 }
 
-.calories h3 {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0;
-    color: var(--deep-green);
-    font-size: 13px;
-    font-weight: var(--font-weight-semibold);
-    white-space: nowrap;
-}
-
-.calories-heading-icon {
-    color: var(--accent);
-    font-size: 20px;
-    line-height: 1;
-}
-
 .calories-field {
     display: flex;
     align-items: center;
@@ -115,10 +98,6 @@
         align-items: stretch;
         flex-direction: column;
         gap: var(--space-1);
-    }
-
-    .calories h3 {
-        font-size: 12px;
     }
 
     .calories-field {

@@ -22,13 +22,15 @@ import {
 import './BottomSheet.css';
 import './QuickAddIngredientPicker.css';
 
-const categoryIconPaths: Record<QuickAddCategoryId, string> = {
+const categoryIconPaths: Record<
+    Exclude<QuickAddCategoryId, 'nuts-seeds'>,
+    string
+> = {
     vegetables:
         'M16 28V14M16 21C7 22 5 17 5 12c7-1 11 2 11 9ZM16 15c-1-8 3-12 10-12 1 7-2 12-10 12Z',
     proteins:
         'M11 21c-6-3-6-9-2-13s10-4 13 0 1 10-5 12l-5 6-3-3 2-2ZM10 25l-3 3a3 3 0 0 1-4-4l4-3M11 11c2-2 5-3 7-1',
     grains: 'm10 29 12-25M15 19C7 20 6 16 6 13c6 0 9 2 9 6ZM19 12c-7-1-8-4-7-8 5 1 7 4 7 8ZM16 19c1-6 5-8 10-6-1 5-5 7-10 6Z',
-    'nuts-seeds': 'M7 26C3 15 10 6 26 3c2 15-5 25-19 23Z',
 };
 
 function CategoryIcon({ category }: { category: QuickAddCategoryId }) {
@@ -39,9 +41,14 @@ function CategoryIcon({ category }: { category: QuickAddCategoryId }) {
             aria-hidden="true"
             focusable="false"
         >
-            <path d={categoryIconPaths[category]} />
-            {category === 'nuts-seeds' && (
-                <path className="quick-add-icon-detail" d="M8 25 23 7" />
+            {category === 'nuts-seeds' ? (
+                <g fill="#607687" stroke="none">
+                    <circle cx="6" cy="16" r="2.5" />
+                    <circle cx="16" cy="16" r="2.5" />
+                    <circle cx="26" cy="16" r="2.5" />
+                </g>
+            ) : (
+                <path d={categoryIconPaths[category]} />
             )}
             {category === 'proteins' && (
                 <path

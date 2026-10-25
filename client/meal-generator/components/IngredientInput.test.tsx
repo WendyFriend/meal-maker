@@ -130,7 +130,7 @@ describe('ingredient Quick add integration', () => {
                 name: 'Spinach',
             }),
         );
-        await user.click(screen.getByRole('button', { name: 'Proteins' }));
+        await user.click(screen.getByRole('button', { name: 'Protein' }));
         expect(screen.getAllByRole('dialog')).toHaveLength(1);
         await user.click(
             within(screen.getByRole('dialog')).getByRole('button', {
@@ -182,7 +182,7 @@ describe('ingredient Quick add integration', () => {
             const { container } = render(<Form />);
             const originalOverflow = document.body.style.overflow;
             const trigger = screen.getByRole('button', {
-                name: 'Nuts & Seeds',
+                name: 'More',
             });
             await user.click(trigger);
             const picker = screen.getByRole('dialog');
