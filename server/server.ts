@@ -55,8 +55,12 @@ const server = createServer(async (req, res) => {
     });
 });
 
-server.listen(3010, () => {
-    console.log('Server listening on http://localhost:3010');
+// Local dev uses 3010 (Vite proxies /api there); deployments set PORT/HOST.
+const port = Number(process.env.PORT) || 3010;
+const host = process.env.HOST || 'localhost';
+
+server.listen(port, host, () => {
+    console.log(`Server listening on http://${host}:${port}`);
 });
 
 function sendJson(res: ServerResponse, statusCode: number, body: unknown) {

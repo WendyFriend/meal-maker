@@ -1,9 +1,11 @@
 import type { Session, User } from '@supabase/supabase-js';
 import type { PlanTier } from '../../shared/plans';
 
-// Dev-only login that skips Supabase entirely. `import.meta.env.DEV` is
-// false in production builds, so none of this can be enabled there.
-export const isDevAuthAvailable = import.meta.env.DEV;
+// Dev-only login that skips Supabase entirely. Available in `vite` dev and
+// in builds made with VITE_ENABLE_DEV_LOGIN=true (the test deployment);
+// normal production builds leave it out.
+export const isDevAuthAvailable =
+    import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true';
 
 // Holds the plan tier of the dev session ('free' | 'trial' | 'pro').
 const DEV_SESSION_KEY = 'mealmaker-dev-session';
