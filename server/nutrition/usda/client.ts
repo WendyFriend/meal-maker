@@ -1,11 +1,5 @@
 import type { USDASearchResponse } from './types.js';
 
-const USDA_API_KEY = process.env.USDA_API_KEY;
-
-if (!USDA_API_KEY) {
-    throw new Error('USDA_API_KEY environment variable is not set');
-}
-
 type FoodSearchParams = {
     query: string;
     dataType?: string[];
@@ -18,6 +12,11 @@ type FoodSearchParams = {
 export async function searchFoods(
     params: FoodSearchParams,
 ): Promise<USDASearchResponse> {
+    const apiKey = process.env.USDA_API_KEY;
+    if (!apiKey) {
+        throw new Error('USDA_API_KEY environment variable is not set');
+    }
+
     const searchParams = new URLSearchParams({
         query: params.query,
         dataType: params.dataType?.join(',') ?? 'SR Legacy',
@@ -25,11 +24,12 @@ export async function searchFoods(
         pageNumber: String(params.pageNumber ?? 1),
         sortBy: params.sortBy ?? 'dataType.keyword',
         sortOrder: params.sortOrder ?? 'asc',
-        api_key: USDA_API_KEY!,
+        api_key: apiKey,
     });
 
     const response = await fetch(
         `https://api.nal.usda.gov/fdc/v1/foods/search?${searchParams}`,
+        { signal: AbortSignal.timeout(10_000) },
     );
 
     if (!response.ok) {

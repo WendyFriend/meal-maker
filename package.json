@@ -14,7 +14,7 @@
     "format": "prettier --write \"**/*.ts\"",
     "format:check": "prettier --check \"**/*.ts\"",
     "test": "vitest",
-    "server": "npm run build && tsx --env-file=.env server/server.ts"
+    "server": "npm run build && tsx watch --env-file=.env server/server.ts"
   },
   "dependencies": {
     "@ncdai/react-wheel-picker": "^1.2.2",

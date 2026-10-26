@@ -69,6 +69,14 @@
 
 /* Wheel picker sheet content */
 
+.bottom-sheet.calories-sheet {
+    max-width: 640px;
+    padding: 16px 16px max(24px, env(safe-area-inset-bottom));
+    border-radius: 28px 28px 0 0;
+    background: var(--surface-tint);
+    box-shadow: 0 -8px 32px rgb(36 69 65 / 10%);
+}
+
 .calories-picker {
     display: flex;
     align-items: center;
@@ -78,15 +86,27 @@
 .calories-picker-wrapper {
     flex: 1;
     min-width: 0;
-    max-width: 320px;
+    max-width: none;
 
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-
-    background: var(--surface);
+    border: 0;
+    background: transparent;
 }
 
 /* Highlighted wheel option: coral text */
+
+.calories-picker-wrapper [data-rwp-option],
+.calories-picker-wrapper [data-rwp-highlight-item] {
+    font-size: 22px;
+}
+
+.calories-picker-wrapper [data-rwp-option] {
+    color: var(--text-muted);
+}
+
+.calories-picker-wrapper [data-rwp-highlight-wrapper] {
+    border-radius: 12px;
+    background: var(--accent-bg);
+}
 
 .calories-picker-wrapper [data-rwp-highlight-item] {
     color: var(--accent);

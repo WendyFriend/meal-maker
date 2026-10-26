@@ -1,0 +1,33 @@
+.meal-ingredient-thumbnail {
+    display: block;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    background-size: 400% 400%;
+    background-repeat: no-repeat;
+}
+
+.meal-ingredient-thumbnail-fallback {
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #f4f1e9;
+    color: #8b9c85;
+}
+
+.meal-ingredient-thumbnail-fallback svg {
+    width: 26px;
+    height: 26px;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@media (max-width: 440px) {
+    .meal-ingredient-thumbnail {
+        flex-basis: 32px;
+        width: 32px;
+        height: 32px;
+    }
+}

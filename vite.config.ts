@@ -24,8 +24,8 @@ export default defineConfig({
                 name: 'MealMaker',
                 short_name: 'MealMaker',
                 description: 'Create meals from the ingredients you have.',
-                theme_color: '#8b5cf6',
-                background_color: '#fafafa',
+                theme_color: '#fbf6ee',
+                background_color: '#fbf6ee',
                 display: 'standalone',
                 icons: [
                     {

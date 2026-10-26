@@ -80,6 +80,7 @@
 }
 
 .quick-add-picker {
+    animation: quick-add-appear 150ms ease-out;
     position: fixed;
     inset: auto;
     z-index: 1100;
@@ -105,10 +106,6 @@
 
 .quick-add-picker:focus {
     outline: none;
-}
-
-.quick-add-picker-desktop {
-    animation: quick-add-appear 150ms ease-out;
 }
 
 .quick-add-picker-header {
@@ -208,41 +205,6 @@
     line-height: 1.6;
 }
 
-.quick-add-picker-mobile.bottom-sheet {
-    inset: auto 0 0;
-    width: 100%;
-    max-width: 520px;
-    max-height: min(80svh, 640px);
-    max-height: min(80dvh, 640px);
-    margin: 0 auto;
-    padding: 12px 20px max(20px, env(safe-area-inset-bottom));
-    border: 0;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    transform: none;
-    transition: none;
-    animation: quick-add-sheet-appear 180ms ease-out;
-}
-
-.quick-add-picker-mobile.bottom-sheet::before {
-    flex: 0 0 4px;
-    margin-bottom: 0;
-}
-
-.quick-add-picker-mobile::backdrop {
-    background: rgb(36 69 65 / 22%);
-}
-
-.quick-add-picker-mobile .quick-add-option {
-    min-height: 44px;
-    padding: 10px 12px;
-}
-
-.quick-add-picker-mobile .quick-add-close {
-    flex-basis: 44px;
-    width: 44px;
-    height: 44px;
-}
-
 @media (min-width: 641px) {
     .quick-add-categories {
         display: grid;
@@ -303,25 +265,26 @@
     }
 }
 
-@keyframes quick-add-sheet-appear {
-    from {
-        opacity: 0;
-        transform: translateY(12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .quick-add-picker,
-    .quick-add-picker-mobile.bottom-sheet {
+    .quick-add-picker {
         animation: none;
     }
 
     .quick-add-category,
     .quick-add-option {
         transition: none;
+    }
+}
+
+@media (pointer: coarse) {
+    .quick-add-option {
+        min-height: 44px;
+        padding: 10px 12px;
+    }
+
+    .quick-add-close {
+        flex-basis: 44px;
+        width: 44px;
+        height: 44px;
     }
 }

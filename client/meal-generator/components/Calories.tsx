@@ -61,7 +61,7 @@ function Calories({ value, onChange }: CaloriesProps) {
                 <h2>2. Calorie goal</h2>
                 <span className="calories-optional">Optional</span>
             </div>
-            <p className="calories-hint">Leave blank if you prefer.</p>
+            <p className="calories-hint">if you have one</p>
 
             <button
                 type="button"
@@ -110,16 +110,22 @@ function Calories({ value, onChange }: CaloriesProps) {
                     onClose={close}
                 />
             )}
-            {mobile && isOpen && (
-                <BottomSheet isOpen={isOpen} onClose={close}>
+            {mobile && (
+                <BottomSheet
+                    isOpen={isOpen}
+                    onClose={close}
+                    className="calories-sheet"
+                >
                     <div
                         id={popupId}
                         className="calories-picker"
-                        role="dialog"
-                        aria-label="Calorie goal"
+                        role={isOpen ? 'dialog' : undefined}
+                        aria-label={isOpen ? 'Calorie goal' : undefined}
                     >
                         <WheelPickerWrapper className="calories-picker-wrapper">
                             <WheelPicker
+                                optionItemHeight={44}
+                                visibleCount={12}
                                 options={caloriesOptions}
                                 value={selectedValue}
                                 onValueChange={onValueChange}

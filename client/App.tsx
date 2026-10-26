@@ -547,7 +547,9 @@ function App() {
                 <div className="app-version">v{APP_VERSION}</div>
             </aside>
 
-            <div className={`page-transition page-transition-${pageDirection}`}>
+            <div
+                className={`page-transition page-transition-${pageDirection}${isMealMaker ? ' page-transition-meal-maker' : ''}`}
+            >
                 <main
                     className={`page-content ${isMealMaker ? 'page-content-meal-maker' : ''}`}
                 >
@@ -577,22 +579,24 @@ function App() {
                                     ref={mealFormRef}
                                     tabIndex={-1}
                                 >
-                                    <IngredientInput
-                                        ingredients={ingredients}
-                                        savedIngredients={userIngredients}
-                                        onChange={setIngredients}
-                                        removeIngredient={removeIngredient}
-                                        onIngredientClick={
-                                            setSelectedIngredientIndex
-                                        }
-                                    />
-
-                                    <section className="meal-maker-calories">
-                                        <Calories
-                                            value={caloriesGoal}
-                                            onChange={setCaloriesGoal}
+                                    <div className="meal-maker-fields">
+                                        <IngredientInput
+                                            ingredients={ingredients}
+                                            savedIngredients={userIngredients}
+                                            onChange={setIngredients}
+                                            removeIngredient={removeIngredient}
+                                            onIngredientClick={
+                                                setSelectedIngredientIndex
+                                            }
                                         />
-                                    </section>
+
+                                        <section className="meal-maker-calories">
+                                            <Calories
+                                                value={caloriesGoal}
+                                                onChange={setCaloriesGoal}
+                                            />
+                                        </section>
+                                    </div>
 
                                     <button
                                         type="button"
@@ -620,10 +624,6 @@ function App() {
                                             </>
                                         )}
                                     </button>
-                                    <p className="meal-maker-form-note">
-                                        Ingredient amounts, steps and nutrition
-                                        included.
-                                    </p>
                                 </div>
                             </section>
 

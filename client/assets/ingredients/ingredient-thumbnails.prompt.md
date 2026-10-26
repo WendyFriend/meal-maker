@@ -1,0 +1,8 @@
+# Ingredient thumbnails
+
+Generated with the built-in imagegen tool, with transparent background enabled.
+Asset: `ingredient-thumbnails.png`. One 4 × 4 atlas, ordered left to right, top to bottom.
+
+## Generation prompt
+
+Use case: product photography. Create ONE production-ready ingredient thumbnail sprite atlas for a meal-planning web app. Square image, exactly 4 columns by 4 rows of equal-size square cells, no grid lines, no text, no labels, no badges, no watermarks. Every cell has ONE isolated photorealistic food subject centered entirely inside its own cell, with generous 18% transparent padding on all sides so no subjects touch or cross cell boundaries. All backgrounds must be truly transparent alpha. Soft studio lighting, subtle natural contact shadows, warm appetizing colors, consistent 3/4 overhead angle, crisp details readable when reduced to 40px. Exact order left-to-right, top-to-bottom: row 1: small pale ceramic bowl of firm tofu cubes; fresh broccoli florets; two whole orange carrots with small green tops; small pale ceramic bowl of cooked brown rice. Row 2: small pale ceramic bowl of cooked chickpeas; small tan bowl of smooth tahini sesame paste; lemon half and whole lemon; three garlic cloves and a small garlic bulb. Row 3: a few fresh spinach leaves; ripe red tomatoes; cooked sliced chicken breast; two eggs one whole one halved. Row 4: small pale ceramic bowl of rolled oats; wedge of orange pumpkin; small pale ceramic bowl of cooked brown lentils; fresh button mushrooms. Use clean miniature food photography cutouts resembling ingredient list thumbnails, not emoji, not illustrated icons. Perfect evenly spaced 4 by 4 contact sheet aligned to exact quarter-width and quarter-height cell centers.

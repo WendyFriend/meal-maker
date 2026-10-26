@@ -58,13 +58,12 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     vi.stubGlobal('fetch', fetch);
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+    await user.click(screen.getByRole('button', { name: 'Veggies' }));
     expect(fetch).not.toHaveBeenCalled();
     await user.click(
-        await within(screen.getByRole('dialog', { name: 'Vegetables' })).findByRole(
-            'button',
-            { name: 'Spinach' },
-        ),
+        await within(
+            screen.getByRole('dialog', { name: 'Veggies' }),
+        ).findByRole('button', { name: 'Spinach' }),
     );
     await user.keyboard('{Escape}');
 

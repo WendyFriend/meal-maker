@@ -1,36 +1,56 @@
 const homeSteps = [
     {
-        title: 'Choose ingredients',
+        title: '1. Choose ingredients',
         description: 'Use what you have.',
         icon: (
-            <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+            <svg
+                className="intro-carrot-icon"
+                viewBox="0 0 64 64"
+                aria-hidden="true"
+                focusable="false"
+            >
                 <path
                     className="intro-carrot-leaves"
-                    d="M29 16c-1-9 2-13 5-12 3 2 0 8-5 12Zm1 1c6-8 11-9 12-5 0 4-6 6-12 5Zm-3-2c-5-5-6-10-3-11 4-1 5 5 3 11Z"
+                    d="M37 21c-2-11 1-18 5-17 5 2-1 12-5 17Zm3 1c8-9 16-10 16-5-1 5-10 6-16 5Z"
                 />
-                <path d="M27 15c-6-4-11 1-14 8L5 42l19-11c7-4 10-10 3-16Z" />
-                <path d="m17 20 5 4m-10 4 4 3m5-1 3 2M8 36l3 2" />
+                <path
+                    className="intro-carrot-leaves intro-carrot-leaf-light"
+                    d="M39 21C42 9 50 3 53 7c3 5-6 11-14 14Z"
+                />
+                <path
+                    className="intro-carrot-body"
+                    d="M38 23c-7-5-13-1-17 8L11 56c-1 2 0 3 2 1l25-20c7-5 8-9 0-14Z"
+                />
+                <path d="m26 28 6 4m-11 5 5 3m4 1 5 3m-18 5 4 2" />
             </svg>
         ),
     },
     {
-        title: 'Set a calorie goal',
+        title: '2. Set a calorie goal',
         description: 'Optional — make it yours.',
         icon: (
-            <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-                <circle cx="22" cy="26" r="17" />
-                <circle cx="22" cy="26" r="10" />
-                <path d="m22 26 20-21m-8 1 8-1-1 8" />
+            <svg
+                className="intro-target-icon"
+                viewBox="0 0 64 64"
+                aria-hidden="true"
+                focusable="false"
+            >
+                <path d="M29 14a21 21 0 1 0 21 21" />
+                <path d="M29 24a11 11 0 1 0 11 11" />
+                <path d="m29 35 20-20M49 6v9h9" />
             </svg>
         ),
     },
     {
-        title: 'Create your meal',
+        title: '3. Create your meal',
         description: 'Recipe, cooking steps and nutrition.',
         icon: (
             <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-                <path d="M12 30a9 9 0 1 1 4-17 9 9 0 0 1 17-1 9 9 0 1 1 4 18v13H12Z" />
-                <path d="M12 36h25M19 24v12m10-12v12" />
+                <path
+                    className="intro-chef-hat"
+                    d="M13 16a9 9 0 1 0-2 17v12h26V33a9 9 0 1 0-2-17 11 11 0 0 0-22 0Z"
+                />
+                <path d="M11 38h26M18 29v9m12-9v9" />
             </svg>
         ),
     },
@@ -45,7 +65,9 @@ export function MealMakerIntro({ onGetStarted }: { onGetStarted: () => void }) {
             <div className="meal-maker-intro">
                 <h1 id="meal-maker-heading">
                     <span>Your ingredients.</span>
-                    <span>A delicious meal.</span>
+                    <span>
+                        A <em className="intro-accent-word">delicious</em> meal.
+                    </span>
                     <svg
                         className="intro-heading-strokes"
                         viewBox="0 0 28 38"
@@ -55,8 +77,7 @@ export function MealMakerIntro({ onGetStarted }: { onGetStarted: () => void }) {
                     </svg>
                 </h1>
                 <p className="intro-description">
-                    A personalised recipe that works for you, with simple
-                    guidance.
+                    A personalised recipe that works for you. Healthy, simple, and delicious.
                 </p>
             </div>
             <ol className="intro-steps">

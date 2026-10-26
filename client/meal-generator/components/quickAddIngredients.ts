@@ -4,10 +4,10 @@ import { normalizeIngredientName } from '../../utils/Ingredient';
 // The app has saved ingredient records, but no category metadata. These aliases
 // only classify existing records; they never supply ingredients or nutrition.
 export const quickAddCategories = [
-    { id: 'vegetables', name: 'Vegetables' },
+    { id: 'vegetables', name: 'Veggies' },
     { id: 'proteins', name: 'Protein' },
     { id: 'grains', name: 'Grains' },
-    { id: 'nuts-seeds', name: 'More' },
+    { id: 'nuts-seeds', name: 'Nuts & Seeds' },
 ] as const;
 
 export type QuickAddCategory = (typeof quickAddCategories)[number];

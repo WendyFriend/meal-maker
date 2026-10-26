@@ -55,8 +55,8 @@ describe('ingredient Quick add integration', () => {
     it('adds multiple records without closing, and chip removal updates the open picker', async () => {
         const user = userEvent.setup();
         render(<Form />);
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
-        const picker = screen.getByRole('dialog', { name: 'Vegetables' });
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
+        const picker = screen.getByRole('dialog', { name: 'Veggies' });
         for (const name of ['Spinach', 'Broccoli']) {
             const option = within(picker).getByRole('button', { name });
             await user.click(option);
@@ -83,7 +83,7 @@ describe('ingredient Quick add integration', () => {
         ).not.toBeInTheDocument();
         // A chip is outside the desktop popover, so that click also dismisses
         // it. Reopening must reflect the current shared selection.
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
         expect(
             within(screen.getByRole('dialog')).getByRole('button', {
                 name: 'Spinach',
@@ -106,7 +106,7 @@ describe('ingredient Quick add integration', () => {
                 ]}
             />,
         );
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
         const picker = screen.getByRole('dialog');
         expect(
             within(picker).getAllByRole('button', { name: 'Spinach' }),
@@ -124,7 +124,7 @@ describe('ingredient Quick add integration', () => {
     it('switches categories with selections preserved and only one picker open', async () => {
         const user = userEvent.setup();
         render(<Form />);
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
         await user.click(
             within(screen.getByRole('dialog')).getByRole('button', {
                 name: 'Spinach',
@@ -137,7 +137,7 @@ describe('ingredient Quick add integration', () => {
                 name: 'Tofu',
             }),
         );
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
         expect(
             within(screen.getByRole('dialog')).getByRole('button', {
                 name: 'Spinach',
@@ -174,21 +174,21 @@ describe('ingredient Quick add integration', () => {
         },
     );
 
-    it.each(['close', 'Escape', 'backdrop'])(
-        'dismisses mobile with %s and restores inertness, scrolling and focus',
+    it.each(['close', 'Escape', 'outside'])(
+        'dismisses the mobile popover with %s without locking the page',
         async (method) => {
             setMobile(true);
             const user = userEvent.setup();
             const { container } = render(<Form />);
             const originalOverflow = document.body.style.overflow;
             const trigger = screen.getByRole('button', {
-                name: 'More',
+                name: 'Nuts & Seeds',
             });
             await user.click(trigger);
             const picker = screen.getByRole('dialog');
-            expect(picker).toHaveAttribute('aria-modal', 'true');
-            expect(container).toHaveAttribute('inert');
-            expect(document.body.style.overflow).toBe('hidden');
+            expect(picker).not.toHaveAttribute('aria-modal');
+            expect(container).not.toHaveAttribute('inert');
+            expect(document.body.style.overflow).toBe(originalOverflow);
             if (method === 'close')
                 await user.click(
                     within(picker).getByRole('button', {
@@ -196,8 +196,10 @@ describe('ingredient Quick add integration', () => {
                     }),
                 );
             if (method === 'Escape') await user.keyboard('{Escape}');
-            if (method === 'backdrop')
-                fireEvent.click(picker, { clientX: -1, clientY: -1 });
+            if (method === 'outside')
+                fireEvent.pointerDown(
+                    screen.getByRole('button', { name: 'Outside control' }),
+                );
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
             expect(container).not.toHaveAttribute('inert');
             expect(document.body.style.overflow).toBe(originalOverflow);
@@ -205,22 +207,12 @@ describe('ingredient Quick add integration', () => {
         },
     );
 
-    it('traps mobile Tab/Shift+Tab, keeps focus inside after selections and cleans up on breakpoint change', async () => {
+    it('supports mobile keyboard selection and preserves the popover across breakpoint changes', async () => {
         setMobile(true);
         const user = userEvent.setup();
         const { container } = render(<Form />);
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
         const picker = screen.getByRole('dialog');
-        await user.tab();
-        expect(
-            within(picker).getByRole('button', {
-                name: 'Close ingredient picker',
-            }),
-        ).toHaveFocus();
-        await user.tab({ shift: true });
-        expect(
-            within(picker).getByRole('button', { name: 'Broccoli' }),
-        ).toHaveFocus();
         await user.tab();
         expect(
             within(picker).getByRole('button', {
@@ -244,7 +236,7 @@ describe('ingredient Quick add integration', () => {
         vi.stubGlobal('fetch', fetch);
         const user = userEvent.setup();
         render(<Form saved={[]} />);
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
         expect(
             within(screen.getByRole('dialog')).getByText(
                 /No saved ingredients/,
@@ -274,7 +266,7 @@ describe('ingredient Quick add integration', () => {
             screen.getByRole('button', { name: 'Edit nutrition for Spinach' }),
         );
         expect(edit).toHaveBeenCalledWith(0);
-        await user.click(screen.getByRole('button', { name: 'Vegetables' }));
+        await user.click(screen.getByRole('button', { name: 'Veggies' }));
         expect(
             within(screen.getByRole('dialog')).getByRole('button', {
                 name: 'Spinach',

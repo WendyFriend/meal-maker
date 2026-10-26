@@ -1,4 +1,3 @@
-// import type { IngredientNutrition } from './types.ts';
 import type { IngredientNutrition } from '../../shared/types/types.ts';
 import { searchFoods } from './usda/client.js';
 import { mapUSDAFoodToIngredientNutrition } from './usda/mapper.js';
@@ -28,31 +27,58 @@ export async function getNutritionForIngredients(
 }> {
     const results = await Promise.allSettled(
         ingredients.map(async (ingredient): Promise<IngredientNutrition> => {
-            if (hasCompleteNutrition(ingredient)) {
+            if (
+                hasCompleteNutrition(ingredient) &&
+                ingredient.sugarPer100g !== undefined &&
+                ingredient.saturatedFatPer100g !== undefined &&
+                ingredient.fiberPer100g !== undefined
+            ) {
+                return ingredient;
+            }
+
+            try {
+                const response = await searchFoods({
+                    query: ingredient.name,
+                });
+
+                const foods = response.foods;
+
+                if (foods.length === 0) {
+                    throw new Error(
+                        `No USDA food found for ingredient: "${ingredient.name}"`,
+                    );
+                }
+
+                const nutrition = mapUSDAFoodToIngredientNutrition(foods[0]);
+                // Preserve supplied values (including zero) and ingredient identity.
                 return {
                     name: ingredient.name,
-                    caloriesPer100g: ingredient.caloriesPer100g,
-                    proteinPer100g: ingredient.proteinPer100g,
-                    carbohydratePer100g: ingredient.carbohydratePer100g,
-                    fatPer100g: ingredient.fatPer100g,
-                    saturatedFatPer100g: ingredient.saturatedFatPer100g,
-                    fiberPer100g: ingredient.fiberPer100g,
+                    caloriesPer100g:
+                        ingredient.caloriesPer100g ?? nutrition.caloriesPer100g,
+                    proteinPer100g:
+                        ingredient.proteinPer100g ?? nutrition.proteinPer100g,
+                    carbohydratePer100g:
+                        ingredient.carbohydratePer100g ??
+                        nutrition.carbohydratePer100g,
+                    fatPer100g: ingredient.fatPer100g ?? nutrition.fatPer100g,
+                    sugarPer100g:
+                        ingredient.sugarPer100g ?? nutrition.sugarPer100g,
+                    saturatedFatPer100g:
+                        ingredient.saturatedFatPer100g ??
+                        nutrition.saturatedFatPer100g,
+                    fiberPer100g:
+                        ingredient.fiberPer100g ?? nutrition.fiberPer100g,
                 };
+            } catch (error) {
+                // Missing optional nutrition must not block meal generation.
+                if (hasCompleteNutrition(ingredient)) {
+                    console.warn(
+                        `Additional nutrition unavailable for "${ingredient.name}"`,
+                    );
+                    return ingredient;
+                }
+                throw error;
             }
-
-            const response = await searchFoods({
-                query: ingredient.name,
-            });
-
-            const foods = response.foods;
-
-            if (foods.length === 0) {
-                throw new Error(
-                    `No USDA food found for ingredient: "${ingredient.name}"`,
-                );
-            }
-
-            return mapUSDAFoodToIngredientNutrition(foods[0]);
         }),
     );
 

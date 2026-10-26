@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-// import type { GenerateMealResponse } from '../../shared/types/types.ts';
+import { useEffect, useId, useMemo, useState } from 'react';
 import './NewMealResult.css';
 import type { GenerateMealResponse } from '../../../shared/types/types';
 import { IngredientWeightInput } from './IngredientWeightInput';
 import IngredientNutritionSheet from './IngredientNutritionSheet';
+import IngredientThumbnail from './IngredientThumbnail';
+import NutritionOverview from './NutritionOverview';
 import { deleteRecipe, saveRecipe } from '../../services/recipeService';
 
 type MealResultProps = {
     meal: GenerateMealResponse;
     originalMeal?: GenerateMealResponse;
     onChange: (meal: GenerateMealResponse) => void;
-    /* Hide the save/unsave bookmark, e.g. on the recipe detail page
+    /* Hide the save action, e.g. on the recipe detail page
        where the meal is already saved. */
     showBookmark?: boolean;
 };
@@ -193,6 +194,23 @@ export default function MealResult({
         });
     }, [meal.ingredients]);
 
+    const tabsId = useId();
+    const [activeTab, setActiveTab] = useState<'nutrition' | 'instructions'>(
+        'nutrition',
+    );
+    // Freeze the comparison scale for this meal so editing one weight cannot
+    // resize another ingredient's bar. Leave headroom for portion adjustments.
+    const [ingredientCalorieScale] = useState(() => {
+        const largest = Math.max(
+            0,
+            ...(originalMeal ?? meal).ingredients.map(
+                (ingredient) =>
+                    (ingredient.caloriesPer100g * ingredient.weight) / 100,
+            ),
+        );
+        return Math.max(500, Math.ceil((largest * 2) / 100) * 100);
+    });
+
     const [weightDrafts, setWeightDrafts] = useState<Record<number, string>>(
         {},
     );
@@ -203,6 +221,9 @@ export default function MealResult({
     // Id of the recipes-table row created when this meal was saved.
     // Null means this meal is not bookmarked yet.
     const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
+    const [optimisticSaved, setOptimisticSaved] = useState<boolean | null>(
+        null,
+    );
     const [isSavingMeal, setIsSavingMeal] = useState(false);
     const [bookmarkError, setBookmarkError] = useState<string | null>(null);
     const [nutritionSheetIngredient, setNutritionSheetIngredient] = useState<
@@ -300,16 +321,15 @@ export default function MealResult({
         });
     }
 
-    const isBookmarked = savedRecipeId !== null;
+    const isBookmarked = optimisticSaved ?? savedRecipeId !== null;
 
-    // Saving writes the meal to the recipes table; un-saving deletes the row.
-    // The icon only flips after the database call succeeds, so it always
-    // reflects what is actually stored.
+    // Give immediate feedback, reverting to the stored state if the request fails.
     async function toggleBookmark() {
         if (isSavingMeal) return;
 
         setBookmarkError(null);
         setIsSavingMeal(true);
+        setOptimisticSaved(savedRecipeId === null);
 
         try {
             if (savedRecipeId) {
@@ -336,6 +356,7 @@ export default function MealResult({
                     : 'Could not save this meal. Please try again.',
             );
         } finally {
+            setOptimisticSaved(null);
             setIsSavingMeal(false);
         }
     }
@@ -399,54 +420,10 @@ export default function MealResult({
                                 aria-hidden="true"
                                 focusable="false"
                             >
-                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16l-6-4Z" />
                             </svg>
                         </button>
                     )}
-
-                    <div className="meal-total-calories">
-                        {Math.round(nutrition.calories)} kcal
-                    </div>
-                </div>
-            </div>
-
-            <p className="meal-result-meta">
-                {meal.ingredients.length}{' '}
-                {meal.ingredients.length === 1 ? 'ingredient' : 'ingredients'}
-                {' \u00b7 '}
-                {meal.instructions.length}{' '}
-                {meal.instructions.length === 1 ? 'step' : 'steps'}
-            </p>
-
-            {/* Nutrition at a glance */}
-            <div className="nutrition-summary">
-                <div className="nutrition-summary-item">
-                    <span className="nutrition-summary-label">Calories</span>
-                    <span className="nutrition-summary-value">
-                        {Math.round(nutrition.calories)}
-                    </span>
-                    <span className="nutrition-summary-unit">kcal</span>
-                </div>
-                <div className="nutrition-summary-item">
-                    <span className="nutrition-summary-label">Protein</span>
-                    <span className="nutrition-summary-value">
-                        {Math.round(nutrition.protein)}
-                    </span>
-                    <span className="nutrition-summary-unit">g</span>
-                </div>
-                <div className="nutrition-summary-item">
-                    <span className="nutrition-summary-label">Carbs</span>
-                    <span className="nutrition-summary-value">
-                        {Math.round(nutrition.carbohydrate)}
-                    </span>
-                    <span className="nutrition-summary-unit">g</span>
-                </div>
-                <div className="nutrition-summary-item">
-                    <span className="nutrition-summary-label">Fat</span>
-                    <span className="nutrition-summary-value">
-                        {Math.round(nutrition.fat)}
-                    </span>
-                    <span className="nutrition-summary-unit">g</span>
                 </div>
             </div>
 
@@ -455,8 +432,10 @@ export default function MealResult({
                     {bookmarkError}
                 </p>
             )}
-            <div className="meal-result-grid">
-                <div className="meal-result-main">
+            <NutritionOverview
+                nutrition={nutrition}
+                percentages={macroPercentages}
+            />
 
             <section className="meal-ingredients">
                 <div className="meal-section-header">
@@ -473,349 +452,456 @@ export default function MealResult({
                 </div>
 
                 <div className="ingredient-list">
-                    {meal.ingredients.map((ingredient, index) => (
-                        <div
-                            className="meal-ingredient"
-                            key={`${ingredient.name}-${index}`}
-                        >
-                            <div className="ingredient-info">
-                                <button
-                                    type="button"
-                                    className="ingredient-name ingredient-name-button"
-                                    onClick={() =>
-                                        setNutritionSheetIngredient(index)
-                                    }
-                                >
-                                    {ingredient.name}
+                    {meal.ingredients.map((ingredient, index) => {
+                        const calories =
+                            (ingredient.caloriesPer100g * ingredient.weight) /
+                            100;
+                        const barWidth = Math.min(
+                            100,
+                            Math.max(
+                                0,
+                                (calories / ingredientCalorieScale) * 100,
+                            ),
+                        );
+                        return (
+                            <div
+                                className="meal-ingredient"
+                                key={`${ingredient.name}-${index}`}
+                            >
+                                <IngredientThumbnail name={ingredient.name} />
+                                <div className="ingredient-info">
+                                    <button
+                                        type="button"
+                                        className="ingredient-name ingredient-name-button"
+                                        onClick={() =>
+                                            setNutritionSheetIngredient(index)
+                                        }
+                                    >
+                                        {ingredient.name}
 
-                                    <span
-                                        className="ingredient-name-chevron"
-                                        aria-hidden="true"
+                                        <span
+                                            className="ingredient-name-chevron"
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+                                    <div className="ingredient-calorie-contribution">
+                                        <span className="ingredient-calorie-value">
+                                            {Math.round(calories)} kcal
+                                        </span>
+                                        <div
+                                            className="ingredient-calorie-track"
+                                            role="meter"
+                                            aria-label={`${ingredient.name} calorie contribution`}
+                                            aria-valuemin={0}
+                                            aria-valuemax={
+                                                ingredientCalorieScale
+                                            }
+                                            aria-valuenow={Math.min(
+                                                ingredientCalorieScale,
+                                                Math.max(0, calories),
+                                            )}
+                                            aria-valuetext={`${Math.round(calories)} kcal`}
+                                        >
+                                            <span
+                                                className="ingredient-calorie-fill"
+                                                style={{
+                                                    width: `${barWidth}%`,
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="ingredient-weight-control">
+                                    <button
+                                        type="button"
+                                        onClick={() => adjustWeight(index, -5)}
+                                        aria-label={`Decrease ${ingredient.name} by 5 grams`}
+                                    >
+                                        −
+                                    </button>
+                                    <IngredientWeightInput
+                                        value={
+                                            weightDrafts[index] ??
+                                            String(ingredient.weight)
+                                        }
+                                        name={ingredient.name}
+                                        onChange={(text) =>
+                                            handleWeightInputChange(index, text)
+                                        }
+                                        onBlur={() =>
+                                            handleWeightInputBlur(index)
+                                        }
                                     />
-                                </button>
 
-                                {/* <div className="ingredient-calories">
-                                    {Math.round(
-                                        (ingredient.caloriesPer100g *
-                                            ingredient.weight) /
-                                            100,
-                                    )}{' '}
-                                    kcal
-                                </div> */}
+                                    <span>g</span>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => adjustWeight(index, 5)}
+                                        aria-label={`Increase ${ingredient.name} by 5 grams`}
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
+                        );
+                    })}
+                </div>
+            </section>
 
-                            <div className="ingredient-weight-control">
-                                <button
-                                    type="button"
-                                    onClick={() => adjustWeight(index, -5)}
-                                    aria-label={`Decrease ${ingredient.name} by 5 grams`}
-                                >
-                                    −
-                                </button>
-                                <IngredientWeightInput
-                                    value={
-                                        weightDrafts[index] ??
-                                        String(ingredient.weight)
-                                    }
-                                    name={ingredient.name}
-                                    onChange={(text) =>
-                                        handleWeightInputChange(index, text)
-                                    }
-                                    onBlur={() => handleWeightInputBlur(index)}
+            <div
+                className="meal-details-tabs"
+                role="tablist"
+                aria-label="Meal details"
+            >
+                {(
+                    [
+                        { id: 'nutrition', label: 'Macro nutrition' },
+                        { id: 'instructions', label: 'Instructions' },
+                    ] as const
+                ).map(({ id, label }) => (
+                    <button
+                        key={id}
+                        id={`${tabsId}-${id}-tab`}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === id}
+                        aria-controls={`${tabsId}-${id}-panel`}
+                        tabIndex={activeTab === id ? 0 : -1}
+                        onClick={() => setActiveTab(id)}
+                        onKeyDown={(event) => {
+                            if (
+                                ![
+                                    'ArrowLeft',
+                                    'ArrowRight',
+                                    'Home',
+                                    'End',
+                                ].includes(event.key)
+                            )
+                                return;
+                            event.preventDefault();
+                            const next =
+                                event.key === 'Home'
+                                    ? 'nutrition'
+                                    : event.key === 'End'
+                                      ? 'instructions'
+                                      : activeTab === 'nutrition'
+                                        ? 'instructions'
+                                        : 'nutrition';
+                            setActiveTab(next);
+                            document
+                                .getElementById(`${tabsId}-${next}-tab`)
+                                ?.focus();
+                        }}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+            <div
+                className="meal-tab-panel"
+                role="tabpanel"
+                id={`${tabsId}-nutrition-panel`}
+                aria-labelledby={`${tabsId}-nutrition-tab`}
+                hidden={activeTab !== 'nutrition'}
+                tabIndex={0}
+            >
+                <section className="meal-nutrition">
+                    <div className="macro-chart">
+                        <div
+                            className="macro-donut"
+                            aria-label={`Macro breakdown: ${Math.round(
+                                macroPercentages.carbohydrate,
+                            )}% carbohydrates, ${Math.round(
+                                macroPercentages.protein,
+                            )}% protein, ${Math.round(macroPercentages.fat)}% fat`}
+                        >
+                            <svg
+                                viewBox="0 0 120 120"
+                                role="img"
+                                aria-hidden="true"
+                            >
+                                <circle
+                                    className="macro-donut-track"
+                                    cx="60"
+                                    cy="60"
+                                    r="42"
                                 />
 
-                                <span>g</span>
+                                {MACROS.map((macro, index) => {
+                                    const percentage =
+                                        macroPercentages[macro.key];
 
-                                <button
-                                    type="button"
-                                    onClick={() => adjustWeight(index, 5)}
-                                    aria-label={`Increase ${ingredient.name} by 5 grams`}
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
+                                    const segmentOffset = MACROS.slice(
+                                        0,
+                                        index,
+                                    ).reduce(
+                                        (offset, previous) =>
+                                            offset +
+                                            macroPercentages[previous.key],
+                                        0,
+                                    );
 
+                                    return (
+                                        <circle
+                                            key={macro.key}
+                                            className={getSegmentClassName(
+                                                macro,
+                                            )}
+                                            cx="60"
+                                            cy="60"
+                                            r="42"
+                                            pathLength="100"
+                                            style={{
+                                                strokeDasharray: `${percentage} ${
+                                                    100 - percentage
+                                                }`,
+                                                strokeDashoffset:
+                                                    -segmentOffset,
+                                            }}
+                                            onClick={() =>
+                                                toggleMacro(macro.key)
+                                            }
+                                        >
+                                            <title>{`${macro.label}: ${Math.round(
+                                                percentage,
+                                            )}% of calories`}</title>
+                                        </circle>
+                                    );
+                                })}
+                            </svg>
 
-            <section className="meal-instructions">
-                <h3>How to make it</h3>
-
-                <ol>
-                    {meal.instructions.map((instruction, index) => (
-                        <li key={index}>{instruction}</li>
-                    ))}
-                </ol>
-            </section>
-                </div>
-
-                <aside className="meal-result-side">
-            <section className="meal-nutrition">
-                <h3>Nutrition</h3>
-
-                <div className="macro-chart">
-                    <div
-                        className="macro-donut"
-                        aria-label={`Macro breakdown: ${Math.round(
-                            macroPercentages.carbohydrate,
-                        )}% carbohydrates, ${Math.round(
-                            macroPercentages.protein,
-                        )}% protein, ${Math.round(macroPercentages.fat)}% fat`}
-                    >
-                        <svg
-                            viewBox="0 0 120 120"
-                            role="img"
-                            aria-hidden="true"
-                        >
-                            <circle
-                                className="macro-donut-track"
-                                cx="60"
-                                cy="60"
-                                r="42"
-                            />
-
-                            {MACROS.map((macro, index) => {
-                                const percentage = macroPercentages[macro.key];
-
-                                const segmentOffset = MACROS.slice(
-                                    0,
-                                    index,
-                                ).reduce(
-                                    (offset, previous) =>
-                                        offset + macroPercentages[previous.key],
-                                    0,
-                                );
-
-                                return (
-                                    <circle
-                                        key={macro.key}
-                                        className={getSegmentClassName(macro)}
-                                        cx="60"
-                                        cy="60"
-                                        r="42"
-                                        pathLength="100"
-                                        style={{
-                                            strokeDasharray: `${percentage} ${
-                                                100 - percentage
-                                            }`,
-                                            strokeDashoffset: -segmentOffset,
-                                        }}
-                                        onClick={() => toggleMacro(macro.key)}
-                                    >
-                                        <title>{`${macro.label}: ${Math.round(
-                                            percentage,
-                                        )}% of calories`}</title>
-                                    </circle>
-                                );
-                            })}
-                        </svg>
-
-                        <div className="macro-donut-center">
-                            {highlightedMacroConfig ? (
-                                <>
-                                    <strong>
-                                        {Math.round(
-                                            macroPercentages[
-                                                highlightedMacroConfig.key
-                                            ],
-                                        )}
-                                        %
-                                    </strong>
-                                    <span>
-                                        {highlightedMacroConfig.label} ·{' '}
-                                        {Math.round(
-                                            nutrition[
-                                                highlightedMacroConfig.key
-                                            ],
-                                        )}
-                                        g
-                                    </span>
-                                </>
-                            ) : (
-                                <>
-                                    <strong>
-                                        {Math.round(nutrition.calories)}
-                                    </strong>
-                                    <span>kcal</span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="macro-legend">
-                        {MACROS.map((macro) => (
-                            <MacroLegendItem
-                                key={macro.key}
-                                macro={macro}
-                                percentage={macroPercentages[macro.key]}
-                                isActive={highlightedMacro === macro.key}
-                                onSelect={() => toggleMacro(macro.key)}
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                <div className="nutrition-table-wrapper">
-                    <table className="nutrition-table">
-                        <thead>
-                            <tr>
-                                <th>Ingredient</th>
-                                <th>kcal</th>
-                                <th>P</th>
-                                <th>C</th>
-                                <th>F</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {meal.ingredients.map((ingredient, index) => (
-                                <tr
-                                    key={`${ingredient.name}-nutrition-${index}`}
-                                >
-                                    <td>{ingredient.name}</td>
-
-                                    <td>
-                                        {Math.round(
-                                            (ingredient.caloriesPer100g *
-                                                ingredient.weight) /
-                                                100,
-                                        )}
-                                    </td>
-
-                                    <td>
-                                        {(
-                                            ingredient.proteinPer100g *
-                                            (ingredient.weight / 100)
-                                        ).toFixed(1)}
-                                    </td>
-
-                                    <td>
-                                        {(
-                                            ingredient.carbohydratePer100g *
-                                            (ingredient.weight / 100)
-                                        ).toFixed(1)}
-                                    </td>
-
-                                    <td>
-                                        {(
-                                            ingredient.fatPer100g *
-                                            (ingredient.weight / 100)
-                                        ).toFixed(1)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-
-                        <tfoot>
-                            <tr>
-                                <th>Total</th>
-                                <th>{Math.round(nutrition.calories)}</th>
-                                <th>{nutrition.protein.toFixed(1)}</th>
-                                <th>{nutrition.carbohydrate.toFixed(1)}</th>
-                                <th>{nutrition.fat.toFixed(1)}</th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </section>
-
-            <details className="key-nutrients">
-                <summary>
-                    <span>Key nutrients</span>
-                </summary>
-
-                <p className="key-nutrients-description">
-                    Contribution toward daily reference values.
-                </p>
-
-                <div className="nutrient-list">
-                    {micronutrients.map((nutrient) => (
-                        <div className="nutrient-item" key={nutrient.key}>
-                            <div className="nutrient-header">
-                                <span className="nutrient-name">
-                                    {nutrient.label}
-                                </span>
-
-                                {nutrient.amount !== undefined ? (
-                                    <span className="nutrient-value">
-                                        {formatNutrientAmount(
-                                            nutrient.amount,
-                                            nutrient.decimals,
-                                        )}{' '}
-                                        {nutrient.unit}
-                                    </span>
+                            <div className="macro-donut-center">
+                                {highlightedMacroConfig ? (
+                                    <>
+                                        <strong>
+                                            {Math.round(
+                                                macroPercentages[
+                                                    highlightedMacroConfig.key
+                                                ],
+                                            )}
+                                            %
+                                        </strong>
+                                        <span>
+                                            {highlightedMacroConfig.label} ·{' '}
+                                            {Math.round(
+                                                nutrition[
+                                                    highlightedMacroConfig.key
+                                                ],
+                                            )}
+                                            g
+                                        </span>
+                                    </>
                                 ) : (
-                                    <span className="nutrient-unavailable">
-                                        Not available
-                                    </span>
+                                    <>
+                                        <strong>
+                                            {Math.round(nutrition.calories)}
+                                        </strong>
+                                        <span>kcal</span>
+                                    </>
                                 )}
                             </div>
-
-                            {nutrient.percentage !== undefined && (
-                                <div className="nutrient-progress-row">
-                                    <div className="nutrient-progress">
-                                        <div
-                                            className="nutrient-progress-fill"
-                                            style={{
-                                                width: `${Math.min(
-                                                    nutrient.percentage,
-                                                    100,
-                                                )}%`,
-                                            }}
-                                        />
-                                    </div>
-
-                                    <span className="nutrient-percentage">
-                                        {Math.round(nutrient.percentage)}%
-                                    </span>
-                                </div>
-                            )}
                         </div>
-                    ))}
-                </div>
-            </details>
 
-            <details className="nutrition-information">
-                <summary>Ingredient Nutrition Information</summary>
-                <p>Nutrition values per 100g of each ingredient.</p>
-
-                <div className="nutrition-table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Ingredient</th>
-                                <th>kcal</th>
-                                <th>P</th>
-                                <th>C</th>
-                                <th>F</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {meal.ingredients.map((ingredient, index) => (
-                                <tr key={`${ingredient.name}-source-${index}`}>
-                                    <td>{ingredient.name}</td>
-                                    <td>{ingredient.caloriesPer100g}</td>
-                                    <td>
-                                        {ingredient.proteinPer100g.toFixed(1)}g
-                                    </td>
-                                    <td>
-                                        {ingredient.carbohydratePer100g.toFixed(
-                                            1,
-                                        )}
-                                        g
-                                    </td>
-                                    <td>{ingredient.fatPer100g.toFixed(1)}g</td>
-                                </tr>
+                        <div className="macro-legend">
+                            {MACROS.map((macro) => (
+                                <MacroLegendItem
+                                    key={macro.key}
+                                    macro={macro}
+                                    percentage={macroPercentages[macro.key]}
+                                    isActive={highlightedMacro === macro.key}
+                                    onSelect={() => toggleMacro(macro.key)}
+                                />
                             ))}
-                        </tbody>
-                    </table>
-                </div>
-            </details>
-                </aside>
+                        </div>
+                    </div>
+
+                    <div className="nutrition-table-wrapper">
+                        <table className="nutrition-table">
+                            <thead>
+                                <tr>
+                                    <th>Ingredient</th>
+                                    <th>kcal</th>
+                                    <th>P</th>
+                                    <th>C</th>
+                                    <th>F</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {meal.ingredients.map((ingredient, index) => (
+                                    <tr
+                                        key={`${ingredient.name}-nutrition-${index}`}
+                                    >
+                                        <td>{ingredient.name}</td>
+
+                                        <td>
+                                            {Math.round(
+                                                (ingredient.caloriesPer100g *
+                                                    ingredient.weight) /
+                                                    100,
+                                            )}
+                                        </td>
+
+                                        <td>
+                                            {(
+                                                ingredient.proteinPer100g *
+                                                (ingredient.weight / 100)
+                                            ).toFixed(1)}
+                                        </td>
+
+                                        <td>
+                                            {(
+                                                ingredient.carbohydratePer100g *
+                                                (ingredient.weight / 100)
+                                            ).toFixed(1)}
+                                        </td>
+
+                                        <td>
+                                            {(
+                                                ingredient.fatPer100g *
+                                                (ingredient.weight / 100)
+                                            ).toFixed(1)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+
+                            <tfoot>
+                                <tr>
+                                    <th>Total</th>
+                                    <th>{Math.round(nutrition.calories)}</th>
+                                    <th>{nutrition.protein.toFixed(1)}</th>
+                                    <th>{nutrition.carbohydrate.toFixed(1)}</th>
+                                    <th>{nutrition.fat.toFixed(1)}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </section>
+                <details className="key-nutrients">
+                    <summary>
+                        <span>Key nutrients</span>
+                    </summary>
+
+                    <p className="key-nutrients-description">
+                        Contribution toward daily reference values.
+                    </p>
+
+                    <div className="nutrient-list">
+                        {micronutrients.map((nutrient) => (
+                            <div className="nutrient-item" key={nutrient.key}>
+                                <div className="nutrient-header">
+                                    <span className="nutrient-name">
+                                        {nutrient.label}
+                                    </span>
+
+                                    {nutrient.amount !== undefined ? (
+                                        <span className="nutrient-value">
+                                            {formatNutrientAmount(
+                                                nutrient.amount,
+                                                nutrient.decimals,
+                                            )}{' '}
+                                            {nutrient.unit}
+                                        </span>
+                                    ) : (
+                                        <span className="nutrient-unavailable">
+                                            Not available
+                                        </span>
+                                    )}
+                                </div>
+
+                                {nutrient.percentage !== undefined && (
+                                    <div className="nutrient-progress-row">
+                                        <div className="nutrient-progress">
+                                            <div
+                                                className="nutrient-progress-fill"
+                                                style={{
+                                                    width: `${Math.min(
+                                                        nutrient.percentage,
+                                                        100,
+                                                    )}%`,
+                                                }}
+                                            />
+                                        </div>
+
+                                        <span className="nutrient-percentage">
+                                            {Math.round(nutrient.percentage)}%
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </details>
             </div>
+            <div
+                className="meal-tab-panel"
+                role="tabpanel"
+                id={`${tabsId}-instructions-panel`}
+                aria-labelledby={`${tabsId}-instructions-tab`}
+                hidden={activeTab !== 'instructions'}
+                tabIndex={0}
+            >
+                <section className="meal-instructions">
+                    <ol>
+                        {meal.instructions.map((instruction, index) => (
+                            <li key={index}>{instruction}</li>
+                        ))}
+                    </ol>
+                </section>
+            </div>
+
+            <section
+                className="meal-result-nutrition-footer"
+                aria-label="Ingredient nutrition information"
+            >
+                <details className="nutrition-information" open>
+                    <summary>Ingredient Nutrition Information</summary>
+                    <p>Nutrition values per 100g of each ingredient.</p>
+
+                    <div className="nutrition-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ingredient</th>
+                                    <th>kcal</th>
+                                    <th>P</th>
+                                    <th>C</th>
+                                    <th>F</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {meal.ingredients.map((ingredient, index) => (
+                                    <tr
+                                        key={`${ingredient.name}-source-${index}`}
+                                    >
+                                        <td>{ingredient.name}</td>
+                                        <td>{ingredient.caloriesPer100g}</td>
+                                        <td>
+                                            {ingredient.proteinPer100g.toFixed(
+                                                1,
+                                            )}
+                                            g
+                                        </td>
+                                        <td>
+                                            {ingredient.carbohydratePer100g.toFixed(
+                                                1,
+                                            )}
+                                            g
+                                        </td>
+                                        <td>
+                                            {ingredient.fatPer100g.toFixed(1)}g
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </section>
 
             {nutritionSheetIngredient !== null && (
                 <IngredientNutritionSheet

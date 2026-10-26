@@ -1,0 +1,222 @@
+.nutrition-overview {
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.nutrition-overview-chart {
+    position: relative;
+    margin-top: var(--space-4);
+}
+
+.nutrition-overview-bar {
+    display: flex;
+    height: 26px;
+    overflow: visible;
+    border-radius: 999px;
+    background: var(--surface-muted);
+}
+
+.nutrition-overview-carbohydrate {
+    --macro-color: #7f9fbd;
+    --macro-tint: #f0f5fa;
+}
+
+.nutrition-overview-protein {
+    --macro-color: #f4796c;
+    --macro-tint: #fff2f2;
+}
+
+.nutrition-overview-fat {
+    --macro-color: #d4a85f;
+    --macro-tint: #fcf6e9;
+}
+
+.nutrition-overview-segment {
+    flex-shrink: 0;
+    height: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: linear-gradient(
+        120deg,
+        color-mix(in srgb, var(--macro-color) 87%, white),
+        var(--macro-color)
+    );
+    cursor: pointer;
+    transition:
+        transform 150ms ease,
+        opacity 150ms ease,
+        box-shadow 150ms ease;
+}
+
+.nutrition-overview-segment:first-child {
+    border-top-left-radius: 999px;
+    border-bottom-left-radius: 999px;
+}
+
+.nutrition-overview-segment:last-child {
+    border-top-right-radius: 999px;
+    border-bottom-right-radius: 999px;
+}
+
+.nutrition-overview-segment[data-active='true'] {
+    position: relative;
+    z-index: 1;
+    transform: scaleY(1.3);
+    box-shadow: 0 4px 12px
+        color-mix(in srgb, var(--macro-color) 40%, transparent);
+}
+
+.nutrition-overview-bar[data-has-active='true']
+    .nutrition-overview-segment[data-active='false'] {
+    opacity: 0.4;
+}
+
+.nutrition-overview-tooltip {
+    position: absolute;
+    z-index: 1;
+    top: calc(100% + 12px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 176px;
+    max-width: calc(100% - 16px);
+    padding: 8px;
+    transform: translateX(-50%);
+    border: 1px solid #f0eeea;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 4px 16px rgb(36 69 65 / 10%);
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+.nutrition-overview-tooltip strong {
+    color: var(--text-h-strong);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+}
+
+.nutrition-overview-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: calc(50% - 7px);
+    border: 7px solid transparent;
+    border-bottom-color: var(--surface);
+}
+
+.nutrition-overview-macros {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+
+.nutrition-overview-macro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 16px 8px;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+}
+
+.nutrition-overview-macro[data-active='true'] {
+    background: var(--macro-tint);
+}
+
+.nutrition-overview-calories {
+    cursor: default;
+}
+
+.nutrition-overview-calories .nutrition-overview-amount > span {
+    font-size: 12px;
+}
+
+.nutrition-overview-macro-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.nutrition-overview-dot {
+    flex: 0 0 15px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--macro-color);
+}
+
+.nutrition-overview-amount {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.nutrition-overview-amount strong {
+    color: var(--text-h-strong);
+    font-size: 27px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.5px;
+}
+
+.nutrition-overview-macro:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.nutrition-overview-segment:focus-visible {
+    outline: 2px solid var(--text-h);
+    outline-offset: -3px;
+}
+
+@media (max-width: 440px) {
+    .nutrition-overview-bar {
+        height: 23px;
+    }
+    .nutrition-overview-macros {
+        gap: 4px;
+    }
+    .nutrition-overview-macro {
+        padding: 14px 4px;
+    }
+    .nutrition-overview-macro-label {
+        gap: 4px;
+        font-size: 11px;
+    }
+    .nutrition-overview-dot {
+        flex-basis: 9px;
+        width: 9px;
+        height: 9px;
+    }
+    .nutrition-overview-amount {
+        font-size: 17px;
+    }
+    .nutrition-overview-amount strong {
+        font-size: 22px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nutrition-overview-macro,
+    .nutrition-overview-segment {
+        transition: none;
+    }
+}
