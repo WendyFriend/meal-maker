@@ -77,7 +77,23 @@
     height: 100%;
     border-radius: inherit;
     background: color-mix(in srgb, var(--deep-green) 55%, var(--soft-sage));
+    /* The width transition covers later changes; the animation covers the first
+       paint, where the width is set in the same frame the row appears and would
+       otherwise render already full. */
     transition: width 250ms ease;
+    transform-origin: left center;
+    animation: nutrient-grow 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes nutrient-grow {
+    from {
+        transform: scaleX(0);
+        opacity: 0.4;
+    }
+    to {
+        transform: scaleX(1);
+        opacity: 1;
+    }
 }
 
 /* Limit nutrients fill amber, and turn coral once over the limit. */
@@ -109,5 +125,6 @@
 @media (prefers-reduced-motion: reduce) {
     .nutrient-bar-fill {
         transition: none;
+        animation: none;
     }
 }

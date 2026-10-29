@@ -6,6 +6,7 @@ import {
     type GenerateMealResponse,
     type IngredientInfo,
     type MealRequirements,
+    type MealType,
     type MealVariation,
     type PantryDetails,
     type UserIngredient,
@@ -35,6 +36,11 @@ import {
     toSourceOptions,
     type IngredientSource,
 } from './meal-generator/components/ingredientMatching';
+import SpeakIngredients from './meal-generator/components/SpeakIngredients';
+import ProgressBar from './meal-generator/components/ProgressBar';
+import type { SpokenMealPeriod, SpokenTarget } from '../shared/types/spoken';
+import { countRecipes, saveRecipe } from './services/recipeService';
+import { addEntry, toDateKey } from './services/mealPlanService';
 import {
     DEFAULT_MEAL_OPTIONS,
     type MealOptionsValue,
@@ -291,6 +297,15 @@ function App({ initialPage = 'planner' }: AppProps) {
     >(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<AppError>();
+
+    // The plan slot named out loud ("for dinner"), so the generated meal can be
+    // filed automatically. Cleared once used, so it never leaks into a later,
+    // unrelated generation.
+    const [spokenMealSlot, setSpokenMealSlot] = useState<string | null>(null);
+    // Result of the automatic save, shown under the meal.
+    const [autoPlanStatus, setAutoPlanStatus] = useState<
+        'added' | 'limit' | 'error' | null
+    >(null);
 
     // Recipe opened from the My Recipes list; shown on the detail page.
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
@@ -577,23 +592,180 @@ function App({ initialPage = 'planner' }: AppProps) {
         });
     }
 
+    /**
+     * Generates from the spoken panel's list once "Create my meal" is pressed.
+     *
+     * Ingredients may carry a `fixedAmount` ("100 grams of rice"); the generator
+     * keeps those and sizes the rest to the goals.
+     *
+     * Generation is handed the ingredients explicitly rather than reading them
+     * back from state: the state setters have not flushed yet at this point, so a
+     * state read would see the previous, empty ingredient list.
+     *
+     * A request that names a meal period is also filed into that plan slot, and
+     * the ingredients are left in the form so "Try another" still works on them.
+     */
+    async function handleSpokenIngredients(
+        items: { name: string; [key: string]: unknown }[],
+        targets: SpokenTarget[],
+        mealPeriod: SpokenMealPeriod | null,
+    ) {
+        const usable = items.filter(
+            (item): item is IngredientInfo =>
+                typeof item.name === 'string' &&
+                typeof item.caloriesPer100g === 'number',
+        );
+        if (!usable.length) return;
+
+        // Merge with anything already in the form, so a second sentence adds to
+        // the meal instead of replacing it.
+        const merged = new Map<string, IngredientInfo>();
+        for (const existing of thisMealIngredients) {
+            merged.set(normalizeIngredientName(existing.name), existing);
+        }
+        for (const item of usable) {
+            merged.set(normalizeIngredientName(item.name), item);
+        }
+        const ingredientsForMeal = [...merged.values()];
+
+        setThisMealIngredients(ingredientsForMeal);
+        setIngredients(ingredientsForMeal.map((item) => item.name));
+
+        // Keep the form controls in step with what is being generated, so the
+        // result is explainable and "Try another" reuses the same options.
+        const spokenCalories = targets.find(
+            (target) => target.nutrient === 'calories' && target.unit === 'kcal',
+        )?.amount;
+        for (const target of targets) {
+            if (target.nutrient === 'protein' && target.unit === '%') {
+                setMealOptions((options) => ({
+                    ...options,
+                    proteinPercentage: Math.round(target.amount),
+                }));
+            }
+            // The form only has a percentage, so a gram goal is shown as the
+            // share it makes of the calorie target.
+            const calories = spokenCalories ?? caloriesGoal;
+            if (
+                target.nutrient === 'protein' &&
+                target.unit === 'g' &&
+                !targets.some((t) => t.nutrient === 'protein' && t.unit === '%') &&
+                calories
+            ) {
+                setMealOptions((options) => ({
+                    ...options,
+                    proteinPercentage: Math.min(
+                        80,
+                        Math.round(((target.amount * 4) / calories) * 100),
+                    ),
+                }));
+            }
+            if (target.nutrient === 'calories' && target.unit === 'kcal') {
+                setCaloriesGoal(Math.round(target.amount));
+            }
+        }
+        if (mealPeriod) {
+            setMealOptions((options) => ({
+                ...options,
+                mealType: mealPeriod.mealType,
+            }));
+        }
+
+        await runGeneration({
+            ingredients: ingredientsForMeal,
+            requirements: buildRequirements({ targets, mealPeriod }),
+            autoSlot: mealPeriod?.mealType ?? null,
+        });
+    }
+
+    /**
+     * Saves the generated meal and puts it on today's plan in the spoken slot.
+     *
+     * Runs once per generation, only when the request named a meal period. A
+     * failure here must never lose the recipe: the meal is already on screen with
+     * its own save and add-to-plan buttons, so the error is reported and the user
+     * can finish by hand.
+     */
+    async function autoPlanMeal(
+        generated: GenerateMealResponse,
+        slot: string,
+    ): Promise<'added' | 'limit' | 'error'> {
+        try {
+            const plan = planRef.current;
+            if (
+                plan &&
+                plan.limits.savedMeals !== null &&
+                (await countRecipes()) >= plan.limits.savedMeals
+            ) {
+                return 'limit';
+            }
+
+            const recipe = await saveRecipe({
+                recipeName: generated.mealName,
+                ingredients: generated.ingredients,
+                instructions: generated.instructions,
+                servings: generated.servings ?? 1,
+                source: 'generated',
+                mealType: slot as MealType,
+            });
+
+            if (!recipe.id) throw new Error('saveRecipe did not return an id');
+
+            await addEntry(toDateKey(new Date()), slot, recipe.id, 1);
+            return 'added';
+        } catch (error) {
+            console.error('Auto-adding the meal to the plan failed:', error);
+            return 'error';
+        }
+    }
+
     function buildRequirements(
+        overrides?: {
+            targets?: SpokenTarget[];
+            mealPeriod?: SpokenMealPeriod | null;
+        },
         variation?: MealVariation,
         previousMealName?: string,
     ): MealRequirements {
         const requirements: MealRequirements = {};
 
-        if (caloriesGoal !== undefined) {
-            requirements.calories = caloriesGoal;
+        // Explicit overrides win, because the spoken path must not depend on the
+        // state setters having flushed before generation starts.
+        const spokenProtein = overrides?.targets?.find(
+            (target) => target.nutrient === 'protein' && target.unit === '%',
+        );
+        const spokenCalories = overrides?.targets?.find(
+            (target) => target.nutrient === 'calories' && target.unit === 'kcal',
+        );
+        const proteinPercentage =
+            spokenProtein !== undefined
+                ? Math.round(spokenProtein.amount)
+                : mealOptions.proteinPercentage;
+        const calories =
+            spokenCalories !== undefined
+                ? Math.round(spokenCalories.amount)
+                : caloriesGoal;
+        const mealType = overrides?.mealPeriod
+            ? overrides.mealPeriod.mealType
+            : mealOptions.mealType;
+
+        if (calories !== undefined) {
+            requirements.calories = calories;
         }
-        if (mealOptions.proteinPercentage !== undefined) {
-            requirements.proteinPercentage = mealOptions.proteinPercentage;
+        if (proteinPercentage !== undefined) {
+            requirements.proteinPercentage = proteinPercentage;
+        }
+        const spokenProteinGrams = overrides?.targets?.find(
+            (target) => target.nutrient === 'protein' && target.unit === 'g',
+        );
+        if (spokenProteinGrams) {
+            requirements.proteinGrams = Math.round(spokenProteinGrams.amount);
         }
         if (mealOptions.servings > 1) {
             requirements.servings = mealOptions.servings;
         }
-        if (mealOptions.mealType) {
-            requirements.mealType = mealOptions.mealType;
+        if (mealType) {
+            requirements.mealType = mealType;
         }
         if (mealOptions.dietary.length > 0) {
             requirements.dietary = mealOptions.dietary;
@@ -606,41 +778,46 @@ function App({ initialPage = 'planner' }: AppProps) {
         return requirements;
     }
 
-    // `variation` re-runs generation for "Try another" style tweaks, with
-    // the same ingredients and options.
-    async function handleCreate(variation?: MealVariation) {
+    /**
+     * Generates a meal, then files it into the spoken slot when one was named.
+     *
+     * Takes its ingredients explicitly rather than reading state, because the
+     * spoken path calls this in the same tick it commits the ingredients — a
+     * state read here would see the previous, empty list.
+     *
+     * Returns whether it succeeded, so a caller can roll back if it needs to.
+     */
+    async function runGeneration({
+        ingredients,
+        requirements,
+        autoSlot,
+    }: {
+        ingredients: IngredientInfo[];
+        requirements: MealRequirements;
+        autoSlot?: string | null;
+    }): Promise<boolean> {
         const plan = planRef.current;
 
         // Out of AI meals for today: the form shows why, so only a
         // regeneration from the result can get here.
         if (plan && !plan.canGenerate) {
             plan.openPlans('Daily AI meal limit');
-            return;
+            return false;
         }
-
-        const previousMealName = meal?.mealName;
 
         setIsGenerating(true);
         setMeal(undefined);
         setOriginalMeal(undefined);
         setEstimatedIngredients([]);
         setError(undefined);
-        try {
-            // Let a USDA lookup still in flight finish, so its nutrition
-            // goes with the request.
-            await settleMatches();
+        setAutoPlanStatus(null);
 
-            const ingredients = mealIngredients.map(
-                getIngredientInfoFromStoredData,
-            );
-            const result = await requestMeal({
-                ingredients,
-                requirements: buildRequirements(variation, previousMealName),
-            });
+        try {
+            const result = await requestMeal({ ingredients, requirements });
 
             if (!result.ok) {
                 setError(result.error);
-                return;
+                return false;
             }
 
             const mealResponse = enrichGeneratedMeal(result.meal, ingredients);
@@ -649,6 +826,11 @@ function App({ initialPage = 'planner' }: AppProps) {
             setOriginalMeal(mealResponse);
             setEstimatedIngredients(mealResponse.estimatedIngredients ?? []);
             void plan?.recordGeneration();
+
+            // A meal period was named, so file the meal there without asking.
+            if (autoSlot) {
+                setAutoPlanStatus(await autoPlanMeal(mealResponse, autoSlot));
+            }
 
             // Bring the freshly generated recipe into view. Runs after the
             // result renders; falls back to a jump when motion is reduced.
@@ -662,9 +844,38 @@ function App({ initialPage = 'planner' }: AppProps) {
                     block: 'start',
                 });
             });
+
+            return true;
         } finally {
             setIsGenerating(false);
         }
+    }
+
+    // `variation` re-runs generation for "Try another" style tweaks, with
+    // the same ingredients and options.
+    async function handleCreate(variation?: MealVariation) {
+        const plan = planRef.current;
+
+        if (plan && !plan.canGenerate) {
+            plan.openPlans('Daily AI meal limit');
+            return;
+        }
+
+        const previousMealName = meal?.mealName;
+
+        // Let a USDA lookup still in flight finish, so its nutrition
+        // goes with the request.
+        await settleMatches();
+
+        // A regeneration must not file a second copy into the plan.
+        const autoSlot = variation ? null : spokenMealSlot;
+        if (autoSlot) setSpokenMealSlot(null);
+
+        await runGeneration({
+            ingredients: mealIngredients.map(getIngredientInfoFromStoredData),
+            requirements: buildRequirements(undefined, variation, previousMealName),
+            autoSlot,
+        });
     }
 
     // Saves nutrition entered for an estimated ingredient, then drops it from
@@ -863,10 +1074,18 @@ function App({ initialPage = 'planner' }: AppProps) {
                 >
                     {isMealMaker && (
                         <div className="meal-maker-screen">
+                            <ProgressBar
+                                active={isGenerating}
+                                label="Creating your meal"
+                            />
                             <div className="meal-maker-hero">
                                 <MealMakerIntro />
 
                                 <div className="meal-maker-form app-card">
+                                    <SpeakIngredients
+                                        onUse={handleSpokenIngredients}
+                                        isGenerating={isGenerating}
+                                    />
                                     <IngredientInput
                                         ingredients={ingredients}
                                         savedIngredients={userIngredients}
@@ -1005,6 +1224,25 @@ function App({ initialPage = 'planner' }: AppProps) {
                                     ref={mealResultRef}
                                     className="meal-maker-result"
                                 >
+                                    {autoPlanStatus === 'added' && (
+                                        <p className="meal-auto-plan" role="status">
+                                            Saved to your plan for{' '}
+                                            {mealOptions.mealType ?? 'today'}.
+                                        </p>
+                                    )}
+                                    {autoPlanStatus === 'limit' && (
+                                        <p className="meal-auto-plan meal-auto-plan-warn" role="alert">
+                                            Your saved-meal limit stopped this
+                                            being filed automatically — use “Add to
+                                            plan” on the meal instead.
+                                        </p>
+                                    )}
+                                    {autoPlanStatus === 'error' && (
+                                        <p className="meal-auto-plan meal-auto-plan-warn" role="alert">
+                                            Could not add this to your plan — use
+                                            “Add to plan” on the meal to retry.
+                                        </p>
+                                    )}
                                     <MealResult
                                         meal={meal}
                                         originalMeal={originalMeal}

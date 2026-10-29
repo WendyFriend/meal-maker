@@ -8,6 +8,8 @@ import type {
 } from '../../../shared/types/types';
 import { sumMicronutrients } from '../../../shared/nutrition/nutrients';
 import { getPrepConsiderations } from '../../../shared/nutrition/prepGuidance';
+import { thumbnailUrl } from '../../../shared/nutrition/thumbnail';
+import AnimatedNumber from './AnimatedNumber';
 import { IngredientWeightInput } from './IngredientWeightInput';
 import IngredientNutritionSheet from './IngredientNutritionSheet';
 import NutrientList from './NutrientList';
@@ -547,64 +549,74 @@ export default function MealResult({
                 </div>
             )}
 
-            {/* Nutrition at a glance: totals plus the energy split */}
+            {/* Nutrition at a glance.
+                Calories lead on their own; the three macros sit beside the
+                energy split they describe. The bars carry the proportions and
+                the tiles carry the grams, so neither has to repeat the other's
+                numbers. */}
             <section className="meal-summary" aria-label="Nutrition summary">
-                <div className="nutrition-summary">
-                    {summaryStats.map((stat) => (
-                        <div
-                            className="nutrition-summary-item"
-                            key={stat.label}
-                        >
-                            <span className="nutrition-summary-label">
-                                {stat.label}
-                            </span>
-                            <span className="nutrition-summary-value">
-                                {Math.round(stat.value)}
-                                <span className="nutrition-summary-unit">
-                                    {stat.unit}
+                <div className="meal-summary-lead">
+                    <span className="meal-summary-label">Calories</span>
+                    <span className="meal-summary-calories">
+                        <AnimatedNumber value={nutrition.calories} />
+                        <span className="meal-summary-unit">kcal</span>
+                    </span>
+                    <span className="meal-summary-per">per serving</span>
+                </div>
+
+                <div className="meal-summary-macros">
+                    {summaryStats
+                        .filter((stat) => stat.percentage !== undefined)
+                        .map((stat) => (
+                            <div className="meal-macro" key={stat.label}>
+                                <span className="meal-macro-label">
+                                    {stat.label}
                                 </span>
-                            </span>
-                            {stat.percentage !== undefined && (
-                                <span className="nutrition-summary-share">
-                                    {Math.round(stat.percentage)}%
-                                    <span className="nutrition-summary-share-suffix">
-                                        {' of energy'}
+                                <span className="meal-macro-value">
+                                    <AnimatedNumber value={stat.value} />
+                                    <span className="meal-macro-unit">
+                                        {stat.unit}
                                     </span>
                                 </span>
-                            )}
-                        </div>
-                    ))}
+                                <span className="meal-macro-share">
+                                    <AnimatedNumber
+                                        value={stat.percentage ?? 0}
+                                    />
+                                    % of energy
+                                </span>
+                            </div>
+                        ))}
                 </div>
 
-                <div
-                    className="macro-bar"
-                    role="img"
-                    aria-label={`Energy split: ${energySplitLabel}`}
-                >
-                    {MACROS.map((macro) => (
-                        <span
-                            key={macro.key}
-                            className={`macro-bar-segment ${macro.colorClassName}`}
-                            style={{ flexGrow: macroPercentages[macro.key] }}
-                        />
-                    ))}
-                </div>
-
-                <ul className="macro-legend">
-                    {MACROS.map((macro) => (
-                        <li className="macro-legend-item" key={macro.key}>
+                <div className="meal-summary-split">
+                    <div
+                        className="macro-bar"
+                        role="img"
+                        aria-label={`Energy split: ${energySplitLabel}`}
+                    >
+                        {MACROS.map((macro) => (
                             <span
-                                className={`macro-dot ${macro.colorClassName}`}
-                                aria-hidden="true"
+                                key={macro.key}
+                                className={`macro-bar-segment ${macro.colorClassName}`}
+                                style={{
+                                    flexGrow: macroPercentages[macro.key],
+                                }}
                             />
-                            <span className="macro-label">{macro.label}</span>
-                            <span className="macro-legend-values">
-                                {Math.round(nutrition[macro.key])} g{' · '}
-                                {Math.round(macroPercentages[macro.key])}%
-                            </span>
-                        </li>
-                    ))}
-                </ul>
+                        ))}
+                    </div>
+
+                    <ul className="macro-legend">
+                        {MACROS.map((macro) => (
+                            <li className="macro-legend-item" key={macro.key}>
+                                <span
+                                    className={`macro-dot ${macro.colorClassName}`}
+                                    aria-hidden="true"
+                                />
+                                <span className="macro-label">{macro.label}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             </section>
 
             <div className="meal-result-grid">
@@ -676,6 +688,31 @@ export default function MealResult({
                                         className="meal-ingredient"
                                         key={`${ingredient.name}-${index}`}
                                     >
+                                        {ingredient.usda && (
+                                            <button
+                                                type="button"
+                                                className="ingredient-thumb-button"
+                                                aria-label={`View ${ingredient.name} and its nutrition`}
+                                                onClick={() =>
+                                                    setNutritionSheetIngredient(
+                                                        index,
+                                                    )
+                                                }
+                                            >
+                                                <img
+                                                    className="ingredient-thumb"
+                                                    src={thumbnailUrl(
+                                                        ingredient.usda.fdcId,
+                                                    )}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    onError={(e) =>
+                                                        e.currentTarget.parentElement?.remove()
+                                                    }
+                                                />
+                                            </button>
+                                        )}
+
                                         <div className="ingredient-info">
                                             <div className="ingredient-title">
                                                 <button
@@ -698,6 +735,14 @@ export default function MealResult({
                                                 {isEstimated && (
                                                     <span className="ingredient-estimated-badge">
                                                         Estimated
+                                                    </span>
+                                                )}
+                                                {ingredient.fixed && (
+                                                    <span
+                                                        className="ingredient-fixed-badge"
+                                                        title="The amount you asked for; the other ingredients were sized around it"
+                                                    >
+                                                        Your amount
                                                     </span>
                                                 )}
                                             </div>

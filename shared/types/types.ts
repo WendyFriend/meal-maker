@@ -12,6 +12,8 @@ export type IngredientInfo = {
     fiberPer100g?: number;
     micronutrientsPer100g?: Micronutrients;
     usda?: UsdaReference;
+    // Use exactly this much; the other ingredients flex to meet the goals.
+    fixedAmount?: FixedAmount;
 };
 
 /* The USDA FoodData Central food a nutrition profile came from. */
@@ -77,6 +79,7 @@ export type MealVariation = 'different' | 'higher-protein' | 'lower-calorie';
 export type MealRequirements = {
     calories?: number; // per serving
     proteinPercentage?: number; // % of energy from protein
+    proteinGrams?: number; // per serving; wins over proteinPercentage
     servings?: number;
     mealType?: MealType;
     dietary?: DietaryPreference[];
@@ -154,4 +157,13 @@ export type IngredientNutrition = {
 
 export type MealIngredient = IngredientNutrition & {
     weight: number;
+    // The cook asked for exactly this much; calibration leaves it alone.
+    fixed?: boolean;
+};
+
+/* An amount of one ingredient the cook asked for: grams, or the grams that
+   give this many kcal. */
+export type FixedAmount = {
+    amount: number;
+    unit: 'g' | 'kcal';
 };

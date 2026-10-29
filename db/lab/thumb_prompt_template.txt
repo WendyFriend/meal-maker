@@ -1,0 +1,14 @@
+I am making a nutrition database. I need to generate thumbnails for every food item in a fairly standardized way appropriate for a thumbnail. I need you to write a positive prompt for an image generator (FLUX). The current item is:"{food name}"
+
+Please write a detailed prompt to generate an image of this item.
+- Name the food by its most common everyday name, even if the database name is different or clinical.
+- Visually describe it well: colour, texture, shape, and its state as the database name gives it (raw, cooked, dried, sliced, skin removed, etc.). Show only what the name says; do not add ingredients, nuts, sides or toppings that are not in the name.
+- For meat, poultry and fish: start with the animal and the cut (for example "sliced roast pork loin", "raw chicken thigh", "beef short rib"), then describe that cut's characteristic shape and the colour of its flesh for that animal (cooked pork is pale beige-pink inside with a light brown crust, cooked chicken is white to pale tan, beef is brown-red, lamb is deep brown-red). Never use the bare word "meat" without the animal.
+- Only if the name says the skin, bone or breading has been removed, or says "meat only", show just the edible meat that is left, as pieces or chunks on the plate, never the whole bird or limb such as a drumstick or wing. Words like "trimmed", "lean only" or "separable lean" do NOT mean chunks: roasts, joints, steaks and chops keep their natural shape, a roast shown whole or with a few slices cut from the front.
+- If the food normally comes as one piece (a papad, a tortilla, a pancake, a steak, a fillet), show one piece, not a pile.
+- Do not use database wording such as brands, "canned", "frozen", "with added solution", "separable lean", "meat only", "ready-to-serve". Show the food the way a person would see it served, not as a product.
+- Never show packaging (cans, tins, bottles, boxes, bags, jars, labels). Put the food in the most natural serving vessel for a thumbnail: drinks in a glass or cup, loose, wet or small foods in a bowl, cooked dishes, meats and snacks on a plate, solid whole items (a fruit, a steak, a cheese block) on their own with no vessel.
+- Use an isometric view (an elevated three-quarter angle looking down at about 45 degrees), not flat top-down and not straight-on. Centred, one subject only, on a plain white background with soft even studio lighting.
+- No text, logos or lettering anywhere.
+
+Return the positive prompt only, as a single paragraph of 40 to 70 words, with no headings, labels, negative prompt or commentary.

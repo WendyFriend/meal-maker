@@ -4,8 +4,17 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
 
-const certPath = './192.168.4.26.pem';
-const keyPath = './192.168.4.26-key.pem';
+// Dev servers. The app runs on 3010 over HTTPS; the API moves to 3020.
+//
+// HTTPS is not cosmetic here: getUserMedia (the "speak your ingredients" mic)
+// only exists in a secure context, and http://<lan-ip> is not one. localhost is
+// exempt, which is why the mic works on this machine without TLS but would be
+// dead on a phone.
+//
+// The certificate is self-signed, so a LAN device warns once. It covers
+// localhost and the current LAN addresses; regenerate it if the IP changes.
+const certPath = './certs/dev-cert.pem';
+const keyPath = './certs/dev-key.pem';
 
 const https =
     fs.existsSync(certPath) && fs.existsSync(keyPath)
@@ -14,6 +23,9 @@ const https =
               key: fs.readFileSync(keyPath),
           }
         : undefined;
+
+export const APP_PORT = 3010;
+export const API_PORT = 3020;
 
 export default defineConfig({
     plugins: [
@@ -58,6 +70,10 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         setupFiles: './client/test/setup.ts',
+        // `db/` holds standalone tooling tested with `node --test`, not vitest.
+        // Without this exclusion vitest picks the files up, finds no vitest
+        // suite in them, and reports a failure.
+        exclude: ['**/node_modules/**', '**/dist/**', 'db/**'],
     },
     preview: {
         host: true,
@@ -66,11 +82,14 @@ export default defineConfig({
         https,
     },
     server: {
-        host: 'localhost',
-        port: 5180,
+        // 0.0.0.0 so a phone on the LAN can reach it; with host: 'localhost'
+        // the server is unreachable from anything but this machine.
+        host: '0.0.0.0',
+        port: APP_PORT,
         strictPort: true,
+        https,
         proxy: {
-            '/api': 'http://localhost:3010',
+            '/api': `http://localhost:${API_PORT}`,
         },
     },
 });

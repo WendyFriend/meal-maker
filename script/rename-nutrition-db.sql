@@ -1,0 +1,24 @@
+-- Rename the "Nutrition" database to lowercase "nutrition".
+--
+-- Postgres folds unquoted identifiers to lowercase, so a database created from
+-- pgAdmin as "Nutrition" (quoted, capital N) can only ever be reached as
+--   psql -d '"Nutrition"'
+-- Renaming it once to a plain name removes that quoting tax from every future
+-- command, connection string and migration.
+--
+-- Why a file instead of `psql -c`: PowerShell 5.1 strips embedded double
+-- quotes from arguments passed to native executables, so `-c 'ALTER DATABASE
+-- "Nutrition" ...'` arrives at psql as `ALTER DATABASE Nutrition ...`, which
+-- it folds to lowercase and then reports `database "nutrition" does not exist`.
+-- psql -f reads this file directly and PowerShell never parses it.
+--
+-- Deliberately connected to "postgres", not to the target: a database cannot
+-- be renamed while you are connected to it.
+--
+-- Run from the repo root:
+--   psql -h localhost -U postgres -d postgres -f script/rename-nutrition-db.sql
+--
+-- Expected output: ALTER DATABASE
+-- Renaming preserves all contents.
+
+ALTER DATABASE "Nutrition" RENAME TO nutrition;

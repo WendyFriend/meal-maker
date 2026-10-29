@@ -5,6 +5,7 @@ import type {
     MealIngredient,
 } from '../../shared/types/types.ts';
 import type { Micronutrients } from '../../shared/nutrition/nutrients.ts';
+import { fixedGrams } from './calibrateMeal.ts';
 
 /* An input ingredient, with USDA data filled in where the request had none.
    `nutritionSource` is only set when the per-100 g values are authoritative
@@ -113,6 +114,9 @@ export async function enrichIngredients(
             micronutrientsPer100g: food.micronutrientsPer100g,
             usda: food.usda,
             nutritionSource: 'usda',
+            ...(ingredient.fixedAmount && {
+                fixedAmount: ingredient.fixedAmount,
+            }),
         };
     });
 }
@@ -229,9 +233,16 @@ function toAuthoritative(
     modelIngredient: MealIngredient,
     source: EnrichedIngredient,
 ): MealIngredient {
+    // A fixed amount is the cook's, not the model's: it overrides the
+    // model's weight and is kept through calibration.
+    const fixedWeight = source.fixedAmount
+        ? fixedGrams(source.fixedAmount, source.caloriesPer100g)
+        : null;
+
     return {
         name: modelIngredient.name,
-        weight: modelIngredient.weight,
+        weight: fixedWeight ?? modelIngredient.weight,
+        ...(fixedWeight !== null && { fixed: true }),
         caloriesPer100g: source.caloriesPer100g ?? 0,
         proteinPer100g: source.proteinPer100g ?? 0,
         carbohydratePer100g: source.carbohydratePer100g ?? 0,

@@ -73,7 +73,9 @@ the code doesn't reference).
 ## Auth settings to check on the new project
 
 - **Auth → URL Configuration → Site URL / Redirect URLs**: add
-  `http://localhost:5180` so dev OAuth doesn't bounce to the Vercel deploy.
+  `https://localhost:3010` so dev OAuth doesn't bounce to the Vercel deploy.
+  The dev server is HTTPS-only for the microphone feature, so the redirect URL
+  must use `https`, and the port is now 3010 (it used to be 5180).
 - **Auth → Providers**: enable Email (and Google if used).
 - **Auth → Providers → Email → Confirm email**: disable for frictionless dev
   login (re-enable for production).

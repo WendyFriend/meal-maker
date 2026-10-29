@@ -15,14 +15,20 @@
     "format:check": "prettier --check \"**/*.ts\"",
     "test": "vitest",
     "server": "npm run build && tsx --env-file=.env server/server.ts",
-    "build:server-bundle": "esbuild server/server.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-server/server.mjs",
+    "build:server-bundle": "esbuild server/server.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-server/server.mjs \"--banner:js=import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);\" && node -e \"require('fs').copyFileSync('db/lab/confidence_model.json', 'dist-server/confidence_model.json')\"",
     "build:dev-site": "vite build --mode devsite",
-    "start": "node dist-server/server.mjs"
+    "start": "node dist-server/server.mjs",
+    "api-keys": "tsx --env-file-if-exists=.env script/api-keys.ts",
+    "server:lan": "npm run build && tsx --env-file=.env server/server.ts --lan",
+    "api:dev": "tsx watch --env-file=.env server/server.ts --lan",
+    "deploy:data": "bash script/deploy-data.sh",
+    "deploy:thumbs": "bash script/deploy-thumbs.sh"
   },
   "dependencies": {
     "@ncdai/react-wheel-picker": "^1.2.2",
     "@supabase/supabase-js": "^2.115.0",
     "@tailwindcss/vite": "^4.3.3",
+    "pg": "^8.13.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3"
@@ -34,6 +40,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.6",
     "@types/node": "^24.13.3",
+    "@types/pg": "^8.11.10",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vercel/node": "^17.0.0",

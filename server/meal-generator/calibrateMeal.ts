@@ -1,4 +1,4 @@
-import type { MealIngredient } from '../../shared/types/types.ts';
+import type { FixedAmount, MealIngredient } from '../../shared/types/types.ts';
 
 export type CalibrationTargets = {
     calories: number;
@@ -74,12 +74,62 @@ function solveTwoGroupScale(
     return (i: MealIngredient) => (isDense(i) ? a : b);
 }
 
+/* Grams for a fixed amount: as given, or enough of the food for that many
+   kcal. Null when a kcal amount can't be converted (no calorie data). */
+export function fixedGrams(
+    fixed: FixedAmount,
+    caloriesPer100g: number | undefined,
+): number | null {
+    if (fixed.unit === 'g') return Math.max(1, Math.round(fixed.amount));
+    if (!caloriesPer100g || caloriesPer100g <= 0) return null;
+
+    return Math.max(1, Math.round((fixed.amount / caloriesPer100g) * 100));
+}
+
 /*
  * The model picks the dish and rough portions, but its arithmetic is
  * unreliable (it can miss the calorie target by half). Rescale portions so
  * the meal lands on the targets, keeping the dish's proportions.
+ *
+ * Ingredients marked `fixed` keep their weight: the targets are met by the
+ * others, after taking off what the fixed ones already contribute.
  */
 export function calibrateMeal(
+    ingredients: MealIngredient[],
+    targets: CalibrationTargets,
+): MealIngredient[] {
+    if (!ingredients.some((i) => i.fixed)) {
+        return calibrateFlexible(ingredients, targets);
+    }
+
+    const flexible = ingredients.filter((i) => !i.fixed);
+    const fixedTotals = getMealTotals(ingredients.filter((i) => i.fixed));
+    const remaining = targets.calories - fixedTotals.calories;
+
+    // The fixed foods already meet or pass the target: nothing to share out.
+    if (flexible.length === 0 || remaining <= 0) return ingredients;
+
+    let proteinPercentage: number | undefined;
+    if (targets.proteinPercentage !== undefined) {
+        const proteinTarget = (targets.calories * targets.proteinPercentage) / 100;
+        const fixedProtein =
+            (fixedTotals.calories * fixedTotals.proteinPercentage) / 100;
+        proteinPercentage = Math.min(
+            100,
+            Math.max(0, ((proteinTarget - fixedProtein) / remaining) * 100),
+        );
+    }
+
+    const calibrated = calibrateFlexible(flexible, {
+        calories: remaining,
+        proteinPercentage,
+    });
+    let next = 0;
+
+    return ingredients.map((i) => (i.fixed ? i : calibrated[next++]));
+}
+
+function calibrateFlexible(
     ingredients: MealIngredient[],
     targets: CalibrationTargets,
 ): MealIngredient[] {

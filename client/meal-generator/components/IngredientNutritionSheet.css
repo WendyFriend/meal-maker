@@ -54,41 +54,83 @@
     line-height: 1.4;
 }
 
-.ingredient-nutrition-caption {
-    margin: var(--space-2) 0 0;
+/* The food's generated picture, shown large. */
+.ingredient-nutrition-image {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    aspect-ratio: 1;
+    margin: 0 auto var(--space-4);
+
+    border-radius: var(--radius-lg);
+    object-fit: cover;
+    background: var(--border-hairline);
+}
+
+.ingredient-nutrition-table {
+    width: 100%;
+    margin-top: var(--space-4);
+
+    border-collapse: collapse;
+    border-top: 1px solid rgb(170 170 170 / 35%);
+    font-variant-numeric: tabular-nums;
+}
+
+.ingredient-nutrition-table th,
+.ingredient-nutrition-table td {
+    padding: var(--space-2) 0;
+
+    font-size: var(--font-size-md);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.ingredient-nutrition-table th + th,
+.ingredient-nutrition-table td {
+    padding-left: var(--space-4);
+}
+
+.ingredient-nutrition-table thead th {
+    padding-top: var(--space-3);
+
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.ingredient-nutrition-table tbody th {
+    color: var(--text);
+    font-weight: normal;
+    text-align: left;
+}
+
+.ingredient-nutrition-table td {
+    color: var(--text);
+}
+
+.ingredient-nutrition-table td strong {
+    color: var(--text-h);
+    font-weight: var(--font-weight-semibold);
+}
+
+.ingredient-nutrition-table tr.is-minor th,
+.ingredient-nutrition-table tr.is-minor td {
+    padding-top: 0;
 
     color: var(--text-muted);
     font-size: var(--font-size-sm);
 }
 
-.ingredient-nutrition-rows {
-    display: flex;
-    flex-direction: column;
-
-    margin-top: var(--space-5);
-    padding-top: var(--space-4);
-
-    border-top: 1px solid rgb(170 170 170 / 35%);
+.ingredient-nutrition-table tr.is-minor th {
+    padding-left: var(--space-3);
 }
 
-.ingredient-nutrition-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-4);
-
-    padding: var(--space-2) 0;
-}
-
-.ingredient-nutrition-row > span {
-    color: var(--text);
-    font-size: var(--font-size-md);
-}
-
-.ingredient-nutrition-row > strong {
-    color: var(--text-h);
-    font-size: var(--font-size-md);
-    font-weight: var(--font-weight-semibold);
+.ingredient-nutrition-table .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
     white-space: nowrap;
 }
 
@@ -105,7 +147,7 @@
     .ingredient-nutrition-sheet {
         inset: 0;
 
-        width: 340px;
+        width: 380px;
         height: fit-content;
         max-height: 80dvh;
         margin: auto;

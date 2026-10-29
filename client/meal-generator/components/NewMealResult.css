@@ -9,6 +9,57 @@
     box-sizing: border-box;
 }
 
+/* The result arrives as one soft rise, then its parts stagger in beneath it.
+   Each animated block is a separate element so the delays can differ, which
+   reads as the panel assembling rather than appearing all at once. */
+.meal-result-header,
+.meal-summary,
+.meal-result-grid {
+    animation: result-rise 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.meal-summary {
+    animation-delay: 70ms;
+}
+
+.meal-result-grid {
+    animation-delay: 140ms;
+}
+
+@keyframes result-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Nutrition rows trickle in, so a long list does not slam in as a block. */
+.meal-ingredient {
+    animation: result-rise 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Stagger the first handful; past that the eye is not counting. */
+.meal-ingredient:nth-child(1) { animation-delay: 40ms; }
+.meal-ingredient:nth-child(2) { animation-delay: 80ms; }
+.meal-ingredient:nth-child(3) { animation-delay: 120ms; }
+.meal-ingredient:nth-child(4) { animation-delay: 160ms; }
+.meal-ingredient:nth-child(5) { animation-delay: 200ms; }
+.meal-ingredient:nth-child(6) { animation-delay: 240ms; }
+.meal-ingredient:nth-child(n + 7) { animation-delay: 280ms; }
+
+@media (prefers-reduced-motion: reduce) {
+    .meal-result-header,
+    .meal-summary,
+    .meal-result-grid,
+    .meal-ingredient {
+        animation: none;
+    }
+}
+
 .meal-result *,
 .meal-result *::before,
 .meal-result *::after {
@@ -263,36 +314,29 @@
    ========================= */
 
 .meal-summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-4) var(--space-6);
+    align-items: center;
     margin-bottom: var(--space-8);
-    padding: var(--space-4);
+    padding: var(--space-5);
     border: 1px solid var(--border-hairline);
     border-radius: var(--radius-lg);
     background: var(--surface-tint);
     box-shadow: var(--shadow-sm);
 }
 
-.nutrition-summary {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-}
-
-.nutrition-summary-item {
+/* Calories lead: the number people actually came for. */
+.meal-summary-lead {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    padding: var(--space-3);
+    gap: 1px;
+    padding: var(--space-3) var(--space-5);
     border-radius: var(--radius-md);
-}
-
-/* Calories is the headline number, so it gets the accent tint. */
-.nutrition-summary-item:first-child {
     background: var(--accent-bg);
 }
 
-.nutrition-summary-label {
+.meal-summary-label {
     color: var(--text-muted);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
@@ -300,24 +344,74 @@
     text-transform: uppercase;
 }
 
-.nutrition-summary-value {
+.meal-summary-calories {
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+}
+
+.meal-summary-unit {
+    margin-left: 4px;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.meal-summary-per {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* The three macros: grams here, proportions in the bar below. */
+.meal-summary-macros {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+
+.meal-macro {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.meal-macro-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.meal-macro-value {
     color: var(--text-h-strong);
     font-family: var(--heading);
     font-size: var(--font-size-xl);
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.1;
+    font-variant-numeric: tabular-nums;
 }
 
-.nutrition-summary-unit {
-    margin-left: 3px;
+.meal-macro-unit {
+    margin-left: 2px;
     color: var(--text-muted);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
 }
 
-.nutrition-summary-share {
+.meal-macro-share {
     color: var(--text-muted);
     font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+/* The split spans the full width beneath both blocks. */
+.meal-summary-split {
+    grid-column: 1 / -1;
 }
 
 /* Stacked energy bar */
@@ -333,7 +427,8 @@
 .macro-bar-segment {
     min-width: 0;
     flex-basis: 0;
-    transition: flex-grow 250ms ease;
+    /* Grows to its share on arrival, then eases if the split is edited. */
+    transition: flex-grow 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .macro-carbs {
@@ -379,6 +474,18 @@
 
 .macro-legend-values {
     color: var(--text-muted);
+}
+
+/* Stack the summary on narrow screens. */
+@media (max-width: 720px) {
+    .meal-summary {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-4);
+    }
+
+    .meal-summary-lead {
+        align-items: flex-start;
+    }
 }
 
 /* =========================
@@ -458,6 +565,45 @@
     flex-direction: column;
     gap: 3px;
     min-width: 0;
+}
+
+/* Absent for most ingredients until db/lab/thumb_studio.py generates one;
+   the <img> removes itself on error, so no rule is needed for "missing". */
+.ingredient-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--border-hairline);
+}
+
+.ingredient-thumb-button {
+    display: block;
+    flex-shrink: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    cursor: zoom-in;
+    transition: transform 140ms ease;
+}
+
+.ingredient-thumb-button:hover {
+    transform: scale(1.06);
+}
+
+.ingredient-thumb-button .ingredient-thumb {
+    display: block;
+}
+
+.ingredient-fixed-badge {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #fdeee9;
+    color: #b44c3a;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
 }
 
 .ingredient-title {

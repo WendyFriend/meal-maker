@@ -798,6 +798,22 @@
     }
 }
 
+/* Confirmation that a spoken meal period filed the meal into the plan. */
+.meal-auto-plan {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md, 10px);
+    background: #eef3ef;
+    color: #3f6b5c;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.meal-auto-plan-warn {
+    background: #fdf3e7;
+    color: #8a5a1c;
+}
+
 /* =========================
    Responsive
    ========================= */

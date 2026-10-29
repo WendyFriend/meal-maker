@@ -1,0 +1,149 @@
+{
+ "version": 1,
+ "trained": "2026-10-29",
+ "what": "Chance that the top result of resolve_food_conf() is the food the person wanted. Only the top result is modelled.",
+ "features": [
+  "score",
+  "tier",
+  "margin",
+  "n_close",
+  "routes",
+  "coverage",
+  "words",
+  "extra_words",
+  "qwords",
+  "core",
+  "via_pin",
+  "via_name",
+  "via_unique-phrase",
+  "via_name-words",
+  "via_any-name-words",
+  "via_synonym",
+  "via_head-section",
+  "via_description-prefix",
+  "via_words",
+  "via_fuzzy"
+ ],
+ "mean": [
+  1.0808593029726106,
+  2.2634501909059352,
+  0.41836513129225705,
+  1.1124609510586603,
+  3.2915654286706006,
+  0.830818921652204,
+  5.919819507115585,
+  3.5074626865671643,
+  2.4255466851787575,
+  0.6088163832002776,
+  0.018049288441513364,
+  0.7007983339118362,
+  0.003471017007983339,
+  0.012842762929538355,
+  0.0003471017007983339,
+  0.010065949323151684,
+  0.0,
+  0.0,
+  0.2513016313779938,
+  0.0031239153071850054
+ ],
+ "scale": [
+  0.37588307487488326,
+  1.2504829063876783,
+  0.3855887146901485,
+  2.3925403748487786,
+  1.4523658469033038,
+  0.2576369649512305,
+  3.493658573436811,
+  3.253390592578577,
+  1.0329993876107522,
+  0.48801536322866557,
+  0.1331296797422243,
+  0.45790831953376726,
+  0.0588130006793862,
+  0.11259585414158778,
+  0.018627431954181567,
+  0.09982297324451776,
+  1.0,
+  1.0,
+  0.43376159517037727,
+  0.055804627588926
+ ],
+ "coef": [
+  0.5424750953455203,
+  -0.10637700594965659,
+  0.12364289588366896,
+  -0.5669935497345455,
+  0.5025071176054277,
+  0.2833519192928882,
+  -0.8089286439579825,
+  0.7196280131224823,
+  0.36596800135767843,
+  0.7496602472170013,
+  0.458689281462443,
+  0.18936021443788748,
+  -0.1337260613119792,
+  -0.15296758294689483,
+  0.06289110324050085,
+  0.4331923072065506,
+  0.0,
+  0.0,
+  -0.3815777102095009,
+  -0.02843340730299372
+ ],
+ "intercept": 2.7411596207555813,
+ "training": {
+  "queries": 2881,
+  "positives": 2350,
+  "labels": "positive when the evaluator's gemma verdict or deepseek-v4.1-flash judged the top result correct (lenient: either says yes). Both labellers are LLMs and disagree on about 21% of queries.",
+  "cv_auc": 0.936
+ },
+ "bands": [
+  {
+   "min": 0.9,
+   "max": 1.0001,
+   "label": "very high",
+   "n": 2040,
+   "observed": 0.973
+  },
+  {
+   "min": 0.8,
+   "max": 0.9,
+   "label": "high",
+   "n": 111,
+   "observed": 0.82
+  },
+  {
+   "min": 0.6,
+   "max": 0.8,
+   "label": "medium",
+   "n": 150,
+   "observed": 0.733
+  },
+  {
+   "min": 0.3,
+   "max": 0.6,
+   "label": "low",
+   "n": 228,
+   "observed": 0.465
+  },
+  {
+   "min": 0.0,
+   "max": 0.3,
+   "label": "very low",
+   "n": 352,
+   "observed": 0.168
+  }
+ ],
+ "holdout": {
+  "queries": 97,
+  "labelled_by": "hand (Claude), 97 fresh queries not used in training",
+  "auc": 0.879,
+  "very_high_band_n": 80,
+  "very_high_band_correct": 0.963
+ },
+ "limits": [
+  "Labels are model-made, not ground truth.",
+  "Wrong-variant matches that contain every query word (protein-fortified spaghetti for 'spaghetti', meatless bacon bits for 'bacon bits') score high.",
+  "Misspellings and brand names score low even when right."
+ ]
+}

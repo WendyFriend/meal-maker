@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './IngredientNutritionSheet.css';
 import type { IngredientNutrition } from '../../../shared/types/types';
 import { sumMicronutrients } from '../../../shared/nutrition/nutrients';
+import { thumbnailUrl } from '../../../shared/nutrition/thumbnail';
 import NutrientList from './NutrientList';
 import { getIngredientMicronutrients } from './nutrientRows';
 
@@ -20,13 +21,35 @@ function describeSource({ nutritionSource, usda }: IngredientNutrition) {
     return undefined;
 }
 
+function formatMacro(value: number | undefined, unit: 'kcal' | 'g') {
+    if (value === undefined || !Number.isFinite(value)) return '–';
+    return unit === 'kcal' ? `${Math.round(value)} kcal` : `${value.toFixed(1)} g`;
+}
+
 function IngredientNutritionSheet({
     ingredient,
     onClose,
 }: IngredientNutritionSheetProps) {
     const panelRef = useRef<HTMLDivElement>(null);
+    // Most foods have no thumbnail yet; the server 404s and the image is skipped.
+    const [imageFailed, setImageFailed] = useState(false);
     const source = describeSource(ingredient);
     const weight = ingredient.weight ?? 100;
+    const hasPortion = ingredient.weight !== undefined;
+    const macroRows: {
+        label: string;
+        per100g: number | undefined;
+        unit: 'kcal' | 'g';
+        minor?: boolean;
+    }[] = [
+        { label: 'Energy', per100g: ingredient.caloriesPer100g, unit: 'kcal' },
+        { label: 'Protein', per100g: ingredient.proteinPer100g, unit: 'g' },
+        { label: 'Carbs', per100g: ingredient.carbohydratePer100g, unit: 'g' },
+        { label: 'of which sugars', per100g: ingredient.sugarPer100g, unit: 'g', minor: true },
+        { label: 'Fibre', per100g: ingredient.fiberPer100g, unit: 'g' },
+        { label: 'Fat', per100g: ingredient.fatPer100g, unit: 'g' },
+        { label: 'of which saturated', per100g: ingredient.saturatedFatPer100g, unit: 'g', minor: true },
+    ];
     const amounts = sumMicronutrients([
         {
             weight,
@@ -66,43 +89,54 @@ function IngredientNutritionSheet({
                 tabIndex={-1}
                 className="ingredient-nutrition-sheet"
             >
+                {ingredient.usda && !imageFailed && (
+                    <img
+                        className="ingredient-nutrition-image"
+                        src={thumbnailUrl(ingredient.usda.fdcId)}
+                        alt={ingredient.name}
+                        onError={() => setImageFailed(true)}
+                    />
+                )}
+
                 <h4 className="ingredient-nutrition-name">{ingredient.name}</h4>
 
                 {source && (
                     <p className="ingredient-nutrition-source">{source}</p>
                 )}
 
-                <p className="ingredient-nutrition-caption">
-                    Nutrition per 100g
-                </p>
-
-                <div className="ingredient-nutrition-rows">
-                    <div className="ingredient-nutrition-row">
-                        <span>Energy</span>
-                        <strong>
-                            {Math.round(ingredient.caloriesPer100g)} kcal
-                        </strong>
-                    </div>
-
-                    <div className="ingredient-nutrition-row">
-                        <span>Protein</span>
-                        <strong>
-                            {ingredient.proteinPer100g.toFixed(1)} g
-                        </strong>
-                    </div>
-
-                    <div className="ingredient-nutrition-row">
-                        <span>Carbs</span>
-                        <strong>
-                            {ingredient.carbohydratePer100g.toFixed(1)} g
-                        </strong>
-                    </div>
-
-                    <div className="ingredient-nutrition-row">
-                        <span>Fat</span>
-                        <strong>{ingredient.fatPer100g.toFixed(1)} g</strong>
-                    </div>
-                </div>
+                <table className="ingredient-nutrition-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">
+                                <span className="visually-hidden">Nutrient</span>
+                            </th>
+                            <th scope="col">Per 100 g</th>
+                            {hasPortion && (
+                                <th scope="col">In your {Math.round(weight)} g</th>
+                            )}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {macroRows.map((row) => (
+                            <tr key={row.label} className={row.minor ? 'is-minor' : undefined}>
+                                <th scope="row">{row.label}</th>
+                                <td>{formatMacro(row.per100g, row.unit)}</td>
+                                {hasPortion && (
+                                    <td>
+                                        <strong>
+                                            {formatMacro(
+                                                row.per100g === undefined
+                                                    ? undefined
+                                                    : (row.per100g * weight) / 100,
+                                                row.unit,
+                                            )}
+                                        </strong>
+                                    </td>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
 
                 <h5 className="ingredient-nutrition-subtitle">
                     {ingredient.weight === undefined

@@ -1,0 +1,1306 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Nutrition lab</title>
+        <style>
+            :root {
+                --bg: #faf8f4;
+                --surface: #ffffff;
+                --border: #e4ded2;
+                --text: #1f2d2a;
+                --muted: #6f776f;
+                --accent: #f4796c;
+                --good: #3f6b5c;
+                --warn: #8a5a1c;
+            }
+
+            * { box-sizing: border-box; }
+
+            body {
+                margin: 0;
+                padding: 28px 22px 60px;
+                background: var(--bg);
+                color: var(--text);
+                font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+            }
+
+            .wrap { max-width: 1100px; margin: 0 auto; }
+
+            /* The table gets its own scroll container so a wide row cannot push
+               the page sideways and clip the sticky export bar. */
+            #out {
+                overflow-x: auto;
+                border-radius: 12px;
+            }
+
+            h1 { margin: 0 0 2px; font-size: 22px; }
+            .sub { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+
+            .stats {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 22px;
+            }
+
+            .stat {
+                padding: 10px 14px;
+                border-radius: 12px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                min-width: 96px;
+            }
+
+            .stat b {
+                display: block;
+                font-size: 20px;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .stat span {
+                font-size: 11px;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+
+            .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+
+            .tab {
+                padding: 7px 14px;
+                border-radius: 999px;
+                border: 1px solid var(--border);
+                background: var(--surface);
+                color: var(--muted);
+                font: inherit;
+                font-size: 13px;
+                cursor: pointer;
+            }
+
+            .tab.on {
+                background: var(--text);
+                border-color: var(--text);
+                color: #fff;
+            }
+
+            .search {
+                width: 100%;
+                padding: 11px 14px;
+                margin-bottom: 16px;
+                border-radius: 12px;
+                border: 1.5px solid var(--border);
+                background: var(--surface);
+                font: inherit;
+            }
+
+            .search:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+
+            .hint {
+                margin: -6px 0 14px;
+                font-size: 12.5px;
+                color: var(--muted);
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                overflow: hidden;
+                font-size: 13.5px;
+            }
+
+            th, td {
+                text-align: left;
+                padding: 9px 12px;
+                border-bottom: 1px solid var(--border);
+                vertical-align: top;
+            }
+
+            th {
+                font-size: 11px;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                color: var(--muted);
+                background: #fbf9f4;
+            }
+
+            tr:last-child td { border-bottom: none; }
+            tbody tr:hover { background: #fdfbf6; }
+
+            .mono { font-family: ui-monospace, "Cascadia Code", monospace; font-size: 12.5px; }
+            .muted { color: var(--muted); }
+
+            .pill {
+                display: inline-block;
+                padding: 1px 8px;
+                border-radius: 999px;
+                background: #f2ede3;
+                font-size: 12px;
+                margin: 1px 3px 1px 0;
+            }
+
+            .same { color: var(--good); font-weight: 600; }
+            .wonrow { display: block; margin: 8px 0; font-size: 13px; color: var(--muted); }
+            .wonrow select { margin-left: 6px; }
+            .lost { color: var(--muted); text-decoration: line-through; }
+            .naming { max-width: 760px; }
+            .naming-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0 18px; }
+            .naming-top button { margin-left: 6px; }
+            .nbar { margin-bottom: 18px; }
+            .nbar-head { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 6px; }
+            .nbar-track { height: 12px; border-radius: 999px; background: #f2ede3; overflow: hidden; }
+            .nbar-fill { height: 100%; background: var(--good); transition: width 0.6s ease; }
+            .nbar-note { font-size: 12.5px; margin-top: 4px; }
+            tr.group td { background: #f2ede3; font-weight: 600; text-transform: capitalize; }
+            .pill.ok { background: #eef3ef; color: var(--good); }
+            .pill.bad { background: #fdf3e7; color: var(--warn); }
+
+            .empty {
+                padding: 30px;
+                text-align: center;
+                color: var(--muted);
+                background: var(--surface);
+                border: 1px dashed var(--border);
+                border-radius: 12px;
+                font-size: 13.5px;
+            }
+
+            .err {
+                padding: 12px 14px;
+                border-radius: 10px;
+                background: #fdf3f0;
+                color: #a8442f;
+                font-size: 13.5px;
+                margin-bottom: 14px;
+            }
+
+            /* The resolver's answer, shown above the table. Deliberately reads as
+               a verdict rather than another row: the app picks one food from this,
+               so the panel picks one food too. */
+            .resolved {
+                display: flex;
+                align-items: flex-start;
+                gap: 14px;
+                padding: 13px 16px;
+                margin-bottom: 14px;
+                border-radius: 12px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--accent);
+            }
+
+            .resolved-main { flex: 1; min-width: 0; }
+
+            /* Generated by db/lab/thumb_studio.py; absent for most foods until
+               that runs, so onerror removes the <img> rather than showing a
+               broken-image icon. */
+            .resolved-thumb {
+                width: 56px;
+                height: 56px;
+                border-radius: 8px;
+                object-fit: cover;
+                flex-shrink: 0;
+                background: var(--border);
+            }
+
+            /* A display value on the class beats the UA [hidden] rule, so the
+               empty panel would otherwise still take up space. */
+            .resolved[hidden] { display: none; }
+
+            .resolved-label {
+                font-size: 10.5px;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin-bottom: 2px;
+            }
+
+            .resolved-name {
+                font-size: 16px;
+                font-weight: 600;
+                line-height: 1.3;
+                word-break: break-word;
+            }
+
+            .resolved-meta {
+                margin-top: 5px;
+                font-size: 12.5px;
+                color: var(--muted);
+            }
+
+            .resolved-side {
+                text-align: right;
+                flex-shrink: 0;
+            }
+
+            .tier {
+                display: inline-block;
+                padding: 2px 10px;
+                border-radius: 999px;
+                font-size: 11.5px;
+                font-weight: 600;
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+            }
+
+            .tier.confident { background: #e9f2ec; color: var(--good); }
+            .tier.probable  { background: #eef1f6; color: #3b5470; }
+            .tier.ambiguous { background: #fdf3e7; color: var(--warn); }
+            .tier.weak      { background: #fbeae7; color: #a8442f; }
+
+            .resolved-none {
+                color: var(--muted);
+                font-size: 13.5px;
+            }
+
+            .note {
+                padding: 10px 14px;
+                border-radius: 10px;
+                background: #f4f5f7;
+                color: var(--muted);
+                font-size: 13px;
+                margin-bottom: 14px;
+            }
+
+            a { color: inherit; }
+
+            .linkish {
+                background: none;
+                border: 0;
+                padding: 0;
+                font: inherit;
+                color: var(--accent);
+                cursor: pointer;
+                text-decoration: underline;
+            }
+
+            /* ---- selection + export ---- */
+
+            /* Rows are the selection control: no checkboxes. */
+            .pickable tbody tr {
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .pickable tbody tr.picked {
+                background: #fdf0ed;
+                box-shadow: inset 3px 0 0 var(--accent);
+            }
+
+            .pickable tbody tr.picked:hover { background: #fce9e5; }
+
+            .pickable tbody tr:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: -2px;
+            }
+
+            .exportbar {
+                position: sticky;
+                top: 0;
+                z-index: 5;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                margin-bottom: 12px;
+                padding: 10px 14px;
+                border-radius: 12px;
+                background: var(--text);
+                color: #fff;
+                font-size: 13.5px;
+                box-shadow: 0 4px 14px rgba(31, 45, 42, 0.16);
+            }
+
+            .exportbar[hidden] { display: none; }
+
+            #count { font-weight: 600; }
+
+            .exportbar-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+
+            .exportbar button {
+                padding: 6px 12px;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.24);
+                background: rgba(255, 255, 255, 0.12);
+                color: #fff;
+                font: inherit;
+                font-size: 12.5px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+
+            .exportbar button:hover { background: rgba(255, 255, 255, 0.2); }
+
+            .exportbar button.ghost {
+                background: none;
+                border-color: transparent;
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            .exportbar button.ghost:hover { color: #fff; }
+
+            /* Brief confirmation after a copy. */
+            .exportbar button.done {
+                background: #3f6b5c;
+                border-color: #3f6b5c;
+            }
+
+            /* Crowded words tree */
+            .crowd { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+            .crowd-head {
+                display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+                justify-content: space-between; padding: 10px 14px;
+                border-bottom: 1px solid var(--border); color: var(--muted); font-size: 13px;
+            }
+            .crowd-head input { width: 70px; margin-left: 6px; padding: 3px 6px; font: inherit; }
+            .crowd-list { list-style: none; margin: 0; padding: 0; }
+            .crowd-row {
+                display: flex; align-items: center; gap: 8px; width: 100%;
+                padding: 7px 14px 7px calc(14px + var(--depth) * 22px);
+                border: 0; border-top: 1px solid var(--border); background: none;
+                color: var(--text); font: inherit; text-align: left; cursor: pointer;
+            }
+            .crowd > .crowd-list > li:first-child > .crowd-row { border-top: 0; }
+            .crowd-row:hover { background: #fff3f1; }
+            .crowd-row[aria-expanded='true'] > .crowd-label { font-weight: 600; }
+            .crowd-caret { width: 12px; color: var(--muted); }
+            .crowd-label { flex: 1; }
+            .crowd-hits { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+            .crowd-hits small { font-size: 12px; opacity: 0.75; }
+            .crowd-foods, .crowd-empty {
+                margin: 0; padding: 4px 14px 8px calc(36px + var(--depth) * 22px);
+                color: var(--muted); font-size: 12.5px;
+            }
+            .crowd-foods { list-style: disc; }
+
+            /* EXPERIMENTAL confidence search: its own card, deliberately unlike the
+               resolver panel below so the two are never confused. */
+            .xcard {
+                margin: 0 0 18px;
+                padding: 14px 16px;
+                border-radius: 12px;
+                border: 1.5px dashed var(--border);
+                background: var(--surface);
+            }
+            .xhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+            .xbadge {
+                padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+                letter-spacing: 0.06em; text-transform: uppercase; background: #fdf3e7; color: var(--warn);
+            }
+            .xtop { display: flex; gap: 14px; align-items: flex-start; margin-top: 14px; }
+            .xpct { text-align: right; flex-shrink: 0; min-width: 120px; }
+            .xpct b { display: block; font-size: 30px; line-height: 1.05; font-weight: 700; }
+            .xband { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+            .xbar { height: 7px; border-radius: 4px; background: var(--border); margin: 10px 0 6px; overflow: hidden; }
+            .xbar > i { display: block; height: 100%; border-radius: 4px; }
+            .xsignals {
+                display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 8px; margin: 12px 0;
+            }
+            .xsig { padding: 7px 10px; border-radius: 8px; background: var(--bg, #f6f6f4); border: 1px solid var(--border); }
+            .xsig span { display: block; font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+            .xsig b { font-size: 14px; }
+            .xtable { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+            .xtable th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; padding: 4px 8px 4px 0; }
+            .xtable td { padding: 5px 8px 5px 0; border-top: 1px solid var(--border); vertical-align: top; }
+            .xtable td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+            .xnote { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+            .xcard details { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+            .xcard summary { cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <h1>Nutrition lab</h1>
+            <p class="sub">
+                A full copy of the nutrition database, independent of the main one.
+                Nothing here is used by the app.
+            </p>
+
+            <div class="stats" id="stats"></div>
+
+            <!-- EXPERIMENTAL: a search with a confidence estimate. Separate from the filter box
+                 below, which is unchanged. -->
+            <div class="xcard" id="xcard">
+                <div class="xhead">
+                    <span class="xbadge">Experimental</span>
+                    <b>Confidence search</b>
+                    <span class="muted" style="font-size: 12.5px;">
+                        What the resolver picks, and how likely that pick is the food you meant. Separate from the filter below.
+                    </span>
+                </div>
+                <input
+                    id="xq"
+                    class="search"
+                    type="search"
+                    placeholder="Try a search, e.g. frozen peas, hot dog, brocoli, big mac..."
+                    autocomplete="off"
+                />
+                <div id="xout"></div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab on" data-view="foods">Foods</button>
+                <button class="tab" data-view="heads">Search words</button>
+                <button class="tab" data-view="crowding">Crowded words</button>
+                <button class="tab" data-view="simple">Simple foods</button>
+                <button class="tab" data-view="naming">Naming</button>
+            </div>
+
+            <input
+                id="q"
+                class="search"
+                type="search"
+                placeholder="Filter by food name or synonym..."
+                autocomplete="off"
+			/>
+
+            <label class="wonrow" id="wonrow">
+                Show
+                <select id="won">
+                    <option value="">All foods</option>
+                    <option value="any">Winners: won a common name or noun</option>
+                    <option value="common">Winners: won a common name</option>
+                    <option value="noun">Winners: won a noun</option>
+                </select>
+            </label>
+
+            <p class="hint">
+                Click a row to select it. Shift-click to extend the range, Ctrl-click
+                (or Cmd-click) to add one at a time.
+            </p>
+
+            <!-- What the app's resolver answers for the typed word. -->
+            <div id="resolved" class="resolved" hidden></div>
+
+            <div id="msg"></div>
+
+            <!-- Export bar. Appears once something is selected. -->
+            <div id="exportbar" class="exportbar" hidden>
+                <span id="count">0 selected</span>
+                <div class="exportbar-buttons">
+                    <button type="button" data-export="names">Copy names</button>
+                    <button type="button" data-export="descriptions">Copy descriptions</button>
+                    <button type="button" data-export="foods-csv">Foods CSV</button>
+                    <button type="button" data-export="synonyms-csv">Synonyms CSV</button>
+                    <button type="button" class="ghost" id="clear-picks">Clear</button>
+                </div>
+            </div>
+
+            <div id="out"></div>
+        </div>
+
+        <script type="module">
+            const $ = (id) => document.getElementById(id);
+
+            let view = 'foods';
+            let timer = null;
+
+            const esc = (s) =>
+                String(s ?? '').replace(/[&<>"]/g, (c) =>
+                    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+                );
+
+            async function get(path) {
+                const res = await fetch(path);
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `HTTP ${res.status}`);
+                }
+                return res.json();
+            }
+
+            // ---- EXPERIMENTAL confidence search -------------------------------------
+            // Own box, own request (/api/resolveconf), own panel. Nothing here touches the
+            // normal filter or the resolver panel below.
+            let xTimer = null;
+            let xSeq = 0;
+            const X_COLOUR = {
+                'very high': 'var(--good)', high: 'var(--good)', medium: 'var(--warn)',
+                low: '#a8442f', 'very low': '#a8442f',
+            };
+
+            function xRender(data) {
+                if (!data.results.length) {
+                    return '<div class="resolved-none" style="margin-top:12px;">No match. The app would hand this to the model.</div>';
+                }
+                const c = data.confidence;
+                const top = data.results[0];
+                if (!c || c.error || !Number.isFinite(c.p)) {
+                    return `<div class="resolved-none" style="margin-top:12px;">${esc(c?.error ?? 'No confidence available.')}</div>`;
+                }
+
+                const pct = Math.round(c.p * 100);
+                const colour = X_COLOUR[c.band.label] ?? 'var(--muted)';
+                const s = c.signals;
+                const via = top.matched_via.replace(/:/g, ' · ');
+                const seen = c.band.observed == null
+                    ? ''
+                    : `In testing, ${Math.round(c.band.observed * 100)}% of answers rated “${esc(c.band.label)}” were judged correct (${c.band.n.toLocaleString()} cases).`;
+
+                const sig = (label, value, hint) =>
+                    `<div class="xsig" title="${esc(hint)}"><span>${esc(label)}</span><b>${value}</b></div>`;
+                const signals = [
+                    sig('Tier', esc(top.tier), 'The resolver\'s own four-level rating'),
+                    sig('Found by', esc(via), 'The matching route that produced the winning score'),
+                    sig('Routes agreeing', s.routes, 'How many independent matching routes found this food. More agreement, more trust'),
+                    sig('Query words found', `${Math.round(s.coverage * 100)}%`, 'Rarity-weighted share of the query\'s words present in the food\'s description'),
+                    sig('Lead over next', s.margin.toFixed(2), 'Score gap to the runner-up. Zero means a tie'),
+                    sig('Close rivals', s.n_close, 'Other foods scoring within 0.05 of the top one'),
+                    sig('Description', `${s.words} words`, 'A long description is a more specific food than a short query'),
+                ].join('');
+
+                const rows = data.results.map((r, i) => `<tr>
+                    <td class="num">${i + 1}</td>
+                    <td>${esc(r.description)}<div class="muted" style="font-size:11.5px;">${esc(r.category ?? '')}</div></td>
+                    <td><span class="tier ${esc(r.tier)}">${esc(r.tier)}</span></td>
+                    <td class="num">${r.score.toFixed(2)}</td>
+                    <td class="num">${r.n_routes}</td>
+                    <td class="num">${Math.round(r.coverage * 100)}%</td>
+                    <td class="num">${i === 0 ? '—' : '−' + (top.score - r.score).toFixed(2)}</td>
+                    <td class="num">${i === 0 ? `<b style="color:${colour}">${pct}%</b>` : '<span class="muted" title="Only the top result is modelled">n/a</span>'}</td>
+                </tr>`).join('');
+
+                const m = c.model;
+                return `
+                    <div class="xtop">
+                        <img class="resolved-thumb" src="/thumbnails/${top.fdc_id}.webp" alt="" onerror="this.remove()">
+                        <div class="resolved-main">
+                            <div class="resolved-label">Resolver answers “${esc(data.term)}” with</div>
+                            <div class="resolved-name">${esc(top.description)}</div>
+                            <div class="resolved-meta">${esc(top.category ?? 'no category')}</div>
+                        </div>
+                        <div class="xpct">
+                            <b style="color:${colour}">${pct}%</b>
+                            <span class="xband" style="color:${colour}">${esc(c.band.label)}</span>
+                        </div>
+                    </div>
+                    <div class="xbar"><i style="width:${pct}%; background:${colour}"></i></div>
+                    <div class="xnote">${seen}</div>
+                    <div class="xsignals">${signals}</div>
+                    <table class="xtable">
+                        <thead><tr><th>#</th><th>Candidate</th><th>Tier</th><th class="num">Score</th><th class="num">Routes</th><th class="num">Words found</th><th class="num">Behind top</th><th class="num">Confidence</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <details>
+                        <summary>How this is estimated, and its limits</summary>
+                        <div class="xnote">
+                            A small logistic model over the signals above (no LLM at query time), trained ${esc(m.trained)} on
+                            ${m.queries.toLocaleString()} queries the evaluator had judged. Cross-validated AUC ${m.cvAuc}; on
+                            ${m.holdout.queries} fresh hand-labelled queries AUC ${m.holdout.auc}, and the “very high” band
+                            (${m.holdout.very_high_band_n} queries) was correct ${Math.round(m.holdout.very_high_band_correct * 100)}% of the time.<br>
+                            Labels: ${esc(m.labels)}<br>
+                            Limits: ${m.limits.map(esc).join(' ')}
+                        </div>
+                    </details>`;
+            }
+
+            async function runExperimental() {
+                const term = $('xq').value.trim();
+                const seq = ++xSeq;
+                const out = $('xout');
+                if (term === '') {
+                    out.innerHTML = '';
+                    return;
+                }
+                out.innerHTML = '<div class="muted" style="margin-top:12px;">Searching…</div>';
+                let data;
+                try {
+                    data = await get(`/api/resolveconf?q=${encodeURIComponent(term)}`);
+                } catch (err) {
+                    if (seq === xSeq) out.innerHTML = `<div class="resolved-none" style="margin-top:12px;">Error: ${esc(err.message)}</div>`;
+                    return;
+                }
+                // Only the newest answer may render.
+                if (seq === xSeq) out.innerHTML = xRender(data);
+            }
+
+            $('xq').addEventListener('input', () => {
+                clearTimeout(xTimer);
+                xTimer = setTimeout(runExperimental, 300);
+            });
+
+            // ?xq=hot%20dog opens the page with that search already run.
+            const xPreset = new URLSearchParams(location.search).get('xq');
+            if (xPreset) {
+                $('xq').value = xPreset;
+                runExperimental();
+            }
+
+            async function loadStats() {
+                try {
+                    const s = await get('/api/stats');
+                    $('stats').innerHTML = `
+                        <div class="stat"><b>${s.foods}</b><span>foods</span></div>
+                        <div class="stat"><b>${s.synonyms}</b><span>synonyms</span></div>
+                        <div class="stat"><b>${s.bareNouns}</b><span>bare nouns</span></div>
+                        <div class="stat"><b>${s.nutrients}</b><span>nutrients</span></div>
+                        <div class="stat"><b>${s.categories}</b><span>categories</span></div>
+                        <div class="stat"><b>${s.filled}</b><span>source filled</span></div>
+                    `;
+                } catch (err) {
+                    $('msg').innerHTML = `<div class="err">${esc(err.message)}</div>`;
+                }
+            }
+
+            // The name this food won, or the name it was given but lost to another
+            // food in arbitration (struck through), or nothing yet.
+            function nameCell(won, raw) {
+                if (won) return `<b>${esc(won)}</b>`;
+                if (raw) return `<span class="lost" title="Another food won this name">${esc(raw)}</span>`;
+                return '<span class="muted">—</span>';
+            }
+
+            function foodsTable(rows) {
+                if (!rows.length) {
+                    return '<div class="empty">No foods match that filter.</div>';
+                }
+
+                return `<table class="pickable">
+                    <thead><tr>
+                        <th>Source of truth</th>
+                        <th>Food</th>
+                        <th>Category</th>
+                        <th>Synonyms</th>
+                        <th>Common name</th>
+                        <th>Noun</th>
+                        <th>Other name 2</th>
+                        <th>Other name 3</th>
+                        <th>Common name (gemma)</th>
+                        <th>Noun (gemma)</th>
+                        <th>Owns bare word</th>
+                        <th>Nutrients</th>
+                    </tr></thead>
+                    <tbody>${rows
+                        .map(
+                            (r) => `<tr data-id="${r.fdc_id}" data-name="${esc(r.description)}">
+                            <td>${
+                                r.source_of_truth
+                                    ? esc(r.source_of_truth)
+                                    : '<span class="muted">empty</span>'
+                            }</td>
+                            <td>${esc(r.description)}</td>
+                            <td class="muted">${esc(r.category ?? '—')}</td>
+                            <td>${
+                                r.synonyms.length
+                                    ? r.synonyms
+                                          .map((t) => `<span class="pill">${esc(t)}</span>`)
+                                          .join('')
+                                    : '<span class="muted">none</span>'
+                            }</td>
+                            <td>${nameCell(r.common_name, r.common_name_raw)}</td>
+                            <td>${nameCell(r.noun, r.noun_raw)}</td>
+                            <td>${nameCell(r.common_name_2, r.common_name_2_raw)}</td>
+                            <td>${nameCell(r.common_name_3, r.common_name_3_raw)}</td>
+                            <td>${r.common_name_gemma ? esc(r.common_name_gemma) : '<span class="muted">—</span>'}</td>
+                            <td>${r.noun_gemma ? esc(r.noun_gemma) : '<span class="muted">—</span>'}</td>
+                            <td>${
+                                r.owns_bare
+                                    ? '<span class="pill ok">yes</span>'
+                                    : '<span class="pill bad">no</span>'
+                            }</td>
+                            <td class="muted">${r.nutrient_rows}</td>
+                        </tr>`,
+                        )
+                        .join('')}</tbody>
+                </table>`;
+            }
+
+            // Random foods, the common name a model gave each, and what the resolver
+            // returns for that common name. Green: it found the very same food.
+            function simpleTable(rows, filter) {
+                const f = filter.toLowerCase();
+                const shown = rows.filter(
+                    (r) =>
+                        !f ||
+                        r.item.toLowerCase().includes(f) ||
+                        r.common.toLowerCase().includes(f) ||
+                        (r.result ?? '').toLowerCase().includes(f),
+                );
+                if (!shown.length) return '<div class="empty">Nothing matches that filter.</div>';
+
+                const same = rows.filter((r) => r.same).length;
+                const body = shown
+                    .map((r) => {
+                        const result = r.result
+                            ? `<span class="${r.same ? 'same' : ''}" title="${esc(`${r.tier} via ${r.via}`)}">${esc(r.result)}</span>`
+                            : '<span class="pill bad">no result</span>';
+                        return `<tr><td>${esc(r.item)}</td><td>${esc(r.common)}</td><td>${result}</td></tr>`;
+                    })
+                    .join('');
+                return `<p class="hint">${rows.length} random foods. The common name finds the same food for ${same} of them (green).</p>
+                <table>
+                    <thead><tr><th>Item name</th><th>Common name</th><th>Resolved name</th></tr></thead>
+                    <tbody>${body}</tbody>
+                </table>`;
+            }
+
+            // The naming run: a bar per phase, what the worker is doing now, and
+            // Start / Pause. Refreshes itself every 2 seconds while the tab is open.
+            let namingTimer = null;
+
+            function bar(label, done, total, note) {
+                const pct = total ? Math.round((done / total) * 100) : 0;
+                return `<div class="nbar">
+                    <div class="nbar-head"><b>${esc(label)}</b><span>${done.toLocaleString()} of ${total.toLocaleString()} (${pct}%)</span></div>
+                    <div class="nbar-track"><div class="nbar-fill" style="width: ${pct}%"></div></div>
+                    ${note ? `<div class="muted nbar-note">${esc(note)}</div>` : ''}
+                </div>`;
+            }
+
+            async function renderNaming(seq) {
+                clearTimeout(namingTimer);
+                const s = await get('/api/namingstatus');
+                if (seq !== undefined && seq !== loadSeq) return;
+                if (view !== 'naming') return;
+
+                const w = s.worker;
+                const g = s.gemma;
+                const gstate = g.running ? 'Running' : g.worker ? { done: 'Finished', paused: 'Paused', error: 'Stopped with an error' }[g.worker.phase] ?? 'Stopped' : 'Not started';
+                const state = s.running ? 'Running' : w ? { done: 'Finished', paused: 'Paused', error: 'Stopped with an error' }[w.phase] ?? 'Stopped' : 'Not started';
+                $('out').innerHTML = `<div class="naming">
+                    <div class="naming-top">
+                        <div><b>gemma4:12b, main run: ${state}</b>${w?.message ? ` <span class="muted">${esc(w.message)}</span>` : ''}</div>
+                        <div>
+                            <button type="button" data-naming="start" ${s.running ? 'disabled' : ''}>${w ? 'Resume' : 'Start'}</button>
+                            <button type="button" data-naming="pause" ${s.running ? '' : 'disabled'}>Pause</button>
+                        </div>
+                    </div>
+                    ${bar('1. Common names and nouns', s.named, s.foods, 'The model names each food, e.g. "canned peas" and "peas".')}
+                    ${bar('2. Common name arbitration', s.commonDecided, s.commonTerms, `${s.commonContested.toLocaleString()} names are shared by more than one food; the model picks one owner for each.`)}
+                    ${bar('3. Noun arbitration', s.nounDecided, s.nounTerms, `${s.nounContested.toLocaleString()} nouns are shared; only the most likely food keeps each one.`)}
+                    ${bar('4. Other names, level 2', s.alt2Done, s.foods, `${s.alt2Named.toLocaleString()} foods got a second name ("chickpea" -> "garbanzo bean") after the rule and model checks.`)}
+                    ${bar('5. Level 2 arbitration', s.alt2Decided, s.alt2Terms, `${s.alt2Contested.toLocaleString()} second names are shared; names already used as a common name or noun were dropped first.`)}
+                    ${bar('6. Other names, level 3', s.alt3Done, s.alt3Eligible, `${s.alt3Named.toLocaleString()} foods got a third name. Only foods that kept a second name are asked.`)}
+                    ${bar('7. Level 3 arbitration', s.alt3Decided, s.alt3Terms, `${s.alt3Contested.toLocaleString()} third names are shared.`)}
+                    <div class="naming-top">
+                        <div><b>gemma4:12b, comparison columns: ${gstate}</b>${g.worker?.message ? ` <span class="muted">${esc(g.worker.message)}</span>` : ''}</div>
+                        <div>
+                            <button type="button" data-naming="start" data-run="gemma" ${g.running ? 'disabled' : ''}>${g.worker ? 'Resume' : 'Start'}</button>
+                            <button type="button" data-naming="pause" data-run="gemma" ${g.running ? '' : 'disabled'}>Pause</button>
+                        </div>
+                    </div>
+                    ${bar('Gemma common names and nouns', s.namedGemma, s.foods, 'The same naming step by gemma4:12b, in its own columns, for comparison. No arbitration.')}
+                    <p class="muted">Pause stops after the model call in hand. Resume carries on where it stopped. Logs: db/lab/out/naming.log and naming-gemma.log</p>
+                </div>`;
+                namingTimer = setTimeout(() => view === 'naming' && renderNaming(), 2000);
+            }
+
+            $('out').addEventListener('click', async (event) => {
+                const button = event.target.closest('button[data-naming]');
+                if (!button) return;
+                button.disabled = true;
+                try {
+                    await get(`/api/naming${button.dataset.naming}?run=${button.dataset.run ?? ''}`);
+                } catch (err) {
+                    $('msg').innerHTML = `<div class="err">${esc(err.message)}</div>`;
+                }
+                setTimeout(() => renderNaming(), 700);
+            });
+
+            function headsTable(rows) {
+                if (!rows.length) {
+                    return '<div class="empty">No search words match that filter.</div>';
+                }
+
+                // The word, the food it came from, and who currently owns it.
+                return `<table>
+                    <thead><tr>
+                        <th>Word a person types</th>
+                        <th>From food</th>
+                        <th>Synonyms claiming it</th>
+                        <th>Currently resolves to</th>
+                    </tr></thead>
+                    <tbody>${rows
+                        .map(
+                            (r) => `<tr>
+                            <td class="mono">${esc(r.head)}</td>
+                            <td>${esc(r.description)}</td>
+                            <td>${
+                                r.own_terms.length
+                                    ? r.own_terms
+                                          .map((t) => `<span class="pill ok">${esc(t)}</span>`)
+                                          .join('')
+                                    : '<span class="muted">none</span>'
+                            }</td>
+                            <td>${
+                                r.bare_owner
+                                    ? esc(r.bare_owner)
+                                    : '<span class="pill bad">nothing — falls back to name matching</span>'
+                            }</td>
+                        </tr>`,
+                        )
+                        .join('')}</tbody>
+                </table>`;
+            }
+
+            /*
+             * Crowded words, as a tree. Top level: the crowded single words,
+             * worst first. Expanding one lists the two-word phrases it appears
+             * in (2+ foods, words adjacent and in order: "cream" -> "ice cream",
+             * "cream cheese"); expanding a phrase lists its foods.
+             * Children are fetched on click.
+             */
+            let crowdRoot = null;
+            // Expanded nodes, keyed by their word path ("milk,soy").
+            let crowdMin = 2;
+            const crowdOpen = new Map();
+
+            function crowdRows(rows, depth) {
+                return rows
+                    .map((r) => {
+                        const key = r.path;
+                        const open = crowdOpen.get(key);
+                        return `<li>
+                            <button type="button" class="crowd-row" data-crowd="${esc(key)}"
+                                aria-expanded="${open ? 'true' : 'false'}" style="--depth: ${depth}">
+                                <span class="crowd-caret" aria-hidden="true">${open ? '▾' : '▸'}</span>
+                                <span class="crowd-label">${esc(r.label)}</span>
+                                <span class="crowd-hits">${r.hits} ${r.unit ?? 'foods'}</span>
+                            </button>
+                            ${open ? crowdChildren(open, depth + 1) : ''}
+                        </li>`;
+                    })
+                    .join('');
+            }
+
+            function crowdChildren(data, depth) {
+                const list = data.rows.length
+                    ? `<ul class="crowd-list">${crowdRows(data.rows, depth)}</ul>`
+                    : '';
+                const foods = data.foods.length
+                    ? `<ul class="crowd-foods" style="--depth: ${depth}">${data.foods
+                          .map((f) => `<li>${esc(f)}</li>`)
+                          .join('')}</ul>`
+                    : '';
+                const more = data.more
+                    ? `<div class="crowd-empty" style="--depth: ${depth}">+ ${data.more} more foods not listed</div>`
+                    : '';
+                return (
+                    list +
+                    more +
+                    foods +
+                    (list || foods
+                        ? ''
+                        : `<div class="crowd-empty" style="--depth: ${depth}">No repeating combinations.</div>`)
+                );
+            }
+
+            function crowdTree() {
+                if (!crowdRoot) return '';
+                return `<div class="crowd">
+                    <div class="crowd-head">
+                        <span>${crowdRoot.rows.length} base nouns, largest first. Click one for the
+                            search terms inside it ("whole egg"), then a term for its foods.
+                            Branded foods and meals are left out.</span>
+                        <label>Min foods
+                            <input id="crowd-min" type="number" min="2" value="${crowdMin}" />
+                        </label>
+                    </div>
+                    ${crowdRoot.rows.length
+                        ? `<ul class="crowd-list">${crowdRows(crowdRoot.rows, 0)}</ul>`
+                        : '<div class="empty">No crowded words match that filter.</div>'}
+                </div>`;
+            }
+
+            async function toggleCrowd(key) {
+                if (crowdOpen.has(key)) {
+                    crowdOpen.delete(key);
+                } else {
+                    crowdOpen.set(key, await get(`/api/crowdtree?path=${encodeURIComponent(key)}`));
+                }
+                $('out').innerHTML = crowdTree();
+            }
+
+            // Selections survive filtering and re-renders, keyed by fdc_id, so a
+            // user can filter to one group, pick, filter to another, pick again,
+            // and export the lot.
+            const picked = new Map();
+
+            // The rows last rendered, so an export can reach the full record
+            // (synonyms etc.) rather than only the name kept in the selection.
+            let currentRows = [];
+
+            /** One CSV cell: always quoted, internal quotes doubled. */
+            function csvCell(value) {
+                return `"${String(value ?? '').replace(/"/g, '""')}"`;
+            }
+
+            /**
+             * Joins rows into CSV text.
+             *
+             * CRLF line endings, because Excel treats a lone LF in a quoted field
+             * as an unterminated record and mangles the import.
+             */
+            function toCsv(header, rows) {
+                return [header.map(csvCell).join(','), ...rows.map((r) => r.map(csvCell).join(','))].join(
+                    '\r\n',
+                );
+            }
+
+            /**
+             * Marks the rows that are selected, and shows or hides the export bar.
+             *
+             * Selection lives in `picked` (a Map keyed by fdc_id), not in the DOM,
+             * because filtering re-renders the table and the DOM state would be
+             * lost. This function is the only thing that writes the visual state.
+             */
+            function syncPicks() {
+                for (const row of document.querySelectorAll('tbody tr[data-id]')) {
+                    row.classList.toggle('picked', picked.has(Number(row.dataset.id)));
+                }
+
+                $('count').textContent = `${picked.size} selected`;
+                $('exportbar').hidden = view !== 'foods' || picked.size === 0;
+            }
+
+            /**
+             * Click / shift-click / ctrl-click selection over the visible rows.
+             *
+             * Behaves like a file picker: plain click selects one and moves the
+             * anchor, shift-click extends from the anchor, ctrl (or cmd) toggles a
+             * single row and moves the anchor there so a following shift-click
+             * ranges from it.
+             *
+             * The range is taken over the rows currently on screen, not the whole
+             * data set, which is what a user means when they have filtered first.
+             */
+            let anchor = null; // { index } into the visible row list, or null.
+
+            function visibleRows() {
+                return [...document.querySelectorAll('tbody tr[data-id]')];
+            }
+
+            function selectRow(event, row) {
+                const rows = visibleRows();
+                const index = rows.indexOf(row);
+                if (index === -1) return;
+
+                const id = Number(row.dataset.id);
+                const name = row.dataset.name;
+                const additive = event.ctrlKey || event.metaKey;
+
+                if (event.shiftKey && anchor !== null) {
+                    // Extend from the anchor to here, in visible order. An additive
+                    // shift-click adds the range rather than replacing the set.
+                    if (!additive) picked.clear();
+                    const [from, to] = anchor <= index ? [anchor, index] : [index, anchor];
+                    for (const r of rows.slice(from, to + 1)) {
+                        picked.set(Number(r.dataset.id), r.dataset.name);
+                    }
+                } else if (additive) {
+                    // Toggle, like ctrl-click in a file list.
+                    if (picked.has(id)) picked.delete(id);
+                    else picked.set(id, name);
+                    anchor = index;
+                } else {
+                    picked.clear();
+                    picked.set(id, name);
+                    anchor = index;
+                }
+
+                syncPicks();
+            }
+
+            /** The names to export, in the order they were picked. */
+            function pickedNames() {
+                return [...picked.values()];
+            }
+
+            function download(filename, text) {
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+            }
+
+            async function flash(button) {
+                const original = button.textContent;
+                button.textContent = 'Copied';
+                button.classList.add('done');
+                window.setTimeout(() => {
+                    button.textContent = original;
+                    button.classList.remove('done');
+                }, 1100);
+            }
+
+            async function copyText(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch {
+                    // Clipboard API needs a secure context; localhost qualifies,
+                    // but fall back rather than silently doing nothing.
+                    const area = document.createElement('textarea');
+                    area.value = text;
+                    area.style.position = 'fixed';
+                    area.style.opacity = '0';
+                    document.body.appendChild(area);
+                    area.select();
+                    const ok = document.execCommand('copy');
+                    area.remove();
+                    return ok;
+                }
+            }
+
+            /**
+             * The app's verdict for the typed word, shown above the table.
+             *
+             * The table below lists every food that matches, which is useful for
+             * browsing but does not answer the question that matters: what would
+             * `resolve_food()` actually return? That is one food and one tier, and
+             * this panel shows exactly that.
+             */
+            async function showResolved(q) {
+                const box = $('resolved');
+                const term = q.trim();
+
+                // On the Crowded words tab the box filters a list of words, it is
+                // not a search term, so a resolver verdict would be meaningless.
+                if (term === '' || view === 'crowding' || view === 'simple' || view === 'naming') {
+                    box.hidden = true;
+                    box.innerHTML = '';
+                    return;
+                }
+
+                let data;
+                try {
+                    data = await get(`/api/resolve?q=${encodeURIComponent(term)}`);
+                } catch (err) {
+                    box.hidden = false;
+                    box.innerHTML = `<div class="resolved-main"><div class="resolved-none">Resolver error: ${esc(err.message)}</div></div>`;
+                    return;
+                }
+
+                // A later keystroke may already have started another request.
+                // Only the newest answer may render, or a slow reply to "toma"
+                // would land after the fast one for "tomato".
+                if ($('q').value.trim() !== term) return;
+
+                box.hidden = false;
+                const top = data.results[0];
+
+                if (!top) {
+                    box.innerHTML = `<div class="resolved-main">
+                        <div class="resolved-label">Resolver</div>
+                        <div class="resolved-none">No match. The app would hand this to the model.</div>
+                    </div>`;
+                    return;
+                }
+
+                const via = top.matched_via.startsWith('synonym:')
+                    ? `synonym “${top.matched_via.slice('synonym:'.length)}”`
+                    : top.matched_via === 'description-prefix'
+                      ? 'start of the food name'
+                      : 'fuzzy, no synonym or name prefix';
+
+                const rest = data.results.length - 1;
+
+                box.innerHTML = `
+                    <img class="resolved-thumb" src="/thumbnails/${top.fdc_id}.webp" alt=""
+                         onerror="this.remove()">
+                    <div class="resolved-main">
+                        <div class="resolved-label">Resolver answers “${esc(data.term)}” with</div>
+                        <div class="resolved-name">${esc(top.description)}</div>
+                        <div class="resolved-meta">
+                            ${esc(top.category ?? 'no category')} · via ${esc(via)}${
+                                rest > 0 ? ` · ${rest} runner-up${rest === 1 ? '' : 's'}` : ''
+                            }
+                        </div>
+                    </div>
+                    <div class="resolved-side">
+                        <span class="tier ${esc(top.tier)}">${esc(top.tier)}</span>
+                        <div class="muted" style="font-size: 11.5px; margin-top: 5px;">
+                            ${top.kcal == null ? 'no kcal' : `${Math.round(top.kcal)} kcal / 100g`}
+                        </div>
+                    </div>`;
+            }
+
+            // Only the newest load may render: a slow earlier request (a
+            // different tab or filter) must not overwrite a newer answer.
+            let loadSeq = 0;
+
+            async function load() {
+                const seq = ++loadSeq;
+                const q = $('q').value.trim();
+                $('msg').innerHTML = '';
+                $('wonrow').hidden = view !== 'foods';
+                // Independent of the table: one answers "what does it pick", the
+                // other answers "what else matches".
+                showResolved(q);
+
+                try {
+                    if (view === 'foods') {
+                        const { total, rows } = await get(`/api/foods?q=${encodeURIComponent(q)}&won=${encodeURIComponent($('won').value)}`);
+                        if (seq !== loadSeq) return;
+                        currentRows = rows;
+                        $('out').innerHTML = foodsTable(rows);
+                        if (total > rows.length) {
+                            $('msg').innerHTML = `<div class="note">Showing the first ${rows.length} of ${total} foods — narrow the filter to see the rest.</div>`;
+                        }
+                        syncPicks();
+                    } else if (view === 'naming') {
+                        await renderNaming(seq);
+                    } else if (view === 'simple') {
+                        const rows = await get('/api/simplefoods');
+                        if (seq !== loadSeq) return;
+                        $('out').innerHTML = simpleTable(rows, q);
+                    } else if (view === 'crowding') {
+                        const root = await get(
+                            `/api/crowdtree?q=${encodeURIComponent(q)}&min=${crowdMin}`,
+                        );
+                        if (seq !== loadSeq) return;
+                        crowdRoot = root;
+                        $('out').innerHTML = crowdTree();
+                    } else {
+                        const rows = await get(`/api/heads?q=${encodeURIComponent(q)}`);
+                        if (seq !== loadSeq) return;
+                        $('out').innerHTML = headsTable(rows);
+                    }
+                } catch (err) {
+                    $('msg').innerHTML = `<div class="err">${esc(err.message)}</div>`;
+                    $('out').innerHTML = '';
+                }
+            }
+
+            // Delegated: the table is re-rendered on every filter, so per-row
+            // listeners would be lost. Clicking anywhere in the row selects it,
+            // except on a link or a selection the user is making by hand.
+            $('out').addEventListener('click', (event) => {
+                const crowd = event.target.closest('button[data-crowd]');
+                if (crowd) {
+                    toggleCrowd(crowd.dataset.crowd).catch((err) => {
+                        $('msg').innerHTML = `<div class="err">${esc(err.message)}</div>`;
+                    });
+                    return;
+                }
+
+                const row = event.target.closest('tbody tr[data-id]');
+                if (!row) return;
+                if (event.target.closest('a, button')) return;
+
+                // Do not fight a text selection: drag-selecting a food name to
+                // copy it should not also move the selection anchor.
+                const selection = window.getSelection();
+                if (selection && !selection.isCollapsed) return;
+
+                selectRow(event, row);
+            });
+
+
+            $('out').addEventListener('change', (event) => {
+                if (event.target.id !== 'crowd-min') return;
+                crowdMin = Math.max(2, Number(event.target.value) || 2);
+                crowdOpen.clear();
+                load();
+            });
+
+            // Shift-click needs the browser's default range-select suppressed, or
+            // it highlights the whole table as text at the same time.
+            $('out').addEventListener('mousedown', (event) => {
+                if (event.shiftKey && event.target.closest('tbody tr[data-id]')) {
+                    event.preventDefault();
+                }
+            });
+
+            /** The full rendered rows for whatever is currently selected. */
+            function pickedRows() {
+                return currentRows.filter((r) => picked.has(r.fdc_id));
+            }
+
+            for (const button of document.querySelectorAll('[data-export]')) {
+                button.addEventListener('click', async () => {
+                    const names = pickedNames();
+                    if (!names.length) return;
+
+                    const kind = button.dataset.export;
+                    const rows = pickedRows();
+
+                    if (kind === 'foods-csv') {
+                        // One row per food: the name, then its synonyms.
+                        const csv = toCsv(
+                            ['food', 'synonyms'],
+                            rows.map((r) => [r.description, r.synonyms.join('; ')]),
+                        );
+                        download('foods.csv', csv);
+                        return;
+                    }
+
+                    if (kind === 'synonyms-csv') {
+                        // One row per pairing: food, synonym.
+                        const csv = toCsv(
+                            ['food', 'synonym'],
+                            rows.flatMap((r) =>
+                                r.synonyms.length
+                                    ? r.synonyms.map((term) => [r.description, term])
+                                    : [[r.description, '']],
+                            ),
+                        );
+                        download('synonyms.csv', csv);
+                        return;
+                    }
+
+                    if (kind === 'descriptions') {
+                        if (await copyText(names.join('\n'))) await flash(button);
+                        return;
+                    }
+
+                    // Plain names: strip the USDA qualifier tail so the list
+                    // reads as names rather than catalogue entries.
+                    const simple = names.map((n) => n.split(',')[0].trim());
+                    if (await copyText(simple.join('\n'))) await flash(button);
+                });
+            }
+
+            $('clear-picks').addEventListener('click', () => {
+                picked.clear();
+                syncPicks();
+            });
+
+            $('won').addEventListener('change', () => load());
+            $('q').addEventListener('input', () => {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(load, 220);
+            });
+
+            for (const tab of document.querySelectorAll('.tab')) {
+                tab.addEventListener('click', () => {
+                    for (const other of document.querySelectorAll('.tab')) {
+                        other.classList.toggle('on', other === tab);
+                    }
+                    view = tab.dataset.view;
+                    // Remembered in the address, so a reload stays on this tab.
+                    history.replaceState(null, '', `#${view}`);
+                    // Clear the previous tab's table at once, so a slow answer never
+                    // leaves another tab's columns on screen.
+                    $('out').innerHTML = '<div class="empty">Loading…</div>';
+                    // Selection only applies to the Foods table.
+                    $('exportbar').hidden = view !== 'foods' || picked.size === 0;
+                    // Stale selection highlighting must not linger in a table
+                    // that does not support selection.
+                    if (view !== 'foods') picked.clear();
+                    load();
+                });
+            }
+
+            loadStats();
+            // Open the tab named in the address (#simple, #crowding...), if any.
+            const startTab = document.querySelector(`.tab[data-view="${location.hash.slice(1)}"]`);
+            if (startTab) startTab.click();
+            else load();
+        </script>
+    </body>
+</html>

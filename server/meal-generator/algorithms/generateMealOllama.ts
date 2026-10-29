@@ -12,7 +12,7 @@ import {
 import { OllamaAiClient } from '../../ai/OllamaAiClient.js';
 import { matchIngredient } from '../../nutrition/matchIngredients.ts';
 import { isGenerateMealResponse } from './validateMealResponse.js';
-import { calibrateMeal, getMealTotals } from '../calibrateMeal.js';
+import { calibrateMeal, fixedGrams, getMealTotals } from '../calibrateMeal.js';
 import {
     enrichIngredients,
     getEstimatedIngredients,
@@ -76,12 +76,31 @@ function describeDayContext(dayContext: DayContext): string {
     return lines.join('\n');
 }
 
+/*
+ * The protein share to aim for. A gram goal ("40 grams of protein") wins
+ * over a percentage when there's a calorie target to turn it into one;
+ * without a calorie target, `caloriesHint` (the meal as generated) stands in.
+ */
+export function effectiveProteinPercentage(
+    requirements: GenerateMealRequest['requirements'],
+    caloriesHint?: number,
+): number | undefined {
+    const calories = requirements.calories ?? caloriesHint;
+
+    if (requirements.proteinGrams !== undefined && calories && calories > 0) {
+        return Math.min(80, ((requirements.proteinGrams * 4) / calories) * 100);
+    }
+
+    return requirements.proteinPercentage;
+}
+
 export function buildMealPrompts(input: GenerateMealRequest): {
     systemPrompt: string;
     userPrompt: string;
 } {
     const { requirements } = input;
-    const split = getMacroSplit(requirements.proteinPercentage);
+    const split = getMacroSplit(effectiveProteinPercentage(requirements));
+    const fixed = input.ingredients.filter((i) => i.fixedAmount);
     const servings = requirements.servings ?? 1;
     const dietary = requirements.dietary ?? [];
     const variation = requirements.variation;
@@ -117,6 +136,18 @@ export function buildMealPrompts(input: GenerateMealRequest): {
     } else if (variation === 'lower-calorie') {
         rules.push(
             '- Make the meal about 20% lower in calories than the target calories per serving (or than the previous meal if there is no target).',
+        );
+    }
+
+    if (fixed.length > 0) {
+        rules.push(
+            '- Ingredients with a "fixedWeight" (grams) are amounts the cook chose: use exactly that weight for them, and size the other ingredients so the whole meal still hits the targets.',
+        );
+    }
+
+    if (requirements.proteinGrams !== undefined) {
+        rules.push(
+            `- The cook asked for about ${Math.round(requirements.proteinGrams)} g of protein per serving.`,
         );
     }
 
@@ -190,6 +221,7 @@ Do not return meal-level nutrition totals.
         targetCaloriesPerServing: requirements.calories,
         servings,
         targetProteinPercentage: split.protein,
+        targetProteinGrams: requirements.proteinGrams,
         mealType: requirements.mealType,
         dietary: dietary.length > 0 ? dietary : undefined,
         variation,
@@ -211,6 +243,10 @@ function toPromptIngredient(ingredient: EnrichedIngredient) {
         fatPer100g: ingredient.fatPer100g,
         fiberPer100g: ingredient.fiberPer100g,
         nutritionSource: ingredient.nutritionSource,
+        fixedWeight: ingredient.fixedAmount
+            ? (fixedGrams(ingredient.fixedAmount, ingredient.caloriesPer100g) ??
+              undefined)
+            : undefined,
     };
 }
 
@@ -225,7 +261,16 @@ export function calibrateToRequirements(
 ) {
     const current = getMealTotals(ingredients);
     let calories = requirements.calories;
-    let proteinPercentage = requirements.proteinPercentage;
+    let proteinPercentage = effectiveProteinPercentage(
+        requirements,
+        current.calories,
+    );
+
+    // A gram goal with no calorie target still needs one to solve against:
+    // keep the meal's own size and move the protein share.
+    if (requirements.proteinGrams !== undefined) {
+        calories ??= current.calories;
+    }
 
     if (calories !== undefined && requirements.variation === 'lower-calorie') {
         calories *= 0.8;

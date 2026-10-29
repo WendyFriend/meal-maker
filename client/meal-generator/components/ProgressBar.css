@@ -1,0 +1,65 @@
+/* Indeterminate progress bar, pinned under the page header.
+   Two nested elements: the track handles the reveal (height + opacity, so it
+   does not pop), the fill handles the sweep. */
+
+.progress-bar {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 60;
+    pointer-events: none;
+}
+
+.progress-bar-track {
+    display: block;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    background: transparent;
+    transition:
+        height 180ms ease,
+        opacity 180ms ease;
+}
+
+.progress-bar.is-active .progress-bar-track {
+    height: 3px;
+    opacity: 1;
+}
+
+.progress-bar-fill {
+    display: block;
+    width: 40%;
+    height: 100%;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(
+        90deg,
+        rgba(244, 121, 108, 0) 0%,
+        var(--accent, #f4796c) 35%,
+        #ffb4a6 55%,
+        rgba(244, 121, 108, 0) 100%
+    );
+    transform: translateX(-100%);
+}
+
+.progress-bar.is-active .progress-bar-fill {
+    animation: progress-sweep 1250ms cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+@keyframes progress-sweep {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(350%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* No sweeping motion: a steady hairline still communicates "busy". */
+    .progress-bar.is-active .progress-bar-fill {
+        animation: none;
+        width: 100%;
+        transform: none;
+        background: var(--accent, #f4796c);
+        opacity: 0.55;
+    }
+}

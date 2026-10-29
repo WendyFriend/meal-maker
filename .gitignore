@@ -35,3 +35,18 @@ certs/
 claudeAlgo/
 gptAlgo/
 dist-server
+
+# USDA FoodData Central bulk downloads (~79 MB of CSVs and zips).
+# Re-fetchable with db/README.md instructions; must not be committed.
+data/usda/
+
+# self-signed TLS material for the local lookup tool
+db/ui/certs/
+
+# generated food thumbnails (regenerable; traceable via food_thumbnail table)
+db/lab/thumbnails/
+db/lab/bulk/
+db/lab/thumb_studio.log
+
+# generated lab output (exports, refinement working files, server logs)
+db/lab/out/
