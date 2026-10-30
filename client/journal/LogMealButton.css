@@ -1,0 +1,49 @@
+.journal-log-action {
+    position: relative;
+}
+.journal-log-trigger {
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.journal-log-trigger[aria-pressed='true'] {
+    color: var(--accent);
+}
+.journal-log-trigger:hover:not(:disabled) {
+    background: var(--accent-bg);
+    color: var(--accent);
+}
+.journal-log-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.journal-log-trigger:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+.journal-log-error {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 10;
+    box-sizing: border-box;
+    width: min(260px, calc(100vw - 64px));
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-hairline);
+    border-radius: 9px;
+    background: var(--surface-tint);
+    box-shadow: var(--shadow-md);
+    color: var(--danger);
+    font-size: 14px;
+    line-height: 1.6;
+}

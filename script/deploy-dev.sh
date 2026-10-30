@@ -3,6 +3,7 @@
 set -e
 
 DOMAIN="meal-maker-dev.vercel.app"
+# DOMAIN="dev.meal-maker.me"
 
 echo "Building..."
 npm run build

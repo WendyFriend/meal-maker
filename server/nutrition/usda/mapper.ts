@@ -1,10 +1,18 @@
 import type { IngredientNutrition } from '../../../shared/types/types.ts';
 import type { USDAFood } from './types.ts';
+import { MICRONUTRIENTS } from '../../../shared/micronutrients.js';
 
 export function mapUSDAFoodToIngredientNutrition(
     food: USDAFood,
 ): IngredientNutrition {
     return {
+        ...Object.fromEntries(
+            MICRONUTRIENTS.map(({ key, usda }) => [
+                key,
+                getNutrient(food, usda),
+            ]),
+        ),
+        nutritionSource: { fdcId: food.fdcId, description: food.description },
         name: food.description,
         caloriesPer100g: getNutrient(food, 208) ?? 0,
         proteinPer100g: getNutrient(food, 203) ?? 0,

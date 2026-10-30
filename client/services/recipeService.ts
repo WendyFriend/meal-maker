@@ -83,6 +83,18 @@ export async function deleteRecipe(id: string) {
     return toRecipe(data as RecipeRow);
 }
 
+export async function deleteRecipes(ids: string[]): Promise<string[]> {
+    const uniqueIds = [...new Set(ids)];
+    if (!uniqueIds.length) return [];
+    const { data, error } = await supabase
+        .from('recipes')
+        .delete()
+        .in('id', uniqueIds)
+        .select('id');
+    if (error) throw error;
+    return (data ?? []).map(({ id }) => id as string);
+}
+
 export function toRecipe(row: RecipeRow): Recipe {
     return {
         id: row.id,

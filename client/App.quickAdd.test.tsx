@@ -5,7 +5,7 @@ import App from './App';
 import { getUserIngredients } from './services/ingredientService';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
 
-vi.mock('./auth/AuthContext', () => ({
+vi.mock('./auth/useAuth', () => ({
     useAuth: () => ({ user: { id: 'user' }, loading: false, signOut: vi.fn() }),
 }));
 vi.mock('./services/ingredientService', () => ({
@@ -73,6 +73,24 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     const nutrition = screen.getByRole('dialog', {
         name: 'Ingredient nutrition',
     });
+    expect(nutrition.tagName).toBe('DIALOG');
+    expect(nutrition).toHaveClass('ingredient-nutrition-sheet');
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(
+        within(nutrition).getByRole('heading', { name: 'Spinach' }),
+    ).toBeVisible();
+    expect(within(nutrition).getByRole('table')).toBeInTheDocument();
+    expect(
+        within(nutrition).getByRole('heading', { name: 'Vitamins & minerals' }),
+    ).toBeVisible();
+    expect(
+        within(nutrition).getByRole('heading', { name: 'Preparation tips' }),
+    ).toBeVisible();
+    await user.click(
+        within(nutrition).getByRole('button', {
+            name: 'Edit ingredient nutrition',
+        }),
+    );
     const calories = within(nutrition).getByRole('spinbutton', {
         name: /Calories/,
     });
@@ -85,13 +103,19 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     );
     await user.click(within(nutrition).getByRole('button', { name: 'Done' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe('');
+    expect(
+        screen.getByRole('button', { name: 'Edit nutrition for Spinach' }),
+    ).toHaveFocus();
 
     const search = screen.getByRole('combobox');
     await user.type(search, 'Tofu{Enter}');
     await user.type(search, 'Paprika{Enter}');
     await user.click(screen.getByRole('button', { name: 'Create my meal' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    const [url, request] = fetch.mock.calls[0];
+    const generationRequests = () =>
+        fetch.mock.calls.filter(([url]) => url === '/api/generate-meal');
+    await waitFor(() => expect(generationRequests()).toHaveLength(1));
+    const [url, request] = generationRequests()[0];
     expect(url).toBe('/api/generate-meal');
     expect(JSON.parse(request.body)).toEqual({
         ingredients: [

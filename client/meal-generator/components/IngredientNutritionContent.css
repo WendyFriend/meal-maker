@@ -1,0 +1,251 @@
+.ingredient-nutrition-content {
+    min-width: 0;
+}
+
+.ingredient-nutrition-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.ingredient-nutrition-header .meal-ingredient-thumbnail {
+    flex-basis: 56px;
+    width: 56px;
+    height: 56px;
+}
+
+.ingredient-nutrition-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.ingredient-nutrition-name {
+    margin: 0;
+    color: var(--text-h);
+    font: 700 20px/1.3 var(--heading);
+    letter-spacing: inherit;
+    overflow-wrap: anywhere;
+}
+
+.nutrition-facts h3 {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.7px;
+}
+
+.nutrition-facts-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-top: 4px solid var(--text-h);
+    border-bottom: 4px solid var(--text-h);
+    font-size: 14px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+}
+
+.ingredient-macro-breakdown {
+    margin: 0 0 24px;
+}
+
+.ingredient-macro-legend {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ingredient-macro-breakdown .nutrition-overview-chart {
+    margin-top: 8px;
+}
+
+.ingredient-macro-breakdown .nutrition-overview-tooltip {
+    width: max-content;
+    padding: 6px 10px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.ingredient-macro-legend li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 2px;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 11px;
+    white-space: nowrap;
+    transition: background-color 150ms ease;
+}
+
+.ingredient-macro-legend [data-macro='carbs'] {
+    --macro-tint: #f0f5fa;
+}
+
+.ingredient-macro-legend [data-macro='protein'] {
+    --macro-tint: #fff2f2;
+}
+
+.ingredient-macro-legend [data-macro='fat'] {
+    --macro-tint: #fcf6e9;
+}
+
+.ingredient-macro-legend [data-active='true'] {
+    background: var(--macro-tint);
+}
+
+.ingredient-macro-legend strong {
+    color: var(--text-h);
+    font-weight: var(--font-weight-semibold);
+}
+
+.ingredient-macro-dot {
+    flex: 0 0 7px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+}
+
+.ingredient-macro-bar.nutrition-overview-bar {
+    display: flex;
+    height: 12px;
+    overflow: visible;
+    border-radius: 999px;
+    background: var(--surface-muted);
+}
+
+.nutrition-facts-table th,
+.nutrition-facts-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.nutrition-facts-table th {
+    text-align: left;
+    font-weight: 650;
+}
+.nutrition-facts-table td,
+.nutrition-facts-table thead th:not(:first-child) {
+    text-align: right;
+    white-space: nowrap;
+}
+.nutrition-facts-table thead th {
+    padding-block: 6px 0;
+    border-bottom: 0;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+}
+.nutrition-facts-table td {
+    font-weight: 600;
+}
+.nutrition-facts-table .nutrition-facts-inset th {
+    padding-left: 24px;
+    font-weight: 400;
+    color: var(--text);
+}
+.nutrition-facts-unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text);
+}
+.nutrition-facts-unavailable {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+.nutrition-facts-note {
+    margin: 12px 0 0;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+@media (max-width: 360px) {
+    .ingredient-nutrition-name {
+        font-size: 18px;
+    }
+    .nutrition-facts-table {
+        font-size: 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-macro-legend li {
+        transition: none;
+    }
+}
+
+.ingredient-inline-name {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+}
+.ingredient-inline-value {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+.ingredient-inline-value input {
+    box-sizing: border-box;
+    width: 90px;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 16px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.ingredient-inline-value .nutrition-facts-unit {
+    min-width: 28px;
+    text-align: left;
+}
+.ingredient-preparation-edit-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.ingredient-preparation-editor {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 160px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 16px;
+    line-height: 1.65;
+    resize: vertical;
+}
+
+.ingredient-name-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 650;
+}
+.ingredient-required-marker {
+    color: var(--accent);
+}
+
+.ingredient-nutrition-content :is(input, textarea):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}

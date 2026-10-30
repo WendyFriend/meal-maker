@@ -1,7 +1,8 @@
 import type { IngredientNutrition } from '../../shared/types/types.ts';
-import { searchFoods } from './usda/client.js';
-import { mapUSDAFoodToIngredientNutrition } from './usda/mapper.js';
 import type { IngredientInfo } from '../../shared/types/types.ts';
+import { matchesFoodDescription } from './usda/selectFood.js';
+import { lookupFoodNutrition } from './lookupFood.js';
+import { MICRONUTRIENTS } from '../../shared/micronutrients.js';
 
 type CompleteNutrition = Pick<
     IngredientNutrition,
@@ -21,37 +22,60 @@ export function hasCompleteNutrition(
 
 export async function getNutritionForIngredients(
     ingredients: IngredientInfo[],
+    provider: 'usda' | 'nutrition-lab' = 'usda',
 ): Promise<{
     ingredientsWithNutrition: IngredientNutrition[];
     unresolvedIngredients: string[];
 }> {
     const results = await Promise.allSettled(
-        ingredients.map(async (ingredient): Promise<IngredientNutrition> => {
+        ingredients.map(async (original): Promise<IngredientNutrition> => {
+            // Discard previously looked-up values when their source is a
+            // different food form. User-entered values without a source remain intact.
+            const ingredient: IngredientInfo =
+                original.nutritionSource &&
+                !matchesFoodDescription(
+                    original.name,
+                    original.nutritionSource.description,
+                )
+                    ? {
+                          name: original.name,
+                          preparationTips: original.preparationTips,
+                      }
+                    : original;
             if (
                 hasCompleteNutrition(ingredient) &&
                 ingredient.sugarPer100g !== undefined &&
                 ingredient.saturatedFatPer100g !== undefined &&
-                ingredient.fiberPer100g !== undefined
+                ingredient.fiberPer100g !== undefined &&
+                MICRONUTRIENTS.every(
+                    ({ key }) =>
+                        typeof ingredient[key] === 'number' &&
+                        Number.isFinite(ingredient[key]) &&
+                        ingredient[key] >= 0,
+                ) &&
+                ingredient.nutritionSource !== undefined &&
+                matchesFoodDescription(
+                    ingredient.name,
+                    ingredient.nutritionSource.description,
+                )
             ) {
                 return ingredient;
             }
 
             try {
-                const response = await searchFoods({
-                    query: ingredient.name,
-                });
-
-                const foods = response.foods;
-
-                if (foods.length === 0) {
-                    throw new Error(
-                        `No USDA food found for ingredient: "${ingredient.name}"`,
-                    );
-                }
-
-                const nutrition = mapUSDAFoodToIngredientNutrition(foods[0]);
+                const nutrition = await lookupFoodNutrition(
+                    ingredient.name,
+                    provider,
+                );
                 // Preserve supplied values (including zero) and ingredient identity.
                 return {
+                    ...nutrition,
+                    ...Object.fromEntries(
+                        Object.entries(ingredient).filter(
+                            ([, value]) =>
+                                value !== undefined && value !== null,
+                        ),
+                    ),
                     name: ingredient.name,
                     caloriesPer100g:
                         ingredient.caloriesPer100g ?? nutrition.caloriesPer100g,

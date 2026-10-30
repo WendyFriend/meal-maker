@@ -1,0 +1,54 @@
+.ingredient-detail {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 40px 0 max(32px, env(safe-area-inset-bottom));
+    color: var(--text-h);
+    outline: none;
+}
+.ingredient-detail .ingredient-nutrition-header {
+    margin-bottom: 20px;
+}
+.ingredient-detail-error {
+    padding: 12px;
+    border-radius: 9px;
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: 14px;
+}
+@media (max-width: 640px) {
+    .ingredient-detail {
+        padding-top: 28px;
+    }
+}
+
+.ingredient-detail :is(input, textarea):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.ingredient-detail :is(input, textarea, button):disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.ingredient-detail-save-bar {
+    margin-top: 32px;
+}
+.ingredient-detail-save-bar button {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 24px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.ingredient-detail-save-bar button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}

@@ -73,7 +73,7 @@
     color: #ffffff;
 }
 
-.sidebar-logout {
+.sidebar-settings {
     margin-top: auto;
 }
 
@@ -112,4 +112,19 @@
     .sidebar {
         transition: none;
     }
+}
+
+.sidebar-home {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.sidebar-home:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
 }

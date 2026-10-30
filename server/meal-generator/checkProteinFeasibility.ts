@@ -1,4 +1,4 @@
-import type { IngredientNutrition } from "../../shared/types/types.ts";
+import type { IngredientNutrition } from '../../shared/types/types.ts';
 
 export type ProteinFeasibilityResult =
     | {

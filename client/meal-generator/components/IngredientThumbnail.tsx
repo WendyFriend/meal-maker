@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import thumbnails from '../../assets/ingredients/ingredient-thumbnails.png';
+import { getFoodThumbnailUrl } from '../../utils/foodThumbnail';
 import { normalizeIngredientName } from '../../utils/Ingredient';
 import './IngredientThumbnail.css';
 
@@ -23,7 +25,14 @@ const thumbnailAliases: readonly (readonly string[])[] = [
     ['mushroom', 'mushrooms'],
 ];
 
-export default function IngredientThumbnail({ name }: { name: string }) {
+export default function IngredientThumbnail({
+    name,
+    fdcId,
+}: {
+    name: string;
+    fdcId?: number;
+}) {
+    const [failedFdcId, setFailedFdcId] = useState<number>();
     const words = ` ${normalizeIngredientName(name).replace(/[^a-z0-9]+/g, ' ')} `;
     const isPantryProduct = /\b(oil|stock|broth|powder|flour)\b/.test(words);
     const index = isPantryProduct
@@ -31,6 +40,19 @@ export default function IngredientThumbnail({ name }: { name: string }) {
         : thumbnailAliases.findIndex((aliases) =>
               aliases.some((alias) => words.includes(` ${alias} `)),
           );
+
+    // Many foods have no picture yet; those 404 and use the local thumbnail.
+    if (fdcId !== undefined && failedFdcId !== fdcId) {
+        return (
+            <img
+                className="meal-ingredient-thumbnail meal-ingredient-thumbnail-photo"
+                src={getFoodThumbnailUrl(fdcId)}
+                alt=""
+                loading="lazy"
+                onError={() => setFailedFdcId(fdcId)}
+            />
+        );
+    }
 
     return index >= 0 ? (
         <span

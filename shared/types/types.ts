@@ -1,4 +1,7 @@
-export type IngredientInfo = {
+import type { MicronutrientValues } from '../micronutrients.js';
+
+export type IngredientInfo = MicronutrientValues & {
+    preparationTips?: string[];
     name: string;
     caloriesPer100g?: number;
     proteinPer100g?: number;
@@ -9,7 +12,8 @@ export type IngredientInfo = {
     fiberPer100g?: number;
 };
 
-export type UserIngredient = {
+export type UserIngredient = MicronutrientValues & {
+    preparationTips?: string[];
     ingredientId: string; // database id
     name: string;
     caloriesPer100g: number;
@@ -20,6 +24,9 @@ export type UserIngredient = {
     saturatedFatPer100g?: number;
     fiberPer100g?: number;
 };
+
+export const MEAL_GENERATORS = ['ollama', 'nutrition-lab'] as const;
+export type MealGenerator = (typeof MEAL_GENERATORS)[number];
 
 export type GenerateMealRequest = {
     ingredients: IngredientInfo[];
@@ -42,7 +49,8 @@ export type MealRequirements = {
     proteinPercentage?: number;
 };
 
-export type IngredientNutrition = {
+export type IngredientNutrition = MicronutrientValues & {
+    preparationTips?: string[];
     name: string;
     caloriesPer100g: number;
     proteinPer100g: number;

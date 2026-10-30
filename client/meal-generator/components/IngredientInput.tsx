@@ -137,7 +137,9 @@ function IngredientInput({
 
         // Keep the field ready for the next ingredient.
         if (focusSearch) {
-            window.requestAnimationFrame(() => inputRef.current?.focus());
+            window.requestAnimationFrame(() =>
+                inputRef.current?.focus({ preventScroll: true }),
+            );
         }
     }
 

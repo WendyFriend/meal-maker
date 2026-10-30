@@ -1,0 +1,78 @@
+.meal-instruction-group + .meal-instruction-group {
+    margin-top: var(--space-6);
+}
+.meal-instruction-group h4 {
+    margin: 0 0 var(--space-2);
+    color: var(--text-h);
+    font-size: 14px;
+    font-weight: 650;
+}
+.meal-preparation-guides {
+    display: grid;
+    gap: var(--space-5);
+}
+.meal-preparation-guide h5 {
+    margin: 0 0 4px;
+    color: var(--text-h);
+    font-size: 14px;
+    font-weight: 600;
+}
+.meal-preparation-guide p {
+    margin: 0 0 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.meal-preparation-guide ul {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 8px;
+    padding-left: 18px;
+}
+.meal-instructions .meal-preparation-guide ul li {
+    display: list-item;
+    padding: 0;
+    border: 0;
+    font-size: 14px;
+    line-height: 1.65;
+    counter-increment: none;
+}
+.meal-preparation-guide ul li::before {
+    content: none;
+}
+.meal-preparation-guide a {
+    color: var(--text-h);
+    font-size: 12px;
+    text-underline-offset: 3px;
+}
+.meal-preparation-guide a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.meal-instructions-edit-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+.meal-instructions-editor {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 200px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 16px;
+    line-height: 1.65;
+    resize: vertical;
+}
+.meal-instructions-editor:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.meal-instructions .meal-section-header h3 {
+    margin: 0;
+}

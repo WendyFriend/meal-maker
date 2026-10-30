@@ -113,55 +113,21 @@
 }
 
 .page-header-menu:hover,
-.page-header-back:hover,
-.page-header-nav-item:hover {
+.page-header-back:hover {
     background: var(--accent-bg);
     color: var(--accent);
 }
 
 .page-header-menu:focus-visible,
 .page-header-back:focus-visible,
-.page-header-nav-item:focus-visible,
 .page-header-signout:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
 
-/* =========================
-   Desktop navigation
-   ========================= */
-
-.page-header-nav {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin-left: var(--space-4);
-}
-
-.page-header-nav-item {
-    padding: var(--space-2) var(--space-4);
-
-    border: none;
-    border-radius: 999px;
-
-    background: transparent;
-    color: var(--text);
-
-    font: inherit;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-
-    cursor: pointer;
-
-    transition:
-        background 150ms ease,
-        color 150ms ease;
-}
-
-.page-header-nav-item-active,
-.page-header-nav-item-active:hover {
-    background: var(--accent);
-    color: #ffffff;
+.page-header-menu {
+    margin-left: auto;
+    order: 2;
 }
 
 .page-header-actions {
@@ -199,7 +165,7 @@
 }
 
 /* =========================
-   Floating add button (My Ingredients / My Recipes)
+   Floating add button (My Ingredients / My Meals)
    ========================= */
 
 .floating-add-button {
@@ -347,23 +313,6 @@
     opacity: 0.55;
 }
 
-/* Spinner inside the primary action */
-.button-spinner {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    border: 2px solid rgb(255 255 255 / 45%);
-    border-top-color: #ffffff;
-    border-radius: 50%;
-    animation: button-spinner-rotate 600ms linear infinite;
-}
-
-@keyframes button-spinner-rotate {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 /* =========================
    Generating indicator
    ========================= */
@@ -380,13 +329,6 @@
     margin: 0;
     color: var(--text-muted);
     font-size: var(--font-size-sm);
-}
-
-.generating-loader {
-    display: block;
-    width: 140px;
-    height: 140px;
-    object-fit: contain;
 }
 
 /* =========================
@@ -485,19 +427,6 @@
    Responsive
    ========================= */
 
-/* Tablet and below: hide the inline desktop nav, use the drawer */
-@media (max-width: 900px) {
-    .page-header-nav {
-        display: none;
-    }
-}
-
-@media (min-width: 901px) {
-    .page-header-menu {
-        display: none;
-    }
-}
-
 @media (max-width: 640px) {
     .page-header-meal-maker .page-header-inner {
         height: 52px;
@@ -506,11 +435,6 @@
 
     .page-header-meal-maker .page-header-brand {
         order: 1;
-    }
-
-    .page-header-meal-maker .page-header-menu {
-        order: 2;
-        margin-left: auto;
     }
 
     .page-header-meal-maker .page-header-actions {
@@ -530,12 +454,31 @@
         transition: none;
     }
 
-    .button-spinner {
-        animation-duration: 1500ms;
-    }
-
     .page-transition-left,
     .page-transition-right {
         animation: none;
     }
+}
+
+.page-header-edit-action {
+    font-size: 24px;
+}
+.page-header-save {
+    margin-left: auto;
+    color: var(--accent);
+    order: 2;
+}
+.page-header-edit-action:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.page-header-save:not(.edit-icon-button) svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }

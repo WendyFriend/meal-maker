@@ -1,7 +1,7 @@
 // thin Vercel adapter around handleGenerateMeal()
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { GenerateMealRequest } from '../shared/types/types.ts';
-import { handleGenerateMealOllama } from '../server/meal-generator/algorithms/generateMealOllama.js';
+import { handleGenerateMealRequest } from '../server/meal-generator/handleGenerateMealRequest.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -12,7 +12,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const input = req.body as GenerateMealRequest;
 
-        const result = await handleGenerateMealOllama(input);
+        const result = await handleGenerateMealRequest(
+            input,
+            req.headers['x-meal-generator'],
+        );
 
         res.status(result.status).json(result.body);
     } catch (error) {

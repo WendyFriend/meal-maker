@@ -1,14 +1,34 @@
 import { createServer, ServerResponse } from 'node:http';
 import type { GenerateMealRequest } from '../shared/types/types.ts';
-import { handleGenerateMealOllama } from './meal-generator/algorithms/generateMealOllama.ts';
+import { handleGenerateMealRequest } from './meal-generator/handleGenerateMealRequest.ts';
+import { handleIngredientNutrition } from './nutrition/handleIngredientNutrition.ts';
 
 const server = createServer(async (req, res) => {
+    if (req.method === 'POST' && req.url === '/api/ingredient-nutrition') {
+        try {
+            const input: unknown = JSON.parse(await readRequestBody(req));
+            const result = await handleIngredientNutrition(
+                input,
+                req.headers['x-meal-generator'],
+            );
+            sendJson(res, result.status, result.body);
+        } catch (error) {
+            console.error('Ingredient nutrition lookup failed:', error);
+            sendJson(res, 500, {
+                message: 'Could not load ingredient nutrition.',
+            });
+        }
+        return;
+    }
     if (req.method === 'POST' && req.url === '/api/generate-meal') {
         try {
             const body = await readRequestBody(req);
             const input = JSON.parse(body) as GenerateMealRequest;
 
-            const result = await handleGenerateMealOllama(input);
+            const result = await handleGenerateMealRequest(
+                input,
+                req.headers['x-meal-generator'],
+            );
 
             sendJson(res, result.status, result.body);
         } catch (error) {

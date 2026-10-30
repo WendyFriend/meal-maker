@@ -1,0 +1,17 @@
+.auth-loading {
+    gap: 32px;
+}
+.auth-loading-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+.auth-loading-status p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: center;
+}

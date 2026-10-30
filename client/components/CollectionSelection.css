@@ -1,0 +1,131 @@
+.saved-collection-selecting {
+    padding-bottom: calc(180px + env(safe-area-inset-bottom));
+}
+.collection-selection-controls button {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    min-height: 40px;
+    padding: 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.collection-selection-controls button svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.collection-cancel-icon {
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1;
+}
+.collection-selection-toggle {
+    margin-left: auto;
+}
+.collection-selection-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: -12px 0 12px;
+    color: var(--deep-green);
+    font-size: 14px;
+}
+.saved-collection-row {
+    -webkit-touch-callout: none;
+}
+.collection-selection-check {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface);
+}
+.collection-selection-check.checked {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+}
+.collection-selection-check svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.collection-bulk-toolbar {
+    position: fixed;
+    z-index: 80;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: 50%;
+    box-sizing: border-box;
+    width: min(640px, calc(100% - 48px));
+    padding: 12px;
+    transform: translateX(-50%);
+    border: 1px solid var(--border-hairline);
+    border-radius: 14px;
+    background: var(--surface-tint);
+    box-shadow: var(--shadow-md);
+}
+.collection-bulk-toolbar p {
+    margin: 0 0 10px;
+    color: var(--danger);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.collection-bulk-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--accent);
+    color: white;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.collection-bulk-delete svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.saved-collection button:disabled,
+.collection-bulk-delete:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.collection-selection-toggle:focus-visible,
+.collection-selection-controls button:focus-visible,
+.collection-bulk-delete:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}

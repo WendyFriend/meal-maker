@@ -1,0 +1,196 @@
+.ingredient-nutrition-details {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-hairline);
+}
+.meal-micronutrients.ingredient-nutrition-details {
+    margin: 0 0 var(--space-10);
+    padding-top: 0;
+    border-top: 0;
+}
+.ingredient-details-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 16px;
+}
+.ingredient-details-heading h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+    color: var(--text-h);
+}
+.ingredient-details-heading > span {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+.ingredient-micronutrients {
+    display: grid;
+    gap: 8px;
+    padding: 0;
+    margin: 0 0 16px;
+    list-style: none;
+}
+.ingredient-micronutrients > li {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-hairline);
+}
+.ingredient-micronutrient-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 2px;
+    font-size: 13px;
+}
+.ingredient-micronutrient-label > span:last-child {
+    color: var(--text-h);
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.ingredient-micronutrient-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 32px;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-h);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.ingredient-micronutrient-trigger:hover,
+.ingredient-micronutrient-trigger[aria-expanded='true'] {
+    color: var(--text-h);
+}
+.ingredient-micronutrient-trigger svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.ingredient-micronutrient-trigger[aria-expanded='true'] svg {
+    transform: rotate(180deg);
+}
+
+@media (max-width: 360px) {
+    .ingredient-micronutrient-trigger {
+        font-size: 12px;
+    }
+}
+.ingredient-micronutrient-track {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.ingredient-micronutrient-track > span {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.ingredient-micronutrients progress {
+    display: block;
+    appearance: none;
+    width: 100%;
+    flex: 1;
+    min-width: 0;
+    height: 4px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 99px;
+    background: #f1ede5;
+    color: var(--accent);
+}
+.ingredient-micronutrients progress::-webkit-progress-bar {
+    background: #f1ede5;
+    border-radius: 99px;
+}
+.ingredient-micronutrients progress::-webkit-progress-value {
+    background: var(--accent);
+    border-radius: 99px;
+}
+.ingredient-micronutrients progress::-moz-progress-bar {
+    background: var(--accent);
+    border-radius: 99px;
+}
+.ingredient-micronutrient-explanation {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff8f0;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.7;
+}
+.ingredient-micronutrient-explanation p {
+    margin: 0 0 6px;
+}
+.ingredient-micronutrient-explanation a {
+    font-size: 13px;
+}
+.ingredient-details-note {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.6;
+}
+.ingredient-nutrition-details a,
+.ingredient-details-note button {
+    color: var(--text-h);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.ingredient-details-note button {
+    padding: 4px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+.ingredient-nutrition-details :is(a, button):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.ingredient-preparation {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-hairline);
+}
+.ingredient-preparation h4 {
+    margin: 0 0 10px;
+    color: var(--text-h);
+    font-size: 13px;
+    font-weight: 600;
+}
+.ingredient-preparation ul {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.65;
+}
+.ingredient-preparation li::marker {
+    color: var(--accent);
+}
+.ingredient-preparation-source {
+    display: inline-block;
+    padding-block: 4px;
+    font-size: 11px;
+}

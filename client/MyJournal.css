@@ -1,0 +1,216 @@
+.my-journal h2 {
+    margin: 0 0 20px;
+    color: var(--deep-green);
+    font-size: 18px;
+    font-weight: 650;
+    letter-spacing: -0.2px;
+}
+.journal-date {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 24px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+.journal-date input {
+    max-width: 190px;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-hairline);
+    border-radius: 9px;
+    background: rgb(255 255 255 / 60%);
+    color: var(--deep-green);
+    font: inherit;
+}
+.journal-section {
+    margin-bottom: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border-hairline);
+}
+.journal-macros {
+    display: grid;
+    grid-template-columns: minmax(104px, 1fr) minmax(70px, 1fr) minmax(
+            125px,
+            1fr
+        );
+    align-items: center;
+    gap: 24px;
+}
+.journal-pie {
+    width: 104px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+}
+.journal-calories {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+.journal-calories strong {
+    color: var(--text-h);
+    font-size: 32px;
+    font-weight: 750;
+    line-height: 1.2;
+}
+.journal-macro-legends {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.journal-macro-legends li {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+.journal-macro-legends strong {
+    color: var(--text-h);
+    font-weight: 650;
+    white-space: nowrap;
+}
+.journal-macro-legends small {
+    font-size: inherit;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+.journal-macro-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.journal-foods {
+    padding-top: 24px;
+    border-top: 1px solid var(--border-hairline);
+    border-bottom: 0;
+}
+.journal-entries {
+    display: grid;
+    gap: 28px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.journal-entry {
+    overflow: hidden;
+    border: 1px solid var(--border-hairline);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 55%);
+}
+.journal-entry-heading {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-hairline);
+}
+.journal-entry time {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 650;
+}
+.journal-entry h3 {
+    margin: 0;
+    color: var(--deep-green);
+    font-size: 16px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+.journal-entry-foods {
+    margin: 0;
+    padding: 4px 16px;
+    list-style: none;
+}
+.journal-entry-foods li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-block: 10px;
+    color: var(--text-h);
+    font-size: 15px;
+}
+.journal-entry-foods li > span:not(.meal-ingredient-thumbnail) {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.journal-entry-foods strong {
+    margin-left: auto;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.journal-entry-total {
+    margin: 0;
+    padding: 12px 16px 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.8;
+    border-top: 1px solid var(--border-hairline);
+}
+.journal-entry-total strong {
+    color: var(--text-h);
+    font-weight: 650;
+}
+.journal-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding-block: 48px;
+    font-size: 14px;
+}
+.journal-error {
+    color: var(--danger);
+    font-size: 14px;
+}
+.journal-error button {
+    min-height: 40px;
+    padding: 8px 16px;
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
+}
+.my-journal :is(input, button):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+@media (max-width: 480px) {
+    .journal-macros {
+        grid-template-columns: 80px minmax(55px, 1fr) minmax(104px, 1.3fr);
+        gap: 12px;
+    }
+    .journal-pie {
+        width: 80px;
+    }
+    .journal-calories strong {
+        font-size: 28px;
+    }
+    .journal-macro-legends li {
+        font-size: 12px;
+        gap: 6px;
+    }
+}
+@media (max-width: 360px) {
+    .journal-macros {
+        grid-template-columns: 64px minmax(50px, 1fr) minmax(100px, 1.3fr);
+        gap: 8px;
+    }
+    .journal-pie {
+        width: 64px;
+    }
+    .journal-calories strong {
+        font-size: 24px;
+    }
+}

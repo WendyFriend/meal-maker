@@ -1,0 +1,280 @@
+.page-content-saved-collection {
+    --deep-green: #0b4652;
+    --text: #6e8798;
+    --text-muted: #78909f;
+    max-width: none;
+    min-height: 100%;
+    padding-inline: 24px;
+    background: radial-gradient(ellipse at 50% 35%, #fffdf8, #fcf8f0);
+}
+.saved-collection {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 0 calc(112px + env(safe-area-inset-bottom));
+    text-align: left;
+}
+.saved-collection-intro {
+    margin-bottom: 28px;
+}
+.saved-collection-title {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.saved-collection-title h1 {
+    margin: 0;
+    color: var(--deep-green);
+    font-size: 28px;
+    font-weight: 750;
+    line-height: 1.25;
+    letter-spacing: -0.7px;
+}
+.saved-collection-title > span {
+    padding: 4px 10px;
+    border: 1px solid #e8eddf;
+    border-radius: 999px;
+    background: #f0f3e5;
+    color: var(--deep-green);
+    font-size: 12px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+}
+.saved-collection-intro p {
+    margin: 10px 0 0;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+}
+.saved-collection-search-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 48px;
+    margin-bottom: 24px;
+    padding: 12px 14px;
+    border: 1px solid #dce3e6;
+    border-radius: 9px;
+    background: rgb(255 255 255 / 55%);
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+.saved-collection-search-field:focus-within {
+    border-color: var(--accent);
+    background: var(--surface);
+}
+.saved-collection-search-icon {
+    display: flex;
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+}
+.saved-collection-search-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+}
+.saved-collection-search-field:focus-within .saved-collection-search-icon {
+    color: var(--accent);
+}
+.saved-collection-search-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--deep-green);
+    font: inherit;
+    font-size: 16px;
+    line-height: 1.4;
+}
+.saved-collection-search-input::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+}
+.saved-collection-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--border-hairline);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 55%);
+}
+.saved-collection-row-wrapper {
+    overflow: hidden;
+}
+.saved-collection-row-wrapper + .saved-collection-row-wrapper {
+    border-top: 1px solid var(--border-hairline);
+}
+.saved-collection-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 80px;
+    padding: 14px 16px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background-color 150ms ease;
+}
+.saved-collection .meal-ingredient-thumbnail {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+}
+.saved-collection-row-info {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+.saved-collection-row-info strong {
+    color: var(--deep-green);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.saved-collection-row-info > span {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.saved-collection-row-chevron {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.saved-collection-row-wrapper-selected .saved-collection-row,
+.saved-collection-row:active {
+    background: var(--accent-bg);
+}
+@media (hover: hover) and (pointer: fine) {
+    .saved-collection-row:hover {
+        background: var(--warm-cream);
+    }
+}
+.saved-collection-row:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.saved-collection-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 16px;
+    color: var(--text-muted);
+    text-align: center;
+}
+.saved-collection-empty p {
+    margin: 0;
+}
+.saved-collection-empty-icon {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-hairline);
+    border-radius: 50%;
+    background: #fff0e5;
+    color: var(--accent);
+}
+.saved-collection-empty-icon > svg {
+    width: 28px;
+    height: 28px;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+}
+.saved-collection-empty-title {
+    margin-bottom: 6px !important;
+    color: var(--deep-green);
+    font-size: 18px;
+    font-weight: 650;
+}
+.saved-collection-empty-hint {
+    max-width: 280px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+.saved-collection-add-button {
+    bottom: max(24px, env(safe-area-inset-bottom));
+    box-shadow: 0 6px 20px rgb(244 121 108 / 25%);
+}
+@media (max-width: 640px) {
+    .saved-collection {
+        padding-top: 32px;
+    }
+    .saved-collection-title h1 {
+        font-size: 26px;
+    }
+    .saved-collection-row {
+        padding-inline: 12px;
+    }
+}
+@media (max-width: 360px) {
+    .saved-collection-title {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 40px;
+        grid-template-rows: 40px auto;
+        grid-template-areas: 'title action' 'count action';
+        gap: 8px 12px;
+    }
+    .saved-collection-title h1 {
+        grid-area: title;
+    }
+    .saved-collection-title > span {
+        grid-area: count;
+        justify-self: start;
+    }
+    .saved-collection-title > button {
+        grid-area: action;
+        align-self: start;
+    }
+    .page-content-saved-collection {
+        padding-inline: 20px;
+    }
+    .saved-collection-row {
+        gap: 10px;
+    }
+    .saved-collection-row-info strong {
+        font-size: 15px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .saved-collection-search-field,
+    .saved-collection-row,
+    .saved-collection-row-wrapper {
+        transition: none;
+    }
+}

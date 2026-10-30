@@ -60,6 +60,7 @@ export function MealMakerIntro({ onGetStarted }: { onGetStarted: () => void }) {
     return (
         <section
             className="meal-maker-introduction"
+            tabIndex={-1}
             aria-labelledby="meal-maker-heading"
         >
             <div className="meal-maker-intro">
@@ -77,7 +78,8 @@ export function MealMakerIntro({ onGetStarted }: { onGetStarted: () => void }) {
                     </svg>
                 </h1>
                 <p className="intro-description">
-                    A personalised recipe that works for you. Healthy, simple, and delicious.
+                    A personalised recipe that works for you. Healthy, simple,
+                    and delicious.
                 </p>
             </div>
             <ol className="intro-steps">

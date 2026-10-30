@@ -5,9 +5,17 @@
 }
 
 .page-content-meal-maker .meal-maker-result,
+.page-content-meal-maker .meal-micronutrients,
+.page-content-meal-maker .meal-instructions,
 .page-content-meal-maker .generating-indicator,
 .page-content-meal-maker .error-message {
     scroll-snap-align: start;
+}
+
+.page-content-meal-maker .meal-micronutrients,
+.page-content-meal-maker .meal-instructions {
+    scroll-snap-stop: always;
+    scroll-margin-top: var(--space-6);
 }
 
 .page-content-meal-maker {
@@ -218,6 +226,10 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    /* Leave the ingredient heading visible when a browser reveals the search
+       field, and avoid scroll jumps as the selected chips wrap onto new rows. */
+    scroll-padding-block-start: 64px;
+    overflow-anchor: none;
     /* Keep focus rings clear of the scrolling edge. */
     padding: 4px;
     margin: -4px;
@@ -462,9 +474,35 @@
     }
 
     .meal-maker-tool {
+        --tool-padding-top: clamp(34px, 6svh, 64px);
+        --tool-padding-bottom: max(28px, env(safe-area-inset-bottom));
         align-items: flex-start;
-        padding-top: clamp(34px, 6svh, 64px);
-        padding-bottom: max(28px, env(safe-area-inset-bottom));
+        height: auto;
+        padding-top: var(--tool-padding-top);
+        padding-bottom: var(--tool-padding-bottom);
+        overflow-anchor: none;
+    }
+
+    .meal-maker-form {
+        height: auto;
+        min-height: calc(
+            100svh - var(--meal-maker-header-height) - var(--tool-padding-top) -
+                var(--tool-padding-bottom)
+        );
+    }
+
+    .meal-maker-fields {
+        /* Long chip lists grow the page instead of creating a second scroller
+           that can scroll the ingredient heading out of its clipped viewport. */
+        flex: 1 0 auto;
+        min-height: auto;
+        overflow: visible;
+    }
+
+    .meal-maker-create-button {
+        position: sticky;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        z-index: 5;
     }
 
     .meal-maker-form .quick-add-categories {

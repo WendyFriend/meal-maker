@@ -1,0 +1,52 @@
+.settings-group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.settings-group legend {
+    padding: 0;
+    margin-bottom: 12px;
+    color: var(--deep-green);
+    font-size: 18px;
+    font-weight: 650;
+    letter-spacing: -0.2px;
+}
+.settings-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--border-hairline);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 60%);
+    cursor: pointer;
+}
+.settings-option-selected {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+}
+.settings-option input {
+    margin: 3px 0 0;
+    accent-color: var(--accent);
+}
+.settings-option:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.settings-option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.settings-option-label {
+    color: var(--deep-green);
+    font-weight: 650;
+}
+.settings-option-description {
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+}

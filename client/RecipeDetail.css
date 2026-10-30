@@ -7,3 +7,39 @@
        The MealResult component it wraps has no top padding of its own. */
     padding-top: var(--space-6);
 }
+.recipe-detail-fields {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.recipe-detail-error {
+    padding: 12px;
+    border-radius: 9px;
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: 14px;
+}
+.recipe-detail-save-bar {
+    padding-block: 24px max(24px, env(safe-area-inset-bottom));
+}
+.recipe-detail-save-bar button {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 24px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.recipe-detail-save-bar button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+.recipe-detail-save-bar button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}

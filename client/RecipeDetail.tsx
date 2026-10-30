@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import type { DetailEditorHandle } from './components/DetailEditorHandle';
+import {
+    useImperativeHandle,
+    useRef,
+    useState,
+    type Ref,
+    type FormEvent,
+} from 'react';
 import type { Recipe } from '../shared/types/recipe';
 import type { GenerateMealResponse } from '../shared/types/types';
-import MealResult from './meal-generator/components/NewMealResult';
+import MealResult from './meal-generator/components/MealResult';
+import LoadingSpinner from './components/LoadingSpinner';
 import './RecipeDetail.css';
 
-type RecipeDetailProps = {
-    recipe: Recipe;
-};
-
-/*
- * Maps a saved recipe to the meal shape rendered by MealResult.
- */
 function toMeal(recipe: Recipe): GenerateMealResponse {
     return {
         mealName: recipe.recipeName,
@@ -21,37 +22,172 @@ function toMeal(recipe: Recipe): GenerateMealResponse {
     };
 }
 
-/*
- * Read-only detail page for a saved recipe.
- *
- * Renders the same sections as the meal result on the meal maker page:
- * Ingredients, Nutrition (macro donut + tables), Instructions, Key
- * nutrients, and Ingredient Nutrition Information.
- *
- * The bookmark button is hidden — the recipe is already saved. The
- * ingredient weight controls remain interactive: tweaks are kept in local
- * state only, so the saved recipe in the database is left untouched.
- */
-export default function RecipeDetail({ recipe }: RecipeDetailProps) {
-    /*
-     * The saved meal is captured once on mount. MealResult's Reset button
-     * restores weights from `originalMeal`, so it must stay frozen while
-     * `meal` below is edited — passing `meal` itself would make Reset
-     * restore the already-tweaked values.
-     */
-    const [originalMeal] = useState<GenerateMealResponse>(() => toMeal(recipe));
+export default function RecipeDetail({
+    recipe,
+    ref,
+    onSave,
+    onEditorStateChange,
+}: {
+    ref?: Ref<DetailEditorHandle>;
+    recipe: Recipe;
+    onSave: (recipe: Recipe) => Promise<Recipe>;
+    onEditorStateChange: (state: { editing: boolean; saving: boolean }) => void;
+}) {
+    const [originalMeal, setOriginalMeal] = useState(() => toMeal(recipe));
+    const [meal, setMeal] = useState(originalMeal);
+    const [editing, setEditing] = useState(false);
+    const [instructionsEdited, setInstructionsEdited] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [journalEntryId, setJournalEntryId] = useState<string | null>(null);
+    const [resetVersion, setResetVersion] = useState(0);
+    const [error, setError] = useState<string>();
+    const pending = useRef(false);
+    const dirty = JSON.stringify(meal) !== JSON.stringify(originalMeal);
 
-    // Local copy of the recipe so weight tweaks stay on this page.
-    const [meal, setMeal] = useState<GenerateMealResponse>(originalMeal);
+    useImperativeHandle(ref, () => ({
+        edit: () => {
+            if (pending.current) return;
+            setEditing(true);
+            onEditorStateChange({ editing: true, saving: false });
+        },
+    }));
+
+    function changeMeal(next: GenerateMealResponse, editorActive = editing) {
+        if (pending.current) return;
+        setMeal(next);
+        setError(undefined);
+        onEditorStateChange({
+            editing:
+                editorActive ||
+                JSON.stringify(next) !== JSON.stringify(originalMeal),
+            saving: false,
+        });
+    }
+    async function save(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (pending.current) return;
+        if (!meal.mealName.trim()) {
+            setError('Enter a meal name.');
+            return;
+        }
+        if (!dirty) {
+            setEditing(false);
+            setInstructionsEdited(false);
+            setResetVersion((current) => current + 1);
+            onEditorStateChange({ editing: false, saving: false });
+            return;
+        }
+        pending.current = true;
+        setSaving(true);
+        setError(undefined);
+        onEditorStateChange({ editing: true, saving: true });
+        try {
+            const updated = await onSave({
+                ...recipe,
+                recipeName: meal.mealName.trim(),
+                ingredients: meal.ingredients,
+                instructions: meal.instructions
+                    .map((step) => step.trim())
+                    .filter(Boolean),
+            });
+            const saved = toMeal(updated);
+            setOriginalMeal(saved);
+            setMeal(saved);
+            setEditing(false);
+            setInstructionsEdited(false);
+            setResetVersion((current) => current + 1);
+            onEditorStateChange({ editing: false, saving: false });
+        } catch {
+            setError(
+                'Could not save your meal. Your changes are still here; please try again.',
+            );
+            onEditorStateChange({ editing: true, saving: false });
+        } finally {
+            pending.current = false;
+            setSaving(false);
+        }
+    }
 
     return (
-        <div className="recipe-detail">
-            <MealResult
-                meal={meal}
-                originalMeal={originalMeal}
-                onChange={setMeal}
-                showBookmark={false}
-            />
-        </div>
+        <form
+            id="meal-detail-form"
+            className="recipe-detail"
+            onSubmit={save}
+            onReset={(event) => {
+                event.preventDefault();
+                if (pending.current) return;
+                setMeal(originalMeal);
+                setEditing(false);
+                setInstructionsEdited(false);
+                setError(undefined);
+                setResetVersion((current) => current + 1);
+                onEditorStateChange({ editing: false, saving: false });
+            }}
+            aria-busy={saving}
+        >
+            {error && (
+                <p className="recipe-detail-error" role="alert">
+                    {error}
+                </p>
+            )}
+            <fieldset className="recipe-detail-fields" disabled={saving}>
+                <MealResult
+                    key={resetVersion}
+                    meal={meal}
+                    originalMeal={originalMeal}
+                    onChange={changeMeal}
+                    showBookmark={false}
+                    showJournalButton={!editing}
+                    onNameChange={
+                        editing
+                            ? (name) => changeMeal({ ...meal, mealName: name })
+                            : undefined
+                    }
+                    journalControl={{
+                        entryId: journalEntryId,
+                        onChange: setJournalEntryId,
+                    }}
+                    showWeightControls={editing}
+                    instructionEditor={{
+                        editing: editing,
+                        canReset: instructionsEdited,
+                        onReset: () => {
+                            setInstructionsEdited(false);
+                            changeMeal(
+                                {
+                                    ...meal,
+                                    instructions: [
+                                        ...originalMeal.instructions,
+                                    ],
+                                },
+                                true,
+                            );
+                        },
+                        onChange: (value) => {
+                            setInstructionsEdited(true);
+                            changeMeal({
+                                ...meal,
+                                instructions: value.split('\n'),
+                            });
+                        },
+                        disabled: saving,
+                    }}
+                />
+            </fieldset>
+            {dirty && (
+                <div className="recipe-detail-save-bar">
+                    <button type="submit" disabled={saving}>
+                        {saving ? (
+                            <span className="loading-label">
+                                <LoadingSpinner size="small" tone="inherit" />
+                                Saving…
+                            </span>
+                        ) : (
+                            'Save'
+                        )}
+                    </button>
+                </div>
+            )}
+        </form>
     );
 }

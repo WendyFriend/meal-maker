@@ -1,0 +1,49 @@
+.micronutrient-contributors h4 {
+    margin: 0 0 4px;
+    color: var(--text-h);
+    font-size: 15px;
+    font-weight: 650;
+}
+.micronutrient-contributors-caption {
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.micronutrient-contributors ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.micronutrient-contributors li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-hairline);
+    font-size: 13px;
+    line-height: 1.4;
+}
+.micronutrient-contributors li > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.micronutrient-contributors strong {
+    flex-shrink: 0;
+    color: var(--text-h);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.micronutrient-contributors-track {
+    width: 100%;
+    min-height: 28px;
+    margin-block: -6px;
+    padding: 6px 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
