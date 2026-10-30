@@ -2,8 +2,30 @@ import { createServer, ServerResponse } from 'node:http';
 import type { GenerateMealRequest } from '../shared/types/types.ts';
 import { handleGenerateMealRequest } from './meal-generator/handleGenerateMealRequest.ts';
 import { handleIngredientNutrition } from './nutrition/handleIngredientNutrition.ts';
+import {
+    handleFoodSuggestions,
+    handleParseIngredients,
+} from './nutrition/handleFoodSearch.ts';
 
 const server = createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+
+    if (req.method === 'GET' && url.pathname === '/api/food-suggestions') {
+        const result = await handleFoodSuggestions(url.searchParams.get('q'));
+        sendJson(res, result.status, result.body);
+        return;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/parse-ingredients') {
+        let input: unknown;
+        try {
+            input = JSON.parse(await readRequestBody(req));
+        } catch {
+            input = undefined;
+        }
+        const result = await handleParseIngredients(input);
+        sendJson(res, result.status, result.body);
+        return;
+    }
     if (req.method === 'POST' && req.url === '/api/ingredient-nutrition') {
         try {
             const input: unknown = JSON.parse(await readRequestBody(req));

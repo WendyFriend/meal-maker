@@ -64,3 +64,20 @@ export type IngredientNutrition = MicronutrientValues & {
 export type MealIngredient = IngredientNutrition & {
     weight: number;
 };
+
+/* GET /api/food-suggestions?q=<text> → { results } */
+export type FoodSuggestion = {
+    fdcId: number;
+    name: string; // short display name, used as the ingredient chip
+    description: string; // the database's full food description
+    caloriesPer100g?: number;
+};
+
+export type FoodSuggestionsResponse = {
+    results: FoodSuggestion[];
+};
+
+/* POST /api/parse-ingredients { text } → { ingredients } */
+export type ParseIngredientsResponse = {
+    ingredients: string[];
+};

@@ -421,6 +421,35 @@
     font-size: 13px;
 }
 
+/* Nutrition Lab suggestions: a group label, a loading row and kcal hints */
+
+.ingredient-suggestion-group {
+    padding: var(--space-2) var(--space-4) var(--space-1);
+    border-bottom: 1px solid var(--border-hairline);
+    background: var(--surface-tint);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.ingredient-suggestion-loading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 12px var(--space-4);
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.ingredient-suggestion-kcal,
+.ingredient-suggestion-split-hint {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
 @media (max-width: 640px),
     (min-width: 641px) and (max-width: 1000px) and (max-height: 500px) {
     .ingredient-input-header {

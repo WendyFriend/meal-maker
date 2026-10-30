@@ -2,6 +2,8 @@ import type {
     MealMakerFood,
     MealMakerFoodDetail,
     MealMakerGenerateRequest,
+    MealMakerParseResponse,
+    MealMakerSearchResponse,
 } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://mealmaker.brotherk3d.com/api/v1';
@@ -50,6 +52,29 @@ export async function resolveFood(
         body: JSON.stringify({ terms: [term] }),
     });
     return results[0]?.food ?? undefined;
+}
+
+export function searchFoods(
+    query: string,
+    limit: number,
+): Promise<MealMakerSearchResponse> {
+    const params = new URLSearchParams({ q: query, limit: String(limit) });
+    return request<MealMakerSearchResponse>(
+        `/foods/search?${params}`,
+        {},
+        10_000,
+    );
+}
+
+// Splitting can consult a model, so allow a few seconds.
+export function parseIngredientText(
+    text: string,
+): Promise<MealMakerParseResponse> {
+    return request<MealMakerParseResponse>(
+        '/parse',
+        { method: 'POST', body: JSON.stringify({ text }) },
+        30_000,
+    );
 }
 
 export function getFoodDetail(fdcId: number): Promise<MealMakerFoodDetail> {

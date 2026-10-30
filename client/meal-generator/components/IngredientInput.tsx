@@ -3,7 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import './IngredientInput.css';
 import './MealFormField.css';
 import QuickAddIngredientPicker from './QuickAddIngredientPicker';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { normalizeIngredientName } from '../../utils/Ingredient';
+import { useFoodSuggestions } from '../../hooks/useFoodSuggestions';
+import {
+    looksLikeSeveralIngredients,
+    parseIngredientNames,
+} from '../../services/foodSearchService';
 import type { UserIngredient } from '../../../shared/types/types';
 
 type IngredientInputProps = {
@@ -68,12 +74,38 @@ function IngredientInput({
     const canAddCustom =
         normalizedInput.length > 0 && !exactMatch && !isDuplicate(input);
 
+    // "chicken, rice and broccoli" is split into one chip per food.
+    const typedSeveral = looksLikeSeveralIngredients(input);
+    const [isResolving, setIsResolving] = useState(false);
+
+    // Nutrition Lab matches, shown after the saved suggestions. Names already
+    // offered as saved ingredients are skipped so they don't appear twice.
+    const { results: foodResults, isLoading: isSearchingFoods } =
+        useFoodSuggestions(input, showSuggestions && !typedSeveral);
+    const offeredNames = new Set(
+        suggestions.map((ingredient) =>
+            normalizeIngredientName(ingredient.name),
+        ),
+    );
+    const foodSuggestions = foodResults
+        .filter((food) => {
+            const name = normalizeIngredientName(food.name);
+            if (offeredNames.has(name)) return false;
+            offeredNames.add(name);
+            return true;
+        })
+        .slice(0, 6);
+
     // The dropdown rows the keyboard navigates through: saved suggestions,
-    // plus the custom "+ add" row when it is visible.
+    // then database suggestions, plus the custom "+ add" row when visible.
     const suggestionRows: { key: string; name: string }[] = [
         ...suggestions.map((ingredient) => ({
             key: ingredient.ingredientId,
             name: ingredient.name,
+        })),
+        ...foodSuggestions.map((food) => ({
+            key: `food-${food.fdcId}`,
+            name: food.name,
         })),
         ...(canAddCustom ? [{ key: '__custom__', name: input }] : []),
     ];
@@ -143,6 +175,46 @@ function IngredientInput({
         }
     }
 
+    // Splitting waits on the server, so read the chips current when it returns.
+    const latestIngredients = useRef(ingredients);
+    useEffect(() => {
+        latestIngredients.current = ingredients;
+    }, [ingredients]);
+
+    // Adds typed text under its database names: "tomato" becomes "Tomatoes,
+    // red, ripe" and "tomato potato" two foods. The API only consults the
+    // model for more than one word, so single words come back quickly.
+    async function addTypedText(text: string) {
+        setIsResolving(true);
+        setShowSuggestions(false);
+        let names: string[];
+        try {
+            names = await parseIngredientNames(text.trim());
+        } finally {
+            setIsResolving(false);
+        }
+
+        const current = latestIngredients.current;
+        const seen = new Set(current.map(normalizeIngredientName));
+        const fresh = names.filter((name) => {
+            const key = normalizeIngredientName(name);
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        if (fresh.length === 0) {
+            showDuplicateFeedback(names.join(', '));
+            return;
+        }
+
+        setInput('');
+        onChange([...current, ...fresh]);
+        window.requestAnimationFrame(() =>
+            inputRef.current?.focus({ preventScroll: true }),
+        );
+    }
+
     function highlightSuggestion(index: number) {
         setHighlightedIndex(index);
 
@@ -180,6 +252,7 @@ function IngredientInput({
         if (event.key !== 'Enter') return;
 
         event.preventDefault();
+        if (isResolving) return;
 
         // If a row is highlighted, Enter commits that exact row — including
         // already-added suggestions, so picking one shows the duplicate
@@ -187,7 +260,15 @@ function IngredientInput({
         const highlightedRow = suggestionRows[activeHighlightedIndex];
 
         if (highlightedRow) {
-            addIngredient(highlightedRow.name);
+            if (highlightedRow.key === '__custom__')
+                void addTypedText(highlightedRow.name);
+            else addIngredient(highlightedRow.name);
+            return;
+        }
+
+        // Several foods typed at once become separate chips.
+        if (typedSeveral && canAddCustom) {
+            void addTypedText(input);
             return;
         }
 
@@ -209,7 +290,7 @@ function IngredientInput({
         }
 
         if (canAddCustom) {
-            addIngredient(input);
+            void addTypedText(input);
             return;
         }
 
@@ -279,6 +360,8 @@ function IngredientInput({
                             }, 150);
                         }}
                         onKeyDown={handleKeyDown}
+                        readOnly={isResolving}
+                        aria-busy={isResolving}
                         enterKeyHint="done"
                         placeholder="Search ingredients..."
                         aria-label="Search or add an ingredient"
@@ -342,6 +425,73 @@ function IngredientInput({
                             );
                         })}
 
+                        {(foodSuggestions.length > 0 || isSearchingFoods) && (
+                            <div
+                                className="ingredient-suggestion-group"
+                                role="presentation"
+                            >
+                                From our database
+                            </div>
+                        )}
+
+                        {isSearchingFoods && foodSuggestions.length === 0 && (
+                            <div
+                                className="ingredient-suggestion-loading"
+                                role="status"
+                            >
+                                <LoadingSpinner size="small" />
+                                Searching…
+                            </div>
+                        )}
+
+                        {foodSuggestions.map((food, foodIndex) => {
+                            const index = suggestions.length + foodIndex;
+                            const added = isDuplicate(food.name);
+                            const highlighted =
+                                index === activeHighlightedIndex;
+
+                            return (
+                                <button
+                                    key={`food-${food.fdcId}`}
+                                    id={`ingredient-option-food-${food.fdcId}`}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={highlighted}
+                                    title={food.description}
+                                    className={`ingredient-suggestion ${
+                                        added
+                                            ? 'ingredient-suggestion-added'
+                                            : ''
+                                    } ${
+                                        highlighted
+                                            ? 'ingredient-suggestion-highlighted'
+                                            : ''
+                                    }`}
+                                    onPointerDown={(event) => {
+                                        event.preventDefault();
+                                        addIngredient(food.name);
+                                    }}
+                                >
+                                    <span>{food.name}</span>
+
+                                    {added ? (
+                                        <span className="ingredient-suggestion-added-badge">
+                                            Added
+                                        </span>
+                                    ) : (
+                                        food.caloriesPer100g !== undefined && (
+                                            <span className="ingredient-suggestion-kcal">
+                                                {Math.round(
+                                                    food.caloriesPer100g,
+                                                )}{' '}
+                                                kcal/100g
+                                            </span>
+                                        )
+                                    )}
+                                </button>
+                            );
+                        })}
+
                         {canAddCustom && (
                             <button
                                 type="button"
@@ -359,19 +509,39 @@ function IngredientInput({
                                 }`}
                                 onPointerDown={(event) => {
                                     event.preventDefault();
-                                    addIngredient(input);
+                                    void addTypedText(input);
                                 }}
                             >
-                                <span>+ {input.trim()}</span>
+                                <span>
+                                    + {input.trim()}
+                                    {typedSeveral && (
+                                        <span className="ingredient-suggestion-split-hint">
+                                            {' '}
+                                            (adds each separately)
+                                        </span>
+                                    )}
+                                </span>
                                 <span className="ingredient-enter-hint">↵</span>
                             </button>
                         )}
 
-                        {suggestions.length === 0 && !canAddCustom && (
-                            <div className="ingredient-suggestion-empty">
-                                Already added
-                            </div>
-                        )}
+                        {suggestions.length === 0 &&
+                            foodSuggestions.length === 0 &&
+                            !isSearchingFoods &&
+                            !canAddCustom && (
+                                <div className="ingredient-suggestion-empty">
+                                    Already added
+                                </div>
+                            )}
+                    </div>
+                )}
+
+                {isResolving && (
+                    <div className="ingredient-suggestions" role="status">
+                        <div className="ingredient-suggestion-loading">
+                            <LoadingSpinner size="small" />
+                            Looking up ingredients…
+                        </div>
                     </div>
                 )}
             </div>

@@ -1,6 +1,8 @@
 export type MealMakerFood = {
     fdcId: number;
     description: string;
+    // Short display name ("Chicken, breast"); absent from older API builds.
+    name?: string;
     match: {
         tier: 'confident' | 'probable' | 'ambiguous' | 'weak';
         matchedVia?: string;
@@ -15,6 +17,21 @@ export type MealMakerFood = {
         fibreG: number | null;
         satFatG: number | null;
     };
+};
+
+export type MealMakerSearchResponse = {
+    query: string;
+    results: MealMakerFood[];
+};
+
+// POST /parse: the lab splits typed text into foods, using a model when needed.
+export type MealMakerParseResponse = {
+    ingredients: {
+        said: string;
+        // The matched food's short name ("Chicken, breast"); absent from older API builds.
+        name?: string;
+        match: { fdcId: number; description: string } | null;
+    }[];
 };
 
 export type MealMakerFoodDetail = {

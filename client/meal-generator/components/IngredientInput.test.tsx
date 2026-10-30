@@ -288,3 +288,124 @@ describe('saved record category mapping', () => {
         expect(groups.vegetables[0]).toBe(records[0]);
     });
 });
+
+describe('Nutrition Lab search and splitting', () => {
+    function reply(body: unknown, ok = true) {
+        return Promise.resolve({ ok, json: () => Promise.resolve(body) });
+    }
+
+    it('suggests database foods and adds the short name as a chip', async () => {
+        const fetch = vi.fn(() =>
+            reply({
+                results: [
+                    {
+                        fdcId: 171474,
+                        name: 'Chicken, breast',
+                        description:
+                            'Chicken, broilers or fryers, breast, meat and skin, raw',
+                        caloriesPer100g: 172,
+                    },
+                ],
+            }),
+        );
+        vi.stubGlobal('fetch', fetch);
+        const user = userEvent.setup();
+        render(<Form />);
+        await user.type(screen.getByRole('combobox'), 'chick');
+        const option = await screen.findByRole('option', {
+            name: /Chicken, breast/,
+        });
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/food-suggestions?q=chick',
+            expect.anything(),
+        );
+        expect(option).toHaveTextContent('172 kcal/100g');
+        fireEvent.pointerDown(option);
+        expect(
+            screen.getByRole('button', { name: 'Remove Chicken, breast' }),
+        ).toBeInTheDocument();
+    });
+
+    it('splits several typed foods into separate chips', async () => {
+        const fetch = vi.fn((url: string) =>
+            url === '/api/parse-ingredients'
+                ? reply({
+                      ingredients: ['chicken breast', 'brown rice', 'broccoli'],
+                  })
+                : reply({ results: [] }),
+        );
+        vi.stubGlobal('fetch', fetch);
+        const user = userEvent.setup();
+        render(<Form saved={[]} />);
+        await user.type(
+            screen.getByRole('combobox'),
+            'chicken breast, brown rice and brocoli{Enter}',
+        );
+        for (const name of ['chicken breast', 'brown rice', 'broccoli']) {
+            expect(
+                await screen.findByRole('button', { name: `Remove ${name}` }),
+            ).toBeInTheDocument();
+        }
+        expect(fetch).not.toHaveBeenCalledWith(
+            expect.stringContaining('/api/food-suggestions'),
+            expect.anything(),
+        );
+    });
+
+    it('adds a single typed word under its database name', async () => {
+        const fetch = vi.fn((url: string) =>
+            url === '/api/parse-ingredients'
+                ? reply({ ingredients: ['Tomatoes, red, ripe'] })
+                : reply({ results: [] }),
+        );
+        vi.stubGlobal('fetch', fetch);
+        const user = userEvent.setup();
+        render(<Form saved={[]} />);
+        await user.type(screen.getByRole('combobox'), 'tomato{Enter}');
+        expect(
+            await screen.findByRole('button', {
+                name: 'Remove Tomatoes, red, ripe',
+            }),
+        ).toBeInTheDocument();
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/parse-ingredients',
+            expect.objectContaining({
+                body: JSON.stringify({ text: 'tomato' }),
+            }),
+        );
+    });
+
+    it('asks the parser to split foods typed with only spaces', async () => {
+        const fetch = vi.fn((url: string) =>
+            url === '/api/parse-ingredients'
+                ? reply({ ingredients: ['tomato', 'potato'] })
+                : reply({ results: [] }),
+        );
+        vi.stubGlobal('fetch', fetch);
+        const user = userEvent.setup();
+        render(<Form saved={[]} />);
+        await user.type(screen.getByRole('combobox'), 'Tomato potato{Enter}');
+        expect(
+            await screen.findByRole('button', { name: 'Remove tomato' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Remove potato' }),
+        ).toBeInTheDocument();
+    });
+
+    it('splits on separators when the parser is unavailable', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => reply({}, false)),
+        );
+        const user = userEvent.setup();
+        render(<Form saved={[]} />);
+        await user.type(screen.getByRole('combobox'), 'eggs & toast{Enter}');
+        expect(
+            await screen.findByRole('button', { name: 'Remove eggs' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Remove toast' }),
+        ).toBeInTheDocument();
+    });
+});
