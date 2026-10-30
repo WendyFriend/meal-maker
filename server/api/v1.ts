@@ -4,7 +4,7 @@
 //
 //   GET  /api/v1                      endpoint index                      public
 //   GET  /api/v1/health               server and database status          public
-//   GET  /api/v1/docs                 usage guide (markdown or ?format=json) public
+//   GET  /api/v1/docs                 usage guide (markdown or ?format=json) any key
 //   GET  /api/v1/thumbnails/<id>.webp food picture                        public
 //   GET  /api/v1/me                   the calling key                     any key
 //   GET  /api/v1/foods/search         ranked foods for typed text         foods
@@ -189,7 +189,7 @@ const ROUTES: Route[] = [
     {
         method: 'GET',
         pattern: /^\/docs$/,
-        scope: null,
+        scope: 'any',
         name: '/docs',
         handle: async ({ req, res, url }) => {
             const guide = await loadGuide(

@@ -9,8 +9,9 @@ humans: [api.md](api.md). Type definitions: `shared/types/spoken.ts` and
 date as the API changes:
 
 ```
-GET https://mealmaker.brotherk3d.com/api/v1/docs              # markdown (no key needed)
+GET https://mealmaker.brotherk3d.com/api/v1/docs              # markdown
 GET https://mealmaker.brotherk3d.com/api/v1/docs?format=json  # { markdown, version, updated }
+Authorization: Bearer <key>                                   # any valid key
 ```
 
 Fetch it at the start of each session. To check for changes cheaply, send the
@@ -41,7 +42,7 @@ Develop on `http://localhost` when using dev, or use production.
 
 ## Auth
 
-Every endpoint except `GET /`, `GET /health`, `GET /docs` and `GET /thumbnails/<id>.webp` needs:
+Every endpoint except `GET /`, `GET /health` and `GET /thumbnails/<id>.webp` needs:
 
 ```
 Authorization: Bearer <key>
@@ -64,7 +65,7 @@ the message.
 | --- | --- | --- |
 | `GET /` | none | Lists endpoints. |
 | `GET /health` | none | `{ok, database}`; 503 if the database is down. |
-| `GET /docs` | none | This guide, latest version (markdown; `?format=json`). |
+| `GET /docs` | any | This guide, latest version (markdown; `?format=json`). |
 | `GET /me` | any | Your key's name, scopes, limit. |
 | `GET /foods/search?q=&limit=` | foods | Ranked foods for typed text (q 2-100 chars, limit 1-25, default 8). |
 | `GET /foods/{fdcId}` | foods | One food, every nutrient per 100 g, synonyms. |

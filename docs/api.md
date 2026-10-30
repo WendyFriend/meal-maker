@@ -10,8 +10,8 @@ sentence into ingredients, and generating a recipe.
 | Production (VPS) | `https://mealmaker.brotherk3d.com/api/v1` | The real thing. Updated when we deploy. |
 
 Open the base URL in a browser to see every endpoint and the scope it needs. The
-latest version of the guide for coding agents is always at `GET /api/v1/docs` (no
-key needed); see below.
+latest version of the guide for coding agents is always at `GET /api/v1/docs` (any
+valid key); see below.
 
 ## Keys
 
@@ -91,7 +91,7 @@ server. Run your dev server on plain `http://` (or `localhost`) when using it.
 `{ "ok": true, "database": true }`. Returns `503` with `ok: false` when the database
 can't be reached.
 
-### `GET /docs` (public)
+### `GET /docs` (any key)
 
 The usage guide for coding agents (`docs/api-for-agents.md`), always the version this
 server runs, with a table of its endpoints appended. Markdown by default;
