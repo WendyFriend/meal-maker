@@ -15,7 +15,7 @@ function summarize(sources: IngredientSource[]): string {
     const count = (kind: IngredientSource['kind']) =>
         sources.filter((source) => source.kind === kind).length;
     const parts = [
-        [count('usda'), 'from USDA'],
+        [count('usda'), 'from our database'],
         [count('yours') + count('edited'), 'yours'],
         [count('estimate'), 'estimated'],
     ]
@@ -28,7 +28,7 @@ function summarize(sources: IngredientSource[]): string {
 function describe(source: IngredientSource) {
     switch (source.kind) {
         case 'matching':
-            return <span className="inline-loading">Finding USDA match…</span>;
+            return <span className="inline-loading">Finding a match…</span>;
         case 'usda':
             return (
                 <span className="source-description">{source.description}</span>

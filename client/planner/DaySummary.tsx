@@ -149,7 +149,7 @@ function NutrientHighlights({
                     </ul>
                 ) : (
                     <p className="day-summary-hint">
-                        Appears once your meals include USDA-matched
+                        Appears once your meals include database-matched
                         ingredients.
                     </p>
                 )}
@@ -168,7 +168,7 @@ function NutrientHighlights({
                 <h3>Nutrient highlights</h3>
                 <p className="day-summary-hint">
                     Vitamins and minerals show up once your meals include
-                    USDA-matched ingredients.
+                    database-matched ingredients.
                 </p>
             </section>
         );

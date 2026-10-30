@@ -15,7 +15,7 @@
     "format:check": "prettier --check \"**/*.ts\"",
     "test": "vitest",
     "server": "npm run build && tsx --env-file=.env server/server.ts",
-    "build:server-bundle": "esbuild server/server.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-server/server.mjs \"--banner:js=import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);\" && node -e \"require('fs').copyFileSync('db/lab/confidence_model.json', 'dist-server/confidence_model.json')\"",
+    "build:server-bundle": "esbuild server/server.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-server/server.mjs \"--banner:js=import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);\" && node -e \"require('fs').copyFileSync('db/lab/confidence_model.json', 'dist-server/confidence_model.json'); require('fs').copyFileSync('docs/api-for-agents.md', 'dist-server/api-for-agents.md')\"",
     "build:dev-site": "vite build --mode devsite",
     "start": "node dist-server/server.mjs",
     "api-keys": "tsx --env-file-if-exists=.env script/api-keys.ts",

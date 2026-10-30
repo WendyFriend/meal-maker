@@ -1,3 +1,5 @@
+-- Redefined (faster, identical results) by 18_search_speed.sql; edit it there.
+--
 -- PROTOTYPE: resolve_food_conf(q, max) = resolve_food(q, max) plus three feature columns for
 -- judging how confident a result is. Same candidates, same order, same score and tier as
 -- resolve_food; nothing that reads resolve_food (the app, resolve_food_detailed) is affected.

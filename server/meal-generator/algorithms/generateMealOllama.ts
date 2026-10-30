@@ -17,6 +17,7 @@ import {
     enrichIngredients,
     getEstimatedIngredients,
     namesForGuidance,
+    pairWithInputs,
     reattachNutrition,
     type EnrichedIngredient,
     type MatchLookup,
@@ -52,8 +53,6 @@ const DIETARY_GUIDANCE: Record<DietaryPreference, string> = {
     'gluten-free': 'gluten-free (no wheat, barley, rye or regular oats)',
 };
 
-// Pantry staples the model may add beyond the user's ingredients.
-const MAX_ADDED_STAPLES = 3;
 
 /* The day-planner context as prompt lines, so the dish fits the gap the
    other meals leave. The calorie and protein targets are already this
@@ -168,8 +167,8 @@ Create one realistic, balanced meal from the provided ingredients.
 
 Priorities, in order:
 1. Never break a dietary requirement (if any are given).
-2. Use all of the provided ingredients (except any left out for dietary reasons). You may add up to ${MAX_ADDED_STAPLES} pantry staples if the dish needs them (oil, salt, pepper, garlic, herbs or spices, lemon or lime, vinegar, stock); nothing else.
-3. Hit the target calories per serving: the total must be within 5% of it, staples included.
+2. Use ONLY the provided ingredients (except any left out for dietary reasons), and all of them. Do not add any ingredient that is not in the list: no oil, butter, salt, pepper, garlic, onion, herbs, spices, lemon or lime, vinegar, stock, sauce, sugar, flour or water. The ingredients list in your answer must match the provided list exactly.
+3. Hit the target calories per serving: the total must be within 5% of it.
 4. Aim for approximately ${split.carbs}% carbs, ${split.protein}% protein, and ${split.fat}% fat by energy.
 5. Keep ingredient portions realistic and practical.
 
@@ -180,7 +179,7 @@ Rules:
 - If no target calories are given, use sensible portions for one person.
 - Round ingredient weights to the nearest 5 or 10 g.
 - Ingredients with a "nutritionSource" ("usda" or "user") carry authoritative per-100 g data, including fibre. Copy it exactly and never change it.
-- For ingredients without a "nutritionSource", and for any staples you add, estimate nutrition per 100 g.
+- For ingredients without a "nutritionSource", estimate nutrition per 100 g.
 - Return nutrition per 100 g for every ingredient.
 - Return only valid JSON. Do not use Markdown code fences.
 
@@ -193,7 +192,8 @@ ${prepGuidance}`
             : ''
     }
 - Choose cooking methods that reduce anti-nutrients: blanch or boil high-oxalate greens (spinach, chard, beet greens) and discard the water rather than serving them raw in large amounts, rinse quinoa before cooking, cook legumes and grains fully.
-- Where it suits the dish, pair foods for absorption: vitamin C (lemon, tomato, peppers) with plant iron, calcium sources with oxalate-rich foods.
+- Where the provided ingredients allow it, pair foods for absorption: vitamin C foods with plant iron, calcium sources with oxalate-rich foods. Never add an ingredient to do so.
+- The instructions may only use the provided ingredients, plus water for cooking and an optional "season to taste" note; they must not name any other ingredient.
 - Keep the instructions concise and practical: about 4-8 steps. Don't state ingredient weights in the steps (portions are adjusted after you answer); times, temperatures and water ratios are fine.
 ${rules.join('\n')}
 
@@ -300,6 +300,26 @@ const lookupMatch: MatchLookup = async (name) => {
     }
 };
 
+/*
+ * Removes ingredients that match none of the requested ones. Only done when
+ * every requested ingredient was returned (a dietary exclusion or a renamed
+ * ingredient could otherwise be mistaken for an extra and lose a real one).
+ */
+export function withoutExtras<T extends { name: string }>(
+    returned: T[],
+    requested: { name: string }[],
+): T[] {
+    const pairs = pairWithInputs(
+        returned.map((i) => i.name),
+        requested.map((i) => i.name),
+    );
+    const covered = new Set(pairs.filter((p) => p !== undefined));
+    if (covered.size < requested.length) return returned;
+
+    const kept = returned.filter((_, index) => pairs[index] !== undefined);
+    return kept.length > 0 ? kept : returned;
+}
+
 export async function generateMealWithOllama(
     input: GenerateMealRequest,
     lookup: MatchLookup = lookupMatch,
@@ -344,9 +364,9 @@ export async function generateMealWithOllama(
         throw new Error('AI returned an invalid meal response');
     }
 
-    // The model's own nutrition numbers never override USDA or user data.
+    // Anything the model added beyond the cook's list is dropped.
     const authoritative = await reattachNutrition(
-        parsed.ingredients,
+        withoutExtras(parsed.ingredients, enriched),
         enriched,
         lookup,
     );

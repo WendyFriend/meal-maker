@@ -38,8 +38,9 @@ describe('buildMealPrompts preparation guidance', () => {
         expect(systemPrompt).toContain('blanch or boil high-oxalate greens');
     });
 
-    it('lets the model add a few pantry staples', () => {
-        expect(build({}).systemPrompt).toContain('up to 3 pantry staples');
+    it('forbids adding ingredients beyond the provided list', () => {
+        expect(build({}).systemPrompt).toContain('Use ONLY the provided ingredients');
+        expect(build({}).systemPrompt).not.toContain('pantry staples');
     });
 
     it('sends authoritative macros and fibre but not micronutrients', () => {
@@ -163,7 +164,7 @@ describe('generateMealWithOllama', () => {
         return fetchMock;
     }
 
-    it('re-attaches USDA data, calibrates and attaches considerations', async () => {
+    it('re-attaches database nutrition, calibrates, attaches considerations and drops extras', async () => {
         const fetchMock = stubOllama({
             mealName: 'Bean stew',
             ingredients: [
@@ -210,7 +211,9 @@ describe('generateMealWithOllama', () => {
             JSON.parse(body.messages[1].content).ingredients[0],
         ).toMatchObject({ caloriesPer100g: 337, nutritionSource: 'usda' });
 
-        const [beans, oil, paprika] = meal.ingredients;
+        // The model added oil and paprika; only the cook's ingredient is kept.
+        expect(meal.ingredients).toHaveLength(1);
+        const [beans] = meal.ingredients;
         expect(beans).toMatchObject({
             caloriesPer100g: 337,
             proteinPer100g: 23,
@@ -218,12 +221,7 @@ describe('generateMealWithOllama', () => {
             usda: { fdcId: 1 },
             nutritionSource: 'usda',
         });
-        expect(oil).toMatchObject({
-            caloriesPer100g: 884,
-            nutritionSource: 'usda',
-        });
-        expect(paprika.nutritionSource).toBe('estimated');
-        expect(meal.estimatedIngredients).toEqual(['Smoked paprika']);
+        expect(meal.estimatedIngredients).toBeUndefined();
 
         const { calories } = getMealTotals(meal.ingredients);
         expect(Math.abs(calories - 600)).toBeLessThanOrEqual(600 * 0.02);

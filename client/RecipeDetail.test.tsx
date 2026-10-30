@@ -115,7 +115,7 @@ it('shows preparation notes and vitamins for a saved meal', () => {
     // Vitamin K sums across ingredients: 19 + 483 µg.
     expect(screen.getByText('502 µg')).toBeInTheDocument();
     expect(screen.getByText('Iron')).toBeInTheDocument();
-    expect(screen.getByText('USDA')).toBeInTheDocument();
+    expect(screen.getByText('Database')).toBeInTheDocument();
 });
 
 it('adds the stored recipe to the plan without saving a copy', async () => {

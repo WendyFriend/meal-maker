@@ -418,7 +418,7 @@ function IngredientInput({
                                 className="ingredient-suggestion-group"
                                 role="presentation"
                             >
-                                From USDA
+                                From our database
                             </div>
                         )}
 
@@ -428,7 +428,7 @@ function IngredientInput({
                                 role="status"
                             >
                                 <span className="inline-loading">
-                                    Searching USDA…
+                                    Searching…
                                 </span>
                             </div>
                         )}
@@ -570,7 +570,7 @@ function IngredientInput({
                                     {sourceKind === 'usda' && (
                                         <span
                                             className="ingredient-chip-source"
-                                            title="Nutrition from USDA"
+                                            title="Nutrition from our database"
                                             aria-hidden="true"
                                         >
                                             <svg
@@ -579,13 +579,13 @@ function IngredientInput({
                                             >
                                                 <path d="M5 12.5l4.5 4.5L19 7.5" />
                                             </svg>
-                                            USDA
+                                            Database
                                         </span>
                                     )}
                                     {sourceKind === 'matching' && (
                                         <span
                                             className="ingredient-chip-matching"
-                                            title="Finding USDA nutrition"
+                                            title="Finding nutrition"
                                             aria-hidden="true"
                                         />
                                     )}

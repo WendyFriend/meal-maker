@@ -9,7 +9,9 @@ sentence into ingredients, and generating a recipe.
 | Kieran's PC (home network) | `http://192.168.4.48:3020/api/v1` | Live development. Changes to the API show up here first. |
 | Production (VPS) | `https://mealmaker.brotherk3d.com/api/v1` | The real thing. Updated when we deploy. |
 
-Open the base URL in a browser to see every endpoint and the scope it needs.
+Open the base URL in a browser to see every endpoint and the scope it needs. The
+latest version of the guide for coding agents is always at `GET /api/v1/docs` (no
+key needed); see below.
 
 ## Keys
 
@@ -88,6 +90,13 @@ server. Run your dev server on plain `http://` (or `localhost`) when using it.
 
 `{ "ok": true, "database": true }`. Returns `503` with `ok: false` when the database
 can't be reached.
+
+### `GET /docs` (public)
+
+The usage guide for coding agents (`docs/api-for-agents.md`), always the version this
+server runs, with a table of its endpoints appended. Markdown by default;
+`?format=json` returns `{ "markdown", "version", "updated" }`. Send the last `ETag` as
+`If-None-Match` to get `304` when nothing has changed.
 
 ### `GET /me` (any key)
 
@@ -217,7 +226,7 @@ is what the app's "Speak your ingredients" box calls after each pause.
   (a share of the meal's energy).
 - **`certainty`** is the same confidence estimate as `topConfidence` in search.
 - **`usedModel`** is true when the sentence needed the language model (spelled-out
-  numbers, mishearings, prose). That takes about 1-5 s instead of under 1 s.
+  numbers, mishearings, prose). That adds about 1 s (typically 0.7-1.1 s).
 - Up to 500 characters per call.
 
 The full types are in `shared/types/spoken.ts` (`ParseRecipeResponse`).
@@ -239,8 +248,9 @@ Transcribe and parse in one call. Same body as `/transcribe`; the response is
 
 ### `POST /meals/generate` (`generate`)
 
-A recipe from ingredients and goals. This takes 4-60 s and calls a paid model, so show
-progress and don't fire it on every keystroke.
+A recipe from ingredients and goals. This usually takes 2-3 s (occasionally up to
+about 5 s) and calls a paid model, so show progress and don't fire it on every
+keystroke.
 
 ```json
 // request

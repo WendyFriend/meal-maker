@@ -41,7 +41,7 @@ Develop on `http://localhost` when using dev, or use production.
 
 ## Auth
 
-Every endpoint except `GET /`, `GET /health` and `GET /thumbnails/<id>.webp` needs:
+Every endpoint except `GET /`, `GET /health`, `GET /docs` and `GET /thumbnails/<id>.webp` needs:
 
 ```
 Authorization: Bearer <key>
@@ -64,6 +64,7 @@ the message.
 | --- | --- | --- |
 | `GET /` | none | Lists endpoints. |
 | `GET /health` | none | `{ok, database}`; 503 if the database is down. |
+| `GET /docs` | none | This guide, latest version (markdown; `?format=json`). |
 | `GET /me` | any | Your key's name, scopes, limit. |
 | `GET /foods/search?q=&limit=` | foods | Ranked foods for typed text (q 2-100 chars, limit 1-25, default 8). |
 | `GET /foods/{fdcId}` | foods | One food, every nutrient per 100 g, synonyms. |
@@ -72,7 +73,7 @@ the message.
 | `POST /parse` | parse | `{text}` -> ingredients, per-food amounts, meal goals. |
 | `POST /transcribe` | voice | Raw audio body -> `{text}`. |
 | `POST /voice` | voice | Raw audio body -> `/parse` result plus `text`. |
-| `POST /meals/generate` | generate | Ingredients + goals -> a recipe. Slow (4-60 s), paid. |
+| `POST /meals/generate` | generate | Ingredients + goals -> a recipe. About 2-3 s (up to ~5 s), paid. |
 
 ## Data you will handle
 
@@ -169,8 +170,9 @@ ingredient = `xPer100g * weight / 100`.
 
 - `/parse` takes up to 500 characters; JSON bodies are capped at 256 KB; audio at 12 MB
   and about 20 s.
-- `/parse` is usually under 1 s, but 1-5 s when `usedModel` is true. `/meals/generate`
-  can take a minute: show progress and disable the button while it runs.
+- Typical times: `/foods/search` about 0.1-0.3 s; `/parse` about 0.5 s, plus about 1 s
+  when `usedModel` is true; `/transcribe` about 1.3 s; `/meals/generate` about 2-3 s,
+  occasionally 5 s. Show progress for generation and disable the button while it runs.
 - Treat `null` nutrient values as unknown. Never display them as 0.
 - A key in browser code is visible to anyone who opens the page. That is acceptable for
   this project's private use; do not publish a site containing the production key.

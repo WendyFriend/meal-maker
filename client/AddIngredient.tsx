@@ -201,7 +201,7 @@ function AddIngredient({
                                         className="inline-loading"
                                         role="status"
                                     >
-                                        Searching USDA…
+                                        Searching…
                                     </span>
                                 ) : (
                                     'Pick a match to fill in nutrition'
@@ -222,7 +222,7 @@ function AddIngredient({
                     {suggestions.length > 0 && (
                         <ul
                             className="add-ingredient-suggestions"
-                            aria-label="USDA suggestions"
+                            aria-label="Food suggestions"
                         >
                             {suggestions.slice(0, 6).map((result) => (
                                 <li

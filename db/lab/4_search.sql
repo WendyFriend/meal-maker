@@ -1,5 +1,8 @@
 -- Step 3: the search algorithm, copied into the lab database.
 --
+-- resolve_food is redefined, faster with identical results, by 18_search_speed.sql;
+-- edit it there. Run 18 after this file when rebuilding a database.
+--
 --   psql -d nutrition_lab -f db/lab/4_search.sql
 --
 -- The lab is meant to be used for judging synonym quality, and judging it means

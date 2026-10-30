@@ -465,7 +465,7 @@ export default function CreateRecipe({
                     {trimmedQuery.length >= 2 && (
                         <>
                             <h4 className="create-recipe-group">
-                                USDA results
+                                Database results
                             </h4>
                             {!usdaCurrent && (
                                 <p className="create-recipe-hint">
@@ -473,7 +473,7 @@ export default function CreateRecipe({
                                         className="inline-loading"
                                         role="status"
                                     >
-                                        Searching USDA…
+                                        Searching…
                                     </span>
                                 </p>
                             )}

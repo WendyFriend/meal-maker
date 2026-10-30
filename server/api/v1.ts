@@ -4,6 +4,7 @@
 //
 //   GET  /api/v1                      endpoint index                      public
 //   GET  /api/v1/health               server and database status          public
+//   GET  /api/v1/docs                 usage guide (markdown or ?format=json) public
 //   GET  /api/v1/thumbnails/<id>.webp food picture                        public
 //   GET  /api/v1/me                   the calling key                     any key
 //   GET  /api/v1/foods/search         ranked foods for typed text         foods
@@ -30,6 +31,7 @@ import { certaintyFor } from '../nutrition/parseSpokenRequest.ts';
 import { parseRecipeRoute } from '../nutrition/parseRecipeRoute.ts';
 import { readAudioBody, transcribeAudio } from '../nutrition/transcribe.ts';
 import { sendThumbnail } from '../thumbnails.ts';
+import { loadGuide } from './guide.ts';
 import { logRequest, lookupKey, takeToken, type ApiKey, type Scope } from './keys.ts';
 
 const PREFIX = '/api/v1';
@@ -162,7 +164,7 @@ const ROUTES: Route[] = [
             body: {
                 name: 'MealMaker API',
                 version: 1,
-                docs: 'docs/api.md in the meal-maker repository',
+                docs: `${PREFIX}/docs`,
                 endpoints: ROUTES.map((r) => `${r.method} ${PREFIX}${r.name === '/' ? '' : r.name}${r.scope ? `  [${r.scope}]` : '  [public]'}`),
             },
         }),
@@ -182,6 +184,38 @@ const ROUTES: Route[] = [
                 }
             }
             return { status: database ? 200 : 503, body: { ok: database, database } };
+        },
+    },
+    {
+        method: 'GET',
+        pattern: /^\/docs$/,
+        scope: null,
+        name: '/docs',
+        handle: async ({ req, res, url }) => {
+            const guide = await loadGuide(
+                ROUTES.map((r) => ({
+                    method: r.method,
+                    path: `${PREFIX}${r.name === '/' ? '' : r.name}`,
+                    scope: r.scope === null ? 'public' : r.scope === 'any' ? 'any key' : r.scope,
+                })),
+            );
+            if (!guide) return fail(503, 'DOCS_UNAVAILABLE', 'The usage guide is missing from this server.');
+
+            const etag = `"${guide.version}"`;
+            // Agents can poll cheaply: an unchanged guide answers 304 with no body.
+            if (req.headers['if-none-match'] === etag) {
+                res.writeHead(304, { ETag: etag });
+                res.end();
+                return 'sent';
+            }
+            res.setHeader('ETag', etag);
+            res.setHeader('Cache-Control', 'no-cache');
+            if (url.searchParams.get('format') === 'json') {
+                return { status: 200, body: guide };
+            }
+            res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8', 'X-Guide-Version': guide.version });
+            res.end(guide.markdown);
+            return 'sent';
         },
     },
     {
@@ -341,8 +375,8 @@ export async function handleApiV1(req: IncomingMessage, res: ServerResponse, url
     // Keys, not origins, are what protect the API, so any site may call it.
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-API-Key');
-    res.setHeader('Access-Control-Expose-Headers', 'X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-API-Key, If-None-Match');
+    res.setHeader('Access-Control-Expose-Headers', 'X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After, ETag, X-Guide-Version');
 
     if (req.method === 'OPTIONS') {
         res.writeHead(204);

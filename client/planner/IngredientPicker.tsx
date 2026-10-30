@@ -183,7 +183,7 @@ export default function IngredientPicker({
                     {isLoading && (
                         <div className="planner-picker-status" role="status">
                             <span className="inline-loading">
-                                Searching USDA...
+                                Searching...
                             </span>
                         </div>
                     )}

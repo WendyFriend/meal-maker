@@ -68,7 +68,7 @@ const SOURCE_LABELS: Record<
     NonNullable<MealIngredient['nutritionSource']>,
     string
 > = {
-    usda: 'USDA',
+    usda: 'Database',
     user: 'Yours',
     estimated: 'Estimated',
 };

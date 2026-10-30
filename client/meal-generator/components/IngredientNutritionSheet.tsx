@@ -14,7 +14,7 @@ type IngredientNutritionSheetProps = {
 };
 
 function describeSource({ nutritionSource, usda }: IngredientNutrition) {
-    if (usda) return `USDA: ${usda.description}`;
+    if (usda) return `Our database: ${usda.description}`;
     if (nutritionSource === 'user') return 'Your saved nutrition';
     if (nutritionSource === 'estimated') return 'Estimated by AI';
 

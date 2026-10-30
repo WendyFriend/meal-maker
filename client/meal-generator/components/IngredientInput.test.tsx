@@ -332,10 +332,10 @@ describe('USDA suggestions in ingredient search', () => {
         const option = await screen.findByRole('option', {
             name: /Spinach, frozen/,
         });
-        expect(screen.getByText('From USDA')).toBeInTheDocument();
+        expect(screen.getByText('From our database')).toBeInTheDocument();
         expect(fetch).toHaveBeenCalledTimes(1);
         expect(fetch.mock.calls[0][0]).toBe('/api/nutrition?q=spin');
-        // The saved "Spinach" is not repeated under USDA.
+        // The saved "Spinach" is not repeated under the database group.
         expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(
             ['Spinach', 'Spinach, frozen120 kcal', '+ spin↵'],
         );
@@ -384,7 +384,7 @@ describe('USDA suggestions in ingredient search', () => {
         render(<Form />);
         await user.type(screen.getByRole('combobox'), 'spin');
         await new Promise((resolve) => setTimeout(resolve, 450));
-        expect(screen.queryByText('From USDA')).toBeNull();
+        expect(screen.queryByText('From our database')).toBeNull();
         expect(
             screen.getByRole('option', { name: /Spinach/ }),
         ).toBeInTheDocument();

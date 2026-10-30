@@ -59,7 +59,7 @@ const FEATURES: FeatureRow[] = [
         label: 'Copy meals across days, shop from your plan',
         value: (limits) => limits.planReuseTools,
     },
-    { label: 'USDA nutrition matching', value: () => true },
+    { label: 'Nutrition database matching', value: () => true },
     { label: 'Preparation & food-safety notes', value: () => true },
 ];
 

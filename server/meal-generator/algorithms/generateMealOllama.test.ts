@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GenerateMealRequest } from '../../../shared/types/types.ts';
-import { buildMealPrompts, getMacroSplit } from './generateMealOllama.ts';
+import { buildMealPrompts, getMacroSplit, withoutExtras } from './generateMealOllama.ts';
 
 const chicken = {
     name: 'Chicken',
@@ -74,5 +74,22 @@ describe('buildMealPrompts', () => {
         const { systemPrompt } = build({});
         expect(systemPrompt).not.toContain('HARD rule');
         expect(systemPrompt).not.toContain('20% lower');
+    });
+});
+
+describe('withoutExtras', () => {
+    const requested = [{ name: 'Chicken breast' }, { name: 'Broccoli' }];
+
+    it('drops ingredients the cook did not ask for', () => {
+        const kept = withoutExtras(
+            [{ name: 'chicken breast' }, { name: 'Olive oil' }, { name: 'broccoli' }, { name: 'Garlic' }],
+            requested,
+        );
+        expect(kept.map((i) => i.name)).toEqual(['chicken breast', 'broccoli']);
+    });
+
+    it('keeps everything when a requested ingredient is missing (e.g. left out for diet)', () => {
+        const returned = [{ name: 'Broccoli' }, { name: 'Olive oil' }];
+        expect(withoutExtras(returned, requested)).toEqual(returned);
     });
 });

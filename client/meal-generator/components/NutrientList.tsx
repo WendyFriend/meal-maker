@@ -33,7 +33,7 @@ function NutrientList({ amounts, coverage, basis }: NutrientListProps) {
     const hasLockedNutrients = countRows(allGroups) > countRows(groups);
     const partialNote =
         coverage && coverage.known > 0 && coverage.known < coverage.total
-            ? `Based on USDA data for ${coverage.known} of ${coverage.total} ingredients, so totals may be low. `
+            ? `Based on our database for ${coverage.known} of ${coverage.total} ingredients, so totals may be low. `
             : '';
 
     return (
