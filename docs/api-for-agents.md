@@ -5,6 +5,19 @@ self-contained: read it and you can use every endpoint. Longer prose version for
 humans: [api.md](api.md). Type definitions: `shared/types/spoken.ts` and
 `shared/types/types.ts`.
 
+**Always work from the latest copy.** The server serves this guide, kept up to
+date as the API changes:
+
+```
+GET https://mealmaker.brotherk3d.com/api/v1/docs              # markdown (no key needed)
+GET https://mealmaker.brotherk3d.com/api/v1/docs?format=json  # { markdown, version, updated }
+```
+
+Fetch it at the start of each session. To check for changes cheaply, send the
+`ETag` from your last fetch as `If-None-Match`; an unchanged guide answers `304`
+with no body. It ends with a table of the endpoints the server actually has,
+generated from the server itself, so trust that table over any copy you saved.
+
 ## What it is
 
 A JSON HTTP API over a nutrition database (about 7,800 USDA foods, with a tuned
