@@ -17,9 +17,14 @@ export function generateMeal(
     ingredientNutritions: IngredientNutrition[],
     requirements: MealRequirements,
 ): MealIngredient[] {
+    const targetCalories = requirements.calories ?? 600;
+    const targetProteinPercentage =
+        requirements.proteinGrams !== undefined && targetCalories > 0
+            ? (requirements.proteinGrams * 4 * 100) / targetCalories
+            : (requirements.proteinPercentage ?? 30);
     const classifiedIngredients = classifyIngredients(
         ingredientNutritions,
-        requirements.proteinPercentage ?? 30,
+        targetProteinPercentage,
     );
 
     const meal = [];
@@ -42,12 +47,9 @@ export function generateMeal(
         0,
     );
 
-    const targetCalories = requirements.calories ?? 600;
-    const targetProteinPercentage = requirements.proteinPercentage ?? 30;
-    const targetProteinGrams = getTargetProteinGrams(
-        targetCalories,
-        targetProteinPercentage,
-    );
+    const targetProteinGrams =
+        requirements.proteinGrams ??
+        getTargetProteinGrams(targetCalories, targetProteinPercentage);
     const proteinGramsNeeded = Math.max(
         0,
         targetProteinGrams - proteinGramsSoFar,

@@ -3,11 +3,11 @@
 Read the relevant entry points below first; avoid repeatedly reading the whole app for a focused change.
 
 | Area                                           | Entry points                                                                                                         |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Navigation, selected pages, browser back       | `client/App.tsx` for page state; `client/navigation/pages.ts`, `PageHeader.tsx`, and `NavigationPanel.tsx` for routes and navigation UI                                               |
 | Theme tokens and typography                    | `client/index.css`                                                                                                   |
-| Main meal form and intro layout                | `client/meal-generator/MealMaker.css`, `client/meal-generator/components/MealMakerIntro.tsx`                         |
-| Ingredient search and quick add                | `client/meal-generator/components/IngredientInput.tsx`, `QuickAddIngredientPicker.tsx` in the same directory         |
+| Main meal form and intro layout                | `client/meal-generator/components/MealMakerForm.tsx` and `.css` for the form; `MealMaker.css` and `components/MealMakerIntro.tsx` for intro/page layout     |
+| Ingredient search and quick add                | `client/meal-generator/components/IngredientInput.tsx`, `QuickAddIngredientPicker.tsx`, and `SelectedIngredients.tsx` in the same directory                 |
 | Meal result composition                        | `client/meal-generator/components/MealResult.tsx`                                                                 |
 | Shared ingredient nutrition content            | `client/meal-generator/components/IngredientNutritionContent.tsx` and `.css`                                         |
 | Sheet container and full detail page           | `client/meal-generator/components/IngredientNutritionSheet.tsx` and `.css`; `client/IngredientDetail.tsx`, `IngredientPage.tsx`, and `IngredientDetail.css` |
@@ -30,6 +30,7 @@ Read the relevant entry points below first; avoid repeatedly reading the whole a
 - Saved meal edits are handled by `client/RecipeDetail.tsx`; `App.tsx` persists them with `updateRecipe` and passes saved overrides to the mounted My Meals list. Instructions editing lives in the shared `MealInstructions` component.
 - My Ingredients and My Meals share `useCollectionSelection` and `CollectionSelection` controls for long press and bulk deletion. Keep both behaviours consistent.
 - Add and Edit Ingredient share the form in `client/IngredientPage.tsx`; wrappers handle creating and updating saved records.
+- Ingredient nutrition sheets share `NutritionDialog` and `NutritionSheetDialog`, backed by the reusable `client/components/SlidingSheet.tsx` and `.css` for modal focus/scroll ownership, draggable handles and exit transitions. Mount `SlidingSheet` while open and unmount it in `onClose`. Their edits to saved ingredients use `client/ingredients/IngredientCollectionContext.ts` to update App's existing ingredient state; keep chip and meal-result sheets consistent.
 - Database schema changes live in `supabase/migrations/`. Custom ingredient preparation tips use the nullable `user_ingredients.preparation_tips` text array; existing rows fall back to shared suggestions.
 
 - Keep header edit and save buttons keyed separately and prevent the edit click’s default action, so a trusted click cannot immediately submit the newly rendered save button.
@@ -39,11 +40,13 @@ Read the relevant entry points below first; avoid repeatedly reading the whole a
 - Use `client/components/ResetIcon.tsx` for reset controls and give icon-only buttons an accessible name and tooltip.
 - Use `client/components/LoadingSpinner.tsx` for loading indicators, with status text on the container. It shares styling and reduced-motion support across the app.
 - Use `client/components/EditIcon.tsx` and the `edit-icon-button` class for edit controls, matching My Ingredients.
-- Reuse existing shared components and tokens. Nutrition content styles belong in `IngredientNutritionContent.css`; sheet positioning belongs in `IngredientNutritionSheet.css`.
+- Create Meal state stays in App; `MealMakerForm` composes the controls. Control styling belongs in its own CSS (`IngredientInput`, `QuickAddIngredientPicker`, `Calories`, `SelectedIngredients`); shared field/heading styling belongs in `MealFormField.css`. Avoid restoring duplicate form-scoped control overrides in `MealMaker.css`.
+- Reuse existing shared components and tokens. Nutrition content styles belong in `IngredientNutritionContent.css`; generic sheet positioning/gestures belong in `components/SlidingSheet`; ingredient sheet controls belong in `IngredientNutritionSheet.css`.
 - The detail page uses an `h1` and the sheet an `h4`. Keep their shared title typography explicit, including letter spacing, so global heading rules do not make them diverge.
 - Nutrition records are per 100g. Meal totals and ingredient contributions multiply by ingredient weight / 100. Missing data is different from a genuine zero.
 - Keep ingredient identity and preparation form intact during food matching. Micronutrient lookups are shared and cached between meal and ingredient views.
-- The Settings meal generator is sent as `X-Meal-Generator` for generation and ingredient-nutrition requests. Ollama uses USDA lookups; Nutrition Lab uses its API. API-key availability must not select the provider. Keep frontend lookup caches scoped to the selected provider. Nutrition Lab generation can reuse a complete, matching food record via its `match` input.
+- `IngredientNutritionContent` owns the shared food/nutrition lookup and passes its state to `IngredientNutritionDetails`; the header image reuses the supplied or looked-up food ID. Request a missing food source for images only when Nutrition Lab is selected, and preserve `thumbnailSource: 'local'` on Ollama meals.
+- The Settings meal generator is sent as `X-Meal-Generator` for generation and ingredient-nutrition requests. Ollama uses USDA lookups; Nutrition Lab uses its API. API-key availability must not select the provider. Keep frontend lookup caches scoped to the selected provider. Nutrition Lab generation sends valid macro fields directly alongside each ingredient name; do not nest them in `match` or require a food ID. Send available micronutrients as a sparse `micronutrientsPer100g` object, preserving zeros and omitting unknown values. NL fills missing values; explicit response nulls remain unavailable and should not trigger another lookup. Use NL's returned macros for meal totals so they match its portion sizing.
 - Preserve unrelated working changes. The repository may contain substantial uncommitted UI work.
 
 # Focused validation

@@ -16,8 +16,9 @@ Create one realistic, balanced meal from the provided ingredients.
 Priorities, in order:
 1. Use all and only the provided ingredients.
 2. Get as close as reasonably possible to the target calories.
-3. Keep ingredient portions realistic and practical.
-4. Aim for approximately 55% carbs, 15% protein, and 30% fat by energy.
+3. Meet the target protein grams when one is provided; otherwise aim for approximately 15% protein by energy.
+4. Keep ingredient portions realistic and practical.
+5. Follow every selected preference in the request: under-25-minutes means total active and cooking time under 25 minutes; plant-based means vegan; low-carb means minimise carbohydrate-rich ingredients while keeping a balanced meal.
 
 Rules:
 - Exact calories and macro percentages are not required.
@@ -65,6 +66,7 @@ Do not return meal-level nutrition totals.
 
 export async function generateMealWithOllama(
     input: GenerateMealRequest,
+    onTiming?: (timings: { usdaMs: number; ollamaMs: number }) => void,
 ): Promise<GenerateMealResponse> {
     const apiKey = process.env.OLLAMA_API_KEY;
     const model = process.env.OLLAMA_MODEL;
@@ -79,10 +81,12 @@ export async function generateMealWithOllama(
 
     const ai = new OllamaAiClient(apiKey, model);
 
+    const usdaStarted = performance.now();
     const { ingredientsWithNutrition } = await getNutritionForIngredients(
         input.ingredients,
         'usda',
     );
+    const usdaMs = performance.now() - usdaStarted;
     const nutritionByName = new Map(
         ingredientsWithNutrition.map((ingredient) => [
             ingredient.name.trim().toLowerCase(),
@@ -97,6 +101,8 @@ export async function generateMealWithOllama(
 
     const userPrompt = JSON.stringify({
         targetCalories: input.requirements.calories,
+        targetProteinGrams: input.requirements.proteinGrams,
+        preferences: input.requirements.preferences,
         ingredients,
         preparationGuidance: ingredients.map(({ name, preparationTips }) => ({
             ingredient: name,
@@ -104,11 +110,13 @@ export async function generateMealWithOllama(
         })),
     });
 
+    const ollamaStarted = performance.now();
     const response = await ai.generate(
         MEAL_GENERATION_SYSTEM_PROMPT,
         userPrompt,
         'json',
     );
+    onTiming?.({ usdaMs, ollamaMs: performance.now() - ollamaStarted });
 
     let parsed: unknown;
 
@@ -143,6 +151,7 @@ export async function generateMealWithOllama(
             );
             return {
                 ...ingredient,
+                thumbnailSource: 'local',
                 // Micronutrients come from supplied/catalogue data, never AI estimates.
                 ...Object.fromEntries(
                     MICRONUTRIENTS.map(({ key }) => [key, supplied?.[key]]),
@@ -168,12 +177,16 @@ export async function generateMealWithOllama(
 }
 
 export async function handleGenerateMealOllama(input: GenerateMealRequest) {
-    const meal = await generateMealWithOllama(input);
+    let serverTiming = '';
+    const meal = await generateMealWithOllama(input, ({ usdaMs, ollamaMs }) => {
+        serverTiming = `usda;dur=${usdaMs.toFixed(1)};desc="USDA lookup phase", ollama;dur=${ollamaMs.toFixed(1)};desc="Ollama round trip"`;
+    });
 
     console.log('AI generated meal:', meal);
 
     return {
         status: 200,
         body: meal,
+        serverTiming,
     };
 }

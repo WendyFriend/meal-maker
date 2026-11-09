@@ -30,6 +30,73 @@
     margin: 0 auto;
 }
 
+.page-header-create-recipe {
+    background: var(--bg);
+    border-bottom: 0;
+}
+.page-header-create-recipe .page-header-inner {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 8px;
+}
+.page-header-create-title {
+    color: var(--text-h-strong);
+    font-family: var(--heading);
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+}
+.page-header-create-cancel,
+.page-header-create-save {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition:
+        background 160ms ease,
+        transform 160ms ease;
+}
+.page-header-create-cancel {
+    color: var(--text-h);
+}
+.page-header-create-save {
+    color: var(--coral);
+}
+.page-header-create-cancel svg,
+.page-header-create-save svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.page-header-create-cancel:active,
+.page-header-create-save:active {
+    transform: scale(0.92);
+}
+.page-header-create-cancel:hover,
+.page-header-create-save:hover {
+    background: var(--accent-bg);
+}
+.page-header-create-cancel:focus-visible,
+.page-header-create-save:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .page-header-create-cancel,
+    .page-header-create-save {
+        transition: none;
+    }
+}
+
 /* =========================
    Brand mark
    ========================= */
@@ -55,7 +122,8 @@
     color: #ffffff;
 }
 
-.brand-mark svg {
+.brand-mark :is(svg, img) {
+    display: block;
     width: 34px;
     height: 34px;
 
@@ -250,6 +318,7 @@
 }
 
 .app {
+    --mobile-bottom-nav-height: 0px;
     display: flex;
     flex-direction: column;
     height: 100svh;
@@ -266,6 +335,37 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+}
+
+.app > .page-transition:has(.pull-refresh-active:not([hidden])) {
+    overscroll-behavior-y: contain;
+}
+
+html:has(.pull-refresh-active:not([hidden])),
+body:has(.pull-refresh-active:not([hidden])) {
+    overscroll-behavior-y: none;
+}
+
+@media (max-width: 640px) {
+    .app > .page-transition {
+        scrollbar-width: none;
+    }
+
+    .app > .page-transition::-webkit-scrollbar {
+        display: none;
+    }
+
+    .app:has(> .bottom-navigation) {
+        --mobile-bottom-nav-height: calc(64px + env(safe-area-inset-bottom));
+    }
+
+    .app:has(> .bottom-navigation) .page-header-menu {
+        display: none;
+    }
+
+    .app:has(> .bottom-navigation) .saved-collection-add-button {
+        bottom: calc(var(--mobile-bottom-nav-height) + 12px);
+    }
 }
 
 /* =========================
@@ -322,7 +422,8 @@
     flex-direction: column;
     align-items: center;
     gap: var(--space-3);
-    margin-top: var(--space-10);
+    margin-top: var(--space-6);
+    padding-bottom: max(var(--space-8), env(safe-area-inset-bottom));
 }
 
 .generating-indicator .generating-message {
@@ -428,8 +529,45 @@
    ========================= */
 
 @media (max-width: 640px) {
+    /* A focused text-entry control is the reliable cross-browser signal that
+       the mobile software keyboard is active. Reclaim the header space until
+       editing finishes; taps on non-keyboard controls leave it untouched. */
+    .app:has(
+            :is(
+                input:not(
+                        [type='checkbox'],
+                        [type='radio'],
+                        [type='button'],
+                        [type='submit'],
+                        [type='reset'],
+                        [type='range']
+                    ):not(.ingredient-input input),
+                textarea
+            ):focus
+        )
+        > .page-header:not(.page-header-create-recipe) {
+        display: none;
+    }
+
+    .app:has(
+            :is(
+                input:not(
+                        [type='checkbox'],
+                        [type='radio'],
+                        [type='button'],
+                        [type='submit'],
+                        [type='reset'],
+                        [type='range']
+                    ):not(.ingredient-input input),
+                textarea
+            ):focus
+        )
+        .page-content-meal-maker {
+        --meal-maker-header-height: 0px;
+    }
+
     .page-header-meal-maker .page-header-inner {
-        height: 52px;
+        height: var(--header-height);
         padding-inline: 14px;
     }
 

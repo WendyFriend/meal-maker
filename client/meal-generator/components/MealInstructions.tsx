@@ -1,7 +1,5 @@
 import { useId } from 'react';
 import ResetIcon from '../../components/ResetIcon';
-import type { MealIngredient } from '../../../shared/types/types';
-import { getIngredientPreparation } from '../../../shared/ingredientPreparation';
 import './MealInstructions.css';
 
 export type InstructionEditor = {
@@ -14,38 +12,19 @@ export type InstructionEditor = {
 
 export default function MealInstructions({
     instructions,
-    ingredients,
     editor,
 }: {
     editor?: InstructionEditor;
     instructions: string[];
-    ingredients: MealIngredient[];
 }) {
     const editorId = useId();
-    const preparation: string[] = [];
-    const cooking: string[] = [];
-    for (const instruction of instructions) {
-        const text = instruction.trim();
-        if (!text) continue;
-        if (/^(prepare|preparation):\s*/i.test(text)) {
-            preparation.push(text.replace(/^(prepare|preparation):\s*/i, ''));
-        } else {
-            cooking.push(text.replace(/^cook(?:ing)?:\s*/i, ''));
-        }
-    }
-    const guides = preparation.length
-        ? []
-        : ingredients
-              .filter(({ weight }) => weight > 0)
-              .map(({ name, preparationTips }) => ({
-                  name,
-                  custom: preparationTips !== undefined,
-                  ...getIngredientPreparation(name, preparationTips),
-              }))
-              .filter(
-                  ({ source, custom, tips }) =>
-                      (source || custom) && tips.length > 0,
-              );
+    const cooking = instructions
+        .map((instruction) =>
+            instruction
+                .trim()
+                .replace(/^(?:prepare|preparation|cook(?:ing)?):\s*/i, ''),
+        )
+        .filter(Boolean);
 
     return (
         <section className="meal-instructions" aria-label="Instructions">
@@ -84,62 +63,17 @@ export default function MealInstructions({
                         disabled={editor.disabled}
                     />
                 </div>
+            ) : cooking.length > 0 ? (
+                <div className="meal-instruction-group">
+                    <h4>Cook & serve</h4>
+                    <ol>
+                        {cooking.map((step, index) => (
+                            <li key={index}>{step}</li>
+                        ))}
+                    </ol>
+                </div>
             ) : (
-                <>
-                    {(preparation.length > 0 || guides.length > 0) && (
-                        <div className="meal-instruction-group">
-                            <h4>Prepare your ingredients</h4>
-                            {preparation.length > 0 ? (
-                                <ol>
-                                    {preparation.map((step, index) => (
-                                        <li key={index}>{step}</li>
-                                    ))}
-                                </ol>
-                            ) : (
-                                <div className="meal-preparation-guides">
-                                    {guides.map(
-                                        (
-                                            { name, title, tips, source },
-                                            index,
-                                        ) => (
-                                            <div
-                                                className="meal-preparation-guide"
-                                                key={`${name}-${index}`}
-                                            >
-                                                <h5>{name}</h5>
-                                                <p>{title}</p>
-                                                <ul>
-                                                    {tips.map((tip) => (
-                                                        <li key={tip}>{tip}</li>
-                                                    ))}
-                                                </ul>
-                                                {source && (
-                                                    <a
-                                                        href={source.url}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                    >
-                                                        {source.label} ↗
-                                                    </a>
-                                                )}
-                                            </div>
-                                        ),
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {cooking.length > 0 && (
-                        <div className="meal-instruction-group">
-                            <h4>Cook & serve</h4>
-                            <ol>
-                                {cooking.map((step, index) => (
-                                    <li key={index}>{step}</li>
-                                ))}
-                            </ol>
-                        </div>
-                    )}
-                </>
+                <p className="meal-instructions-empty">No steps added.</p>
             )}
         </section>
     );

@@ -34,6 +34,35 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
+.micronutrient-missing-data {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--accent-bg);
+}
+.micronutrient-missing-data h5,
+.micronutrient-missing-data p,
+.micronutrient-missing-data span {
+    margin: 0;
+}
+.micronutrient-missing-data h5 {
+    color: var(--text-h);
+    font-size: 12px;
+    font-weight: 650;
+}
+.micronutrient-missing-data p {
+    margin-top: 3px;
+    color: var(--text-h);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.micronutrient-missing-data span {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
 .micronutrient-contributors-track {
     width: 100%;
     min-height: 28px;

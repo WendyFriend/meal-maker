@@ -2,6 +2,7 @@ import {
     MICRONUTRIENTS,
     type MicronutrientValues,
 } from '../../shared/micronutrients';
+import type { IngredientInfo } from '../../shared/types/types';
 import { loadMealGenerator } from '../settings/mealGenerator';
 
 export const micronutrientLookupKey = (name: string) =>
@@ -21,11 +22,9 @@ export function needsMicronutrients(ingredient: MicronutrientValues): boolean {
 }
 
 // Share successful/in-flight lookups between meal totals and ingredient details.
-const lookups = new Map<string, Promise<MicronutrientValues>>();
+const lookups = new Map<string, Promise<IngredientInfo>>();
 
-export function getIngredientMicronutrients(
-    name: string,
-): Promise<MicronutrientValues> {
+export function getIngredientNutrition(name: string): Promise<IngredientInfo> {
     const generator = loadMealGenerator();
     const key = `${generator}:${micronutrientLookupKey(name)}`;
     const cached = lookups.get(key);
@@ -45,8 +44,19 @@ export function getIngredientMicronutrients(
             const data: unknown = await response.json();
             if (!data || typeof data !== 'object')
                 throw new Error('Invalid micronutrient response');
-            const source = data as MicronutrientValues;
+            const source = data as IngredientInfo;
             return {
+                name:
+                    typeof source.name === 'string' && source.name.trim()
+                        ? source.name
+                        : name,
+                caloriesPer100g: source.caloriesPer100g,
+                proteinPer100g: source.proteinPer100g,
+                carbohydratePer100g: source.carbohydratePer100g,
+                fatPer100g: source.fatPer100g,
+                sugarPer100g: source.sugarPer100g,
+                saturatedFatPer100g: source.saturatedFatPer100g,
+                fiberPer100g: source.fiberPer100g,
                 ...Object.fromEntries(
                     MICRONUTRIENTS.map(({ key }) => [
                         key,
@@ -56,6 +66,8 @@ export function getIngredientMicronutrients(
                     ]),
                 ),
                 nutritionSource: source.nutritionSource,
+                unavailableMicronutrients: source.unavailableMicronutrients,
+                resolvedName: source.resolvedName,
             };
         })
         .catch((error: unknown) => {

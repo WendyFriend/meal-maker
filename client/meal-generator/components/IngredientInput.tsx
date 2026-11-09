@@ -1,46 +1,77 @@
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import SlidingSheet from '../../components/SlidingSheet';
+import FavouriteIngredientsSheet from './FavouriteIngredientsSheet';
 import './IngredientInput.css';
 import './MealFormField.css';
-import QuickAddIngredientPicker from './QuickAddIngredientPicker';
 import { normalizeIngredientName } from '../../utils/Ingredient';
 import type { UserIngredient } from '../../../shared/types/types';
+import { commonQuickAddIngredients } from './commonQuickAddIngredients';
+
+const commonSearchIngredients = Object.values(commonQuickAddIngredients).flat();
 
 type IngredientInputProps = {
     ingredients: string[];
     savedIngredients: UserIngredient[];
     onChange: (ingredients: string[]) => void;
-    removeIngredient: (ingredient: string) => void;
-    onIngredientClick: (index: number) => void;
+    removeIngredient?: (ingredient: string) => void;
 };
+
+type SpeechResult = { transcript: string };
+type SpeechRecognitionLike = {
+    lang: string;
+    interimResults: boolean;
+    maxAlternatives: number;
+    onresult:
+        | ((event: { results: ArrayLike<ArrayLike<SpeechResult>> }) => void)
+        | null;
+    onerror: (() => void) | null;
+    onend: (() => void) | null;
+    start: () => void;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 function IngredientInput({
     ingredients,
     savedIngredients,
     onChange,
-    removeIngredient,
-    onIngredientClick,
 }: IngredientInputProps) {
+    const listboxId = useId();
+    const inputId = useId();
+    const suggestionsRef = useRef<HTMLDivElement>(null);
+    const blurTimer = useRef<number | null>(null);
     const [input, setInput] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [deletingIngredient, setDeletingIngredient] = useState<string | null>(
-        null,
-    );
 
     const [duplicateMessage, setDuplicateMessage] = useState<string | null>(
         null,
     );
     const [isDuplicateMessageHiding, setIsDuplicateMessageHiding] =
         useState(false);
+    const [favouritesOpen, setFavouritesOpen] = useState(false);
+    const [photo, setPhoto] = useState<File | null>(null);
+    const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+    const [photoIngredientNames, setPhotoIngredientNames] = useState('');
+    const [voiceStatus, setVoiceStatus] = useState('');
+    const [isListening, setIsListening] = useState(false);
 
     // Keyboard navigation: index of the highlighted row in the dropdown,
-    // or -1 when nothing is highlighted. Rows are the suggestions, followed
-    // by the custom "+ add" row when it is shown.
+    // or -1 when nothing is highlighted. The custom entry precedes matches.
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
     const duplicateMessageTimer = useRef<number | null>(null);
     const duplicateMessageHideTimer = useRef<number | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const photoInputRef = useRef<HTMLInputElement>(null);
+    const photoUrlRef = useRef<string | null>(null);
+    const ingredientInputRef = useRef<HTMLDivElement>(null);
+
+    useEffect(
+        () => () => {
+            if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+        },
+        [],
+    );
 
     const normalizedInput = normalizeIngredientName(input);
     const selectedNames = new Set(ingredients.map(normalizeIngredientName));
@@ -49,33 +80,43 @@ function IngredientInput({
         return selectedNames.has(normalizeIngredientName(name));
     }
 
-    const suggestions =
+    const seenSuggestions = new Set<string>();
+    const matchingIngredients =
         normalizedInput.length === 0
             ? []
-            : savedIngredients
-                  .filter((ingredient) =>
-                      normalizeIngredientName(ingredient.name).includes(
-                          normalizedInput,
-                      ),
+            : [
+                  ...savedIngredients.map((ingredient) => ({
+                      key: `saved:${ingredient.ingredientId}`,
+                      name: ingredient.name,
+                  })),
+                  ...commonSearchIngredients.map((ingredient) => ({
+                      key: `common:${normalizeIngredientName(ingredient.name)}`,
+                      name: ingredient.name,
+                  })),
+              ].filter(({ name }) => {
+                  const normalizedName = normalizeIngredientName(name);
+                  if (
+                      !normalizedName.includes(normalizedInput) ||
+                      seenSuggestions.has(normalizedName)
                   )
-                  .slice(0, 6);
+                      return false;
+                  seenSuggestions.add(normalizedName);
+                  return true;
+              });
+    const suggestions = matchingIngredients.slice(0, 6);
 
-    const exactMatch = savedIngredients.find(
-        (ingredient) =>
-            normalizeIngredientName(ingredient.name) === normalizedInput,
+    const exactMatch = matchingIngredients.find(
+        ({ name }) => normalizeIngredientName(name) === normalizedInput,
     );
 
     const canAddCustom =
         normalizedInput.length > 0 && !exactMatch && !isDuplicate(input);
 
-    // The dropdown rows the keyboard navigates through: saved suggestions,
-    // plus the custom "+ add" row when it is visible.
+    // Keep the custom entry above partial matches, followed by saved and
+    // curated suggestions. The saved record wins when names overlap.
     const suggestionRows: { key: string; name: string }[] = [
-        ...suggestions.map((ingredient) => ({
-            key: ingredient.ingredientId,
-            name: ingredient.name,
-        })),
-        ...(canAddCustom ? [{ key: '__custom__', name: input }] : []),
+        ...(canAddCustom ? [{ key: 'custom', name: input }] : []),
+        ...suggestions,
     ];
 
     // Clamp the highlight inside the list as the query changes; derived
@@ -94,7 +135,13 @@ function IngredientInput({
         }
     }, []);
 
-    useEffect(() => clearDuplicateMessageTimers, [clearDuplicateMessageTimers]);
+    useEffect(
+        () => () => {
+            clearDuplicateMessageTimers();
+            window.clearTimeout(blurTimer.current ?? undefined);
+        },
+        [clearDuplicateMessageTimers],
+    );
 
     function showDuplicateMessage(ingredient: string) {
         clearDuplicateMessageTimers();
@@ -134,7 +181,6 @@ function IngredientInput({
         setInput('');
         setShowSuggestions(false);
         onChange([...ingredients, ingredient]);
-
         // Keep the field ready for the next ingredient.
         if (focusSearch) {
             window.requestAnimationFrame(() =>
@@ -147,8 +193,11 @@ function IngredientInput({
         setHighlightedIndex(index);
 
         // Keep the highlighted row visible when navigating with the keyboard.
-        const rows = document.querySelectorAll('.ingredient-suggestion');
-        rows[index]?.scrollIntoView({ block: 'nearest' });
+        const rows =
+            suggestionsRef.current?.querySelectorAll<HTMLElement>(
+                '[role="option"]',
+            );
+        rows?.[index]?.scrollIntoView({ block: 'nearest' });
     }
 
     function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -196,9 +245,13 @@ function IngredientInput({
             return;
         }
 
-        // Prefer the first suggestion that has not been added yet; pressing
-        // Enter on an already-added one shows the duplicate feedback instead
-        // of re-adding it.
+        // If there is no custom entry, use the first suggestion that has not
+        // already been added.
+        if (canAddCustom) {
+            addIngredient(input);
+            return;
+        }
+
         const addableSuggestion = suggestions.find(
             (suggestion) => !isDuplicate(suggestion.name),
         );
@@ -208,48 +261,86 @@ function IngredientInput({
             return;
         }
 
-        if (canAddCustom) {
-            addIngredient(input);
-            return;
-        }
-
         if (normalizedInput && isDuplicate(input)) {
             showDuplicateFeedback(input);
         }
     }
 
-    function handleDeleteIngredient(ingredient: string) {
-        setDeletingIngredient(ingredient);
-    }
+    const suggestionsOpen = showSuggestions && normalizedInput.length > 0;
+    const optionId = (key: string) => `${listboxId}-${key}`;
 
-    function handleClearAll() {
-        setDeletingIngredient(null);
-        onChange([]);
-    }
-
-    function handleDeleteAnimationEnd(
-        event: React.AnimationEvent<HTMLDivElement>,
-        ingredient: string,
-    ) {
-        if (
-            event.animationName !== 'ingredient-chip-delete-out' ||
-            deletingIngredient !== ingredient
-        ) {
+    function startVoiceInput() {
+        const speechWindow = window as Window & {
+            SpeechRecognition?: SpeechRecognitionConstructor;
+            webkitSpeechRecognition?: SpeechRecognitionConstructor;
+        };
+        const Recognition =
+            speechWindow.SpeechRecognition ??
+            speechWindow.webkitSpeechRecognition;
+        if (!Recognition) {
+            setVoiceStatus('Voice input is not supported in this browser.');
             return;
         }
 
-        removeIngredient(ingredient);
-        setDeletingIngredient(null);
+        const recognition = new Recognition();
+        recognition.lang = navigator.language || 'en-AU';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = (event) => {
+            const transcript = event.results[0]?.[0]?.transcript?.trim();
+            if (transcript) {
+                setInput(transcript);
+                setShowSuggestions(true);
+                setVoiceStatus('Voice input added to search.');
+                inputRef.current?.focus();
+            }
+        };
+        recognition.onerror = () => {
+            setVoiceStatus('Could not hear that. Try again or type instead.');
+            setIsListening(false);
+        };
+        recognition.onend = () => setIsListening(false);
+        setVoiceStatus('Listening…');
+        setIsListening(true);
+        try {
+            recognition.start();
+        } catch {
+            setIsListening(false);
+            setVoiceStatus('Could not start voice input. Try again.');
+        }
+    }
+
+    function addPhotoIngredients() {
+        const names = photoIngredientNames
+            .split(/[,\n]+/)
+            .map((name) => name.trim())
+            .filter(Boolean);
+        const additions = names.filter(
+            (name) =>
+                !ingredients.some(
+                    (ingredient) =>
+                        normalizeIngredientName(ingredient) ===
+                        normalizeIngredientName(name),
+                ),
+        );
+        if (additions.length) onChange([...ingredients, ...additions]);
+        if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+        photoUrlRef.current = null;
+        setPhoto(null);
+        setPhotoUrl(null);
+        setPhotoIngredientNames('');
+    }
+
+    function clearPhoto() {
+        if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+        photoUrlRef.current = null;
+        setPhoto(null);
+        setPhotoUrl(null);
+        setPhotoIngredientNames('');
     }
 
     return (
-        <div className="ingredient-input">
-            <div className="ingredient-input-header">
-                <div className="ingredient-heading-copy">
-                    <h2>1. Choose your ingredients</h2>
-                </div>
-            </div>
-
+        <div className="ingredient-input" ref={ingredientInputRef}>
             <div
                 className={`ingredient-input-field ${
                     duplicateMessage ? 'ingredient-input-field-dimmed' : ''
@@ -264,6 +355,7 @@ function IngredientInput({
                     </span>
 
                     <input
+                        id={inputId}
                         className="meal-form-field"
                         ref={inputRef}
                         type="text"
@@ -271,49 +363,76 @@ function IngredientInput({
                         onChange={(event) => {
                             setInput(event.target.value);
                             setShowSuggestions(true);
+                            setHighlightedIndex(0);
                         }}
-                        onFocus={() => setShowSuggestions(true)}
+                        onFocus={() => {
+                            window.clearTimeout(blurTimer.current ?? undefined);
+                            setShowSuggestions(true);
+                        }}
                         onBlur={() => {
-                            window.setTimeout(() => {
+                            window.clearTimeout(blurTimer.current ?? undefined);
+                            blurTimer.current = window.setTimeout(() => {
                                 setShowSuggestions(false);
                             }, 150);
                         }}
                         onKeyDown={handleKeyDown}
                         enterKeyHint="done"
-                        placeholder="Search ingredients..."
+                        placeholder="Search or add an ingredient"
                         aria-label="Search or add an ingredient"
                         role="combobox"
-                        aria-expanded={
-                            showSuggestions && normalizedInput.length > 0
-                        }
+                        aria-expanded={suggestionsOpen}
                         aria-autocomplete="list"
-                        aria-controls="ingredient-suggestions-listbox"
+                        aria-controls={suggestionsOpen ? listboxId : undefined}
                         aria-activedescendant={
+                            suggestionsOpen &&
                             activeHighlightedIndex >= 0 &&
                             suggestionRows[activeHighlightedIndex]
-                                ? `ingredient-option-${
-                                      suggestionRows[activeHighlightedIndex].key
-                                  }`
+                                ? optionId(
+                                      suggestionRows[activeHighlightedIndex]
+                                          .key,
+                                  )
                                 : undefined
                         }
                     />
                 </div>
 
-                {showSuggestions && normalizedInput.length > 0 && (
+                {suggestionsOpen && (
                     <div
                         className="ingredient-suggestions"
                         role="listbox"
-                        id="ingredient-suggestions-listbox"
+                        id={listboxId}
+                        ref={suggestionsRef}
                     >
+                        {canAddCustom && (
+                            <button
+                                type="button"
+                                id={optionId('custom')}
+                                role="option"
+                                aria-selected={activeHighlightedIndex === 0}
+                                className={`ingredient-suggestion ingredient-suggestion-custom ${
+                                    activeHighlightedIndex === 0
+                                        ? 'ingredient-suggestion-highlighted'
+                                        : ''
+                                }`}
+                                onPointerDown={(event) =>
+                                    event.preventDefault()
+                                }
+                                onClick={() => addIngredient(input)}
+                            >
+                                <span>+ {input.trim()}</span>
+                                <span className="ingredient-enter-hint">↵</span>
+                            </button>
+                        )}
                         {suggestions.map((ingredient, index) => {
                             const added = isDuplicate(ingredient.name);
                             const highlighted =
-                                index === activeHighlightedIndex;
+                                index + Number(canAddCustom) ===
+                                activeHighlightedIndex;
 
                             return (
                                 <button
-                                    key={ingredient.ingredientId}
-                                    id={`ingredient-option-${ingredient.ingredientId}`}
+                                    key={ingredient.key}
+                                    id={optionId(ingredient.key)}
                                     type="button"
                                     role="option"
                                     aria-selected={highlighted}
@@ -326,10 +445,14 @@ function IngredientInput({
                                             ? 'ingredient-suggestion-highlighted'
                                             : ''
                                     }`}
-                                    onPointerDown={(event) => {
-                                        event.preventDefault();
-                                        addIngredient(ingredient.name);
-                                    }}
+                                    // Keep search focused, but wait for the completed tap
+                                    // before removing the result under the pointer.
+                                    onPointerDown={(event) =>
+                                        event.preventDefault()
+                                    }
+                                    onClick={() =>
+                                        addIngredient(ingredient.name)
+                                    }
                                 >
                                     {ingredient.name}
 
@@ -342,31 +465,6 @@ function IngredientInput({
                             );
                         })}
 
-                        {canAddCustom && (
-                            <button
-                                type="button"
-                                id="ingredient-option-custom"
-                                role="option"
-                                aria-selected={
-                                    activeHighlightedIndex ===
-                                    suggestionRows.length - 1
-                                }
-                                className={`ingredient-suggestion ingredient-suggestion-custom ${
-                                    activeHighlightedIndex ===
-                                    suggestionRows.length - 1
-                                        ? 'ingredient-suggestion-highlighted'
-                                        : ''
-                                }`}
-                                onPointerDown={(event) => {
-                                    event.preventDefault();
-                                    addIngredient(input);
-                                }}
-                            >
-                                <span>+ {input.trim()}</span>
-                                <span className="ingredient-enter-hint">↵</span>
-                            </button>
-                        )}
-
                         {suggestions.length === 0 && !canAddCustom && (
                             <div className="ingredient-suggestion-empty">
                                 Already added
@@ -377,85 +475,127 @@ function IngredientInput({
             </div>
 
             <div
-                className={`ingredient-selection-row ${
-                    ingredients.length === 0
-                        ? 'ingredient-selection-row-empty'
-                        : ''
-                }`}
+                className="meal-maker-action-row"
+                role="group"
+                aria-label="More ways to add ingredients"
             >
-                <div className="ingredient-chips">
-                    {ingredients.map((ingredient, index) => {
-                        const isDeleting = deletingIngredient === ingredient;
-
-                        return (
-                            <div
-                                key={ingredient}
-                                className={`ingredient-chip-wrapper ${
-                                    isDeleting
-                                        ? 'ingredient-chip-wrapper-deleting'
-                                        : ''
-                                }`}
-                                onAnimationEnd={(event) =>
-                                    handleDeleteAnimationEnd(event, ingredient)
-                                }
-                            >
-                                <span className="ingredient-chip">
-                                    <button
-                                        type="button"
-                                        className="ingredient-chip-label"
-                                        onClick={() => onIngredientClick(index)}
-                                        aria-label={`Edit nutrition for ${ingredient}`}
-                                        disabled={isDeleting}
-                                    >
-                                        {ingredient}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="ingredient-chip-delete"
-                                        onClick={() =>
-                                            handleDeleteIngredient(ingredient)
-                                        }
-                                        aria-label={`Remove ${ingredient}`}
-                                        disabled={isDeleting}
-                                    >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            aria-hidden="true"
-                                            focusable="false"
-                                        >
-                                            <path d="M6 6l12 12M18 6L6 18" />
-                                        </svg>
-                                    </button>
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-                {ingredients.length > 0 && (
-                    <button
-                        type="button"
-                        className="ingredient-clear-all-button"
-                        onClick={handleClearAll}
+                <button
+                    type="button"
+                    onClick={startVoiceInput}
+                    aria-pressed={isListening}
+                >
+                    <span
+                        className="meal-maker-action-icon meal-maker-action-voice"
+                        aria-hidden="true"
                     >
-                        Clear all
-                    </button>
-                )}
+                        <svg viewBox="0 0 24 24">
+                            <rect x="9" y="3" width="6" height="12" rx="3" />
+                            <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" />
+                        </svg>
+                    </span>
+                    Voice
+                </button>
+                <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                >
+                    <span
+                        className="meal-maker-action-icon meal-maker-action-photo"
+                        aria-hidden="true"
+                    >
+                        <svg viewBox="0 0 24 24">
+                            <path d="M4 8h3l1.5-2h7L17 8h3a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 4 8Z" />
+                            <circle cx="12" cy="13" r="3.5" />
+                        </svg>
+                    </span>
+                    Photo
+                </button>
+                <button type="button" onClick={() => setFavouritesOpen(true)}>
+                    <span
+                        className="meal-maker-action-icon meal-maker-action-favourite"
+                        aria-hidden="true"
+                    >
+                        <svg viewBox="0 0 24 24">
+                            <path d="M9.153 5.408C10.42 3.136 11.053 2 12 2s1.58 1.136 2.847 3.408l.327.588c.36.646.54.969.821 1.182.28.213.63.292 1.329.45l.636.144c2.46.557 3.69.835 3.983 1.776.292.94-.546 1.921-2.223 3.882l-.434.507c-.476.557-.715.836-.822 1.18-.107.345-.071.717.001 1.46l.066.677c.253 2.617.38 3.925-.386 4.506-.766.582-1.918.052-4.221-1.009l-.595-.274c-.655-.301-.982-.452-1.329-.452s-.674.151-1.329.452l-.595.274c-2.303 1.061-3.455 1.591-4.221 1.01-.766-.582-.639-1.89-.386-4.507l.066-.677c.072-.743.108-1.115.001-1.46-.107-.344-.346-.623-.822-1.18l-.434-.507C2.603 11.469 1.765 10.489 2.057 9.548c.293-.941 1.523-1.22 3.983-1.776l.636-.144c.699-.158 1.048-.237 1.329-.45.28-.213.46-.536.82-1.182l.328-.588Z" />
+                        </svg>
+                    </span>
+                    Favourites
+                </button>
             </div>
-
-            <QuickAddIngredientPicker
-                savedIngredients={savedIngredients}
-                selectedIngredients={ingredients}
-                onToggleIngredient={(name) => {
-                    const selectedName = ingredients.find(
-                        (ingredient) =>
-                            normalizeIngredientName(ingredient) ===
-                            normalizeIngredientName(name),
-                    );
-                    if (selectedName !== undefined)
-                        removeIngredient(selectedName);
-                    else addIngredient(name, false);
+            <p className="meal-maker-voice-status" aria-live="polite">
+                {voiceStatus}
+            </p>
+            <input
+                ref={photoInputRef}
+                className="meal-maker-photo-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                aria-label="Take a photo of food"
+                onChange={(event) => {
+                    const selectedPhoto = event.currentTarget.files?.[0];
+                    if (selectedPhoto) {
+                        if (photoUrlRef.current)
+                            URL.revokeObjectURL(photoUrlRef.current);
+                        const url = URL.createObjectURL(selectedPhoto);
+                        photoUrlRef.current = url;
+                        setPhotoUrl(url);
+                        setPhoto(selectedPhoto);
+                    }
+                    event.currentTarget.value = '';
                 }}
             />
+
+            {favouritesOpen && (
+                <FavouriteIngredientsSheet
+                    ingredients={ingredients}
+                    savedIngredients={savedIngredients}
+                    onChange={onChange}
+                    onClose={() => setFavouritesOpen(false)}
+                />
+            )}
+
+            {photo && (
+                <SlidingSheet
+                    className="meal-maker-photo-sheet"
+                    labelledBy="meal-maker-photo-title"
+                    onClose={clearPhoto}
+                    header={
+                        <h2 id="meal-maker-photo-title">Add from a photo</h2>
+                    }
+                >
+                    {photoUrl && (
+                        <img
+                            className="meal-maker-photo-preview"
+                            src={photoUrl}
+                            alt="Photo of food"
+                        />
+                    )}
+                    <label
+                        className="meal-maker-photo-label"
+                        htmlFor="meal-maker-photo-ingredients"
+                    >
+                        Which ingredients can you see?
+                    </label>
+                    <textarea
+                        id="meal-maker-photo-ingredients"
+                        value={photoIngredientNames}
+                        onChange={(event) =>
+                            setPhotoIngredientNames(event.target.value)
+                        }
+                        placeholder="For example: tofu, broccoli"
+                        rows={2}
+                    />
+                    <button
+                        className="meal-maker-photo-add"
+                        type="button"
+                        disabled={!photoIngredientNames.trim()}
+                        onClick={addPhotoIngredients}
+                    >
+                        Add ingredients
+                    </button>
+                </SlidingSheet>
+            )}
 
             {duplicateMessage &&
                 createPortal(

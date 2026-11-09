@@ -15,6 +15,7 @@
         "lint:client": "eslint client --cache --cache-location node_modules/.cache/eslint",
         "lint:files": "eslint --cache --cache-location node_modules/.cache/eslint",
         "preview": "vite preview",
+        "version:bump": "node ./script/increment-app-version.mjs",
         "deploy:dev": "./script/deploy-dev.sh",
         "format": "prettier --write \"**/*.ts\"",
         "format:check": "prettier --check \"**/*.ts\"",
@@ -26,6 +27,7 @@
         "@ncdai/react-wheel-picker": "^1.2.2",
         "@supabase/supabase-js": "^2.115.0",
         "@tailwindcss/vite": "^4.3.3",
+        "@vercel/analytics": "^2.0.1",
         "react": "^19.2.8",
         "react-dom": "^19.2.8",
         "tailwindcss": "^4.3.3"

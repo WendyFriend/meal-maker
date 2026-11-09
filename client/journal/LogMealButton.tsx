@@ -17,10 +17,16 @@ export default function LogMealButton({
     meal,
     control,
     disabled = false,
+    onAuthRequired,
+    destinationLabel = 'My Day',
+    feedbackDurationMs,
 }: {
     meal: GenerateMealResponse;
     control?: JournalControl;
     disabled?: boolean;
+    onAuthRequired?: () => boolean;
+    destinationLabel?: string;
+    feedbackDurationMs?: number;
 }) {
     const [localEntryId, setLocalEntryId] = useState<string | null>(null);
     const entryId = control ? control.entryId : localEntryId;
@@ -31,6 +37,7 @@ export default function LogMealButton({
     const closeFeedback = useCallback(() => setFeedback(undefined), []);
     async function toggleMeal() {
         if (disabled || pending.current) return;
+        if (onAuthRequired?.()) return;
         pending.current = true;
         setSaving(true);
         setError(undefined);
@@ -40,7 +47,7 @@ export default function LogMealButton({
             if (entryId) {
                 await deleteJournalEntry(entryId);
                 setEntryId(null);
-                setFeedback('Removed from My Day');
+                setFeedback(`Removed from ${destinationLabel}`);
             } else {
                 const entry = await saveJournalEntry({
                     eatenAt: new Date().toISOString(),
@@ -48,20 +55,22 @@ export default function LogMealButton({
                     ingredients: meal.ingredients,
                 });
                 setEntryId(entry.id);
-                setFeedback('Added to My Day');
+                setFeedback(`Added to ${destinationLabel}`);
             }
         } catch {
             setError(
                 entryId
-                    ? 'Could not remove this meal from My Day. Please try again.'
-                    : 'Could not add this meal to My Day. Please try again.',
+                    ? `Could not remove this meal from ${destinationLabel}. Please try again.`
+                    : `Could not add this meal to ${destinationLabel}. Please try again.`,
             );
         } finally {
             pending.current = false;
             setSaving(false);
         }
     }
-    const label = entryId ? 'Remove from My Day' : 'Add to My Day';
+    const label = entryId
+        ? `Remove from ${destinationLabel}`
+        : `Add to ${destinationLabel}`;
     return (
         <div className="journal-log-action">
             <button
@@ -92,6 +101,7 @@ export default function LogMealButton({
                     key={feedback}
                     message={feedback}
                     onClose={closeFeedback}
+                    durationMs={feedbackDurationMs}
                 />
             )}
             {error && (

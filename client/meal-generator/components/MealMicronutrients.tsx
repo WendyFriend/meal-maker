@@ -8,11 +8,107 @@ import {
 import MicronutrientList from './MicronutrientList';
 import NutritionInfo from './NutritionInfo';
 import type { MicronutrientContributions } from './MicronutrientContributors';
+import MicronutrientContributors from './MicronutrientContributors';
 import { useMicronutrientLookup } from '../../hooks/useMicronutrientLookup';
 import {
     hasMicronutrientValue,
     micronutrientLookupKey,
 } from '../../services/micronutrientService';
+
+const FIBER_DAILY_VALUE_GRAMS = 28;
+
+function MealFiber({ ingredients }: { ingredients: MealIngredient[] }) {
+    let total = 0;
+    let hasKnownValue = false;
+    const missing: string[] = [];
+    const byIngredient = new Map<string, { name: string; amount: number }>();
+
+    for (const ingredient of ingredients) {
+        const { weight, fiberPer100g, name } = ingredient;
+        if (!Number.isFinite(weight) || weight < 0) {
+            missing.push(name);
+            continue;
+        }
+        if (weight === 0) continue;
+        if (
+            typeof fiberPer100g !== 'number' ||
+            !Number.isFinite(fiberPer100g) ||
+            fiberPer100g < 0
+        ) {
+            missing.push(name);
+            continue;
+        }
+        const amount = (fiberPer100g * weight) / 100;
+        total += amount;
+        hasKnownValue = true;
+        if (amount > 0) {
+            const key = micronutrientLookupKey(name);
+            const previous = byIngredient.get(key);
+            byIngredient.set(key, {
+                name,
+                amount: (previous?.amount ?? 0) + amount,
+            });
+        }
+    }
+
+    const contribution = {
+        ingredients: [...byIngredient.values()].sort(
+            (a, b) => b.amount - a.amount,
+        ),
+        missing: [...new Set(missing)],
+    };
+    const percentage = (total / FIBER_DAILY_VALUE_GRAMS) * 100;
+    const percentageText =
+        percentage > 0 && percentage < 1 ? '<1%' : `${Math.round(percentage)}%`;
+    const track = (
+        <>
+            <progress
+                max={100}
+                value={Math.min(100, percentage)}
+                aria-label="Fiber daily value in this meal"
+                aria-valuetext={`${percentageText} of Daily Value${missing.length ? ' from ingredients with available data' : ''}`}
+            />
+            <span aria-hidden="true">{percentageText} DV</span>
+        </>
+    );
+
+    return (
+        <li>
+            <div className="ingredient-micronutrient-label">
+                <span className="ingredient-micronutrient-trigger meal-fiber-label">
+                    Fiber
+                </span>
+                <span className="ingredient-micronutrient-value">
+                    <span>
+                        {hasKnownValue
+                            ? `${Number(total.toFixed(2))} g`
+                            : 'N/A'}
+                    </span>
+                    {!hasKnownValue && missing.length > 0 && (
+                        <small>Missing</small>
+                    )}
+                </span>
+            </div>
+            {hasKnownValue || missing.length > 0 ? (
+                <MicronutrientContributors
+                    label="Fiber"
+                    unit="g"
+                    contribution={contribution}
+                    percentageText={hasKnownValue ? percentageText : 'N/A'}
+                    trigger={
+                        hasKnownValue ? (
+                            track
+                        ) : (
+                            <span className="micronutrient-missing-trigger">
+                                See missing ingredients
+                            </span>
+                        )
+                    }
+                />
+            ) : null}
+        </li>
+    );
+}
 
 export default function MealMicronutrients({
     ingredients,
@@ -28,6 +124,7 @@ export default function MealMicronutrients({
     const totals: MicronutrientValues = Object.fromEntries(
         MICRONUTRIENTS.map(({ key }) => {
             let total = 0;
+            let hasKnownValue = false;
             const missing: string[] = [];
             const byIngredient = new Map<
                 string,
@@ -59,6 +156,7 @@ export default function MealMicronutrients({
                     continue;
                 }
                 total += amount;
+                hasKnownValue = true;
                 if (amount > 0) {
                     const nameKey = micronutrientLookupKey(ingredient.name);
                     const previous = byIngredient.get(nameKey);
@@ -76,8 +174,8 @@ export default function MealMicronutrients({
             };
             return [
                 key,
-                (scope === 'day' || ingredients.length > 0) &&
-                missing.length === 0 &&
+                (hasKnownValue ||
+                    (scope === 'day' && ingredients.length === 0)) &&
                 Number.isFinite(total)
                     ? total
                     : undefined,
@@ -91,14 +189,24 @@ export default function MealMicronutrients({
             aria-label={
                 scope === 'day'
                     ? 'Daily vitamins and minerals'
-                    : 'Meal vitamins and minerals'
+                    : 'Meal key nutrients'
             }
             aria-busy={loading}
         >
             <div className="ingredient-details-heading">
                 <div className="ingredient-details-title">
-                    <h3>Vitamins & minerals</h3>
-                    <NutritionInfo>
+                    <h3>
+                        {scope === 'day'
+                            ? 'Vitamins & minerals'
+                            : 'Key nutrients'}
+                    </h3>
+                    <NutritionInfo
+                        label={
+                            scope === 'day'
+                                ? 'About vitamins and minerals'
+                                : 'About key nutrients'
+                        }
+                    >
                         {' '}
                         <p className="ingredient-details-note">
                             Based on{' '}
@@ -114,9 +222,12 @@ export default function MealMicronutrients({
                                 FDA Daily Values
                             </a>{' '}
                             for adults and children 4+. Missing ingredient data
-                            is looked up from USDA reference foods. N/A means at
-                            least one ingredient’s nutrient value is still
-                            unavailable.
+                            for vitamins and minerals is looked up from USDA
+                            reference foods. Fiber uses available ingredient
+                            data. Totals include every ingredient with an
+                            available value; tap the nutrient bar to see which
+                            ingredients are excluded. N/A means no ingredient
+                            has an available value for that nutrient.
                         </p>{' '}
                     </NutritionInfo>
                 </div>
@@ -128,7 +239,8 @@ export default function MealMicronutrients({
                     role="status"
                 >
                     <LoadingSpinner size="small" />
-                    Loading vitamins & minerals…
+                    Loading{' '}
+                    {scope === 'day' ? 'vitamins & minerals' : 'key nutrients'}…
                 </p>
             ) : (
                 <>
@@ -141,6 +253,11 @@ export default function MealMicronutrients({
                         </p>
                     )}
                     <MicronutrientList
+                        leadingItem={
+                            scope === 'meal' ? (
+                                <MealFiber ingredients={ingredients} />
+                            ) : undefined
+                        }
                         amounts={totals}
                         basis={
                             scope === 'day' ? 'for this day' : 'in this meal'

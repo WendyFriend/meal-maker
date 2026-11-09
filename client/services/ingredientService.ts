@@ -22,7 +22,9 @@ export type UserIngredientRow = {
     updated_at: string;
 };
 
-function micronutrientPayload(ingredient: IngredientInfo) {
+function micronutrientPayload(ingredient: IngredientInfo): {
+    micronutrients?: Record<string, number>;
+} {
     if (!MICRONUTRIENTS.some(({ key }) => Object.hasOwn(ingredient, key)))
         return {};
     return {
@@ -40,7 +42,7 @@ function micronutrientPayload(ingredient: IngredientInfo) {
 }
 
 export async function saveUserIngredient(ingredient: IngredientInfo) {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
         .from('user_ingredients')
         .insert({
             name: ingredient.name,
@@ -60,7 +62,7 @@ export async function saveUserIngredient(ingredient: IngredientInfo) {
         .single();
 
     if (error) {
-        throw error;
+        throw Object.assign(error, { httpStatus: status });
     }
 
     return toUserIngredient(data as UserIngredientRow);

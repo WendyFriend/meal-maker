@@ -1,4 +1,5 @@
 import {
+    act,
     fireEvent,
     render,
     screen,
@@ -50,6 +51,65 @@ beforeEach(() => {
     vi.mocked(getJournalEntries).mockResolvedValue([entry]);
 });
 describe('My Day', () => {
+    it('refreshes the selected day on pull while keeping its entries visible', async () => {
+        render(
+            <div className="page-transition">
+                <MyJournal />
+            </div>,
+        );
+        await screen.findByText('Fruit snack');
+        let finish!: (entries: JournalEntry[]) => void;
+        vi.mocked(getJournalEntries).mockReturnValueOnce(
+            new Promise((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const heading = screen.getByRole('heading', { name: 'My Day' });
+        fireEvent.touchStart(heading, {
+            touches: [{ clientX: 24, clientY: 80 }],
+        });
+        fireEvent.touchMove(heading, {
+            touches: [{ clientX: 24, clientY: 220 }],
+        });
+        fireEvent.touchEnd(heading);
+        expect(
+            screen.getByRole('status', { name: 'Refreshing My Plan' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Fruit snack')).toBeInTheDocument();
+        await act(async () => {
+            finish([]);
+        });
+        expect(
+            await screen.findByText('No food logged for this day'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('status', { name: 'Refreshing My Plan' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('keeps the current plan visible when a pull refresh fails', async () => {
+        render(
+            <div className="page-transition">
+                <MyJournal />
+            </div>,
+        );
+        await screen.findByText('Fruit snack');
+        vi.mocked(getJournalEntries).mockRejectedValueOnce(
+            new Error('offline'),
+        );
+        const heading = screen.getByRole('heading', { name: 'My Day' });
+        fireEvent.touchStart(heading, {
+            touches: [{ clientX: 24, clientY: 80 }],
+        });
+        fireEvent.touchMove(heading, {
+            touches: [{ clientX: 24, clientY: 220 }],
+        });
+        fireEvent.touchEnd(heading);
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Could not refresh your plan',
+        );
+        expect(screen.getByText('Fruit snack')).toBeInTheDocument();
+    });
     it('shows daily totals, micronutrients, foods, portions and time with per-meal totals', async () => {
         render(<MyJournal />);
         expect(await screen.findByText('Fruit snack')).toBeInTheDocument();

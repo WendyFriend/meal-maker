@@ -4,11 +4,13 @@ import {
     handleGenerateMealRequest,
     parseMealGenerator,
 } from './handleGenerateMealRequest.js';
+import { MICRONUTRIENTS } from '../../shared/micronutrients.js';
+import type { UserIngredient } from '../../shared/types/types.js';
 import { generateMealWithNutritionLab } from './algorithms/generateMealNutritionLab.js';
 
 describe('parseMealGenerator', () => {
-    it('defaults to Ollama, accepts known values and rejects others', () => {
-        expect(parseMealGenerator(undefined)).toBe('ollama');
+    it('defaults to Nutrition Lab, accepts known values and rejects others', () => {
+        expect(parseMealGenerator(undefined)).toBe('nutrition-lab');
         expect(parseMealGenerator('nutrition-lab')).toBe('nutrition-lab');
         expect(parseMealGenerator(['ollama'])).toBe('ollama');
         expect(parseMealGenerator('gpt')).toBeUndefined();
@@ -25,36 +27,94 @@ describe('generateMealWithNutritionLab', () => {
         vi.unstubAllGlobals();
     });
 
-    it('routes Nutrition Lab selection only to its generation API', async () => {
-        const fetchMock = vi.fn<typeof fetch>(
-            async () =>
-                new Response(
+    it('resolves foods first, then sends their nutrition to Nutrition Lab generation', async () => {
+        const fetchMock = vi.fn<typeof fetch>(async (url) => {
+            const path = String(url).replace('https://example.test/api/v1', '');
+            if (path === '/parse')
+                return new Response(
                     JSON.stringify({
-                        mealName: 'Rice bowl',
-                        instructions: ['Serve.'],
-                        ingredients: [
+                        ingredients: [{ said: 'rice', match: null }],
+                    }),
+                );
+            if (path === '/foods/resolve')
+                return new Response(
+                    JSON.stringify({
+                        results: [
                             {
-                                name: 'rice',
-                                weight: 100,
-                                caloriesPer100g: 365,
-                                proteinPer100g: 7,
-                                carbohydratePer100g: 80,
-                                fatPer100g: 1,
+                                term: 'rice',
+                                food: {
+                                    fdcId: 169756,
+                                    description: 'Rice, white, raw',
+                                    match: { tier: 'confident' },
+                                    per100g: {
+                                        kcal: 365,
+                                        proteinG: 7,
+                                        carbsG: 80,
+                                        fatG: 1,
+                                    },
+                                },
                             },
                         ],
                     }),
-                ),
-        );
+                );
+            if (path === '/foods/169756')
+                return new Response(
+                    JSON.stringify({
+                        fdcId: 169756,
+                        description: 'Rice, white, raw',
+                        nutrientsPer100g: [
+                            {
+                                nbr: '303',
+                                name: 'Iron',
+                                unit: 'MG',
+                                amount: 0.8,
+                            },
+                        ],
+                    }),
+                );
+            return new Response(
+                JSON.stringify({
+                    mealName: 'Rice bowl',
+                    instructions: ['Serve.'],
+                    ingredients: [
+                        {
+                            name: 'rice',
+                            weight: 100,
+                            caloriesPer100g: 365,
+                            proteinPer100g: 7,
+                            carbohydratePer100g: 80,
+                            fatPer100g: 1,
+                        },
+                    ],
+                }),
+            );
+        });
         vi.stubGlobal('fetch', fetchMock);
         const result = await handleGenerateMealRequest(
             { ingredients: [{ name: 'rice' }], requirements: {} },
             'nutrition-lab',
         );
         expect(result.status).toBe(200);
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock.mock.calls[0][0]).toBe(
-            'https://example.test/api/v1/meals/generate',
-        );
+        expect(result.body).toMatchObject({
+            ingredients: [{ thumbnailSource: 'nutrition-lab' }],
+        });
+        expect(result.serverTiming).toMatch(/nutrition_lab;dur=\d+\.\d/);
+        expect(result.serverTiming).toMatch(/generation;dur=\d+\.\d/);
+        const generateCall = fetchMock.mock.calls.find(([url]) =>
+            String(url).endsWith('/meals/generate'),
+        )!;
+        expect(JSON.parse(String(generateCall[1]?.body)).ingredients).toEqual([
+            expect.objectContaining({
+                name: 'rice',
+                caloriesPer100g: 365,
+                micronutrientsPer100g: { iron: 0.8 },
+            }),
+        ]);
+        expect(
+            fetchMock.mock.calls.every(([url]) =>
+                String(url).startsWith('https://example.test/api/v1/'),
+            ),
+        ).toBe(true);
     });
 
     it('keeps Ollama on USDA when both providers are configured', async () => {
@@ -108,6 +168,12 @@ describe('generateMealWithNutritionLab', () => {
             'ollama',
         );
         expect(result.status).toBe(200);
+        expect(result.serverTiming).toMatch(/usda;dur=\d+\.\d/);
+        expect(result.body).toMatchObject({
+            ingredients: [{ thumbnailSource: 'local' }],
+        });
+        expect(result.serverTiming).toMatch(/ollama;dur=\d+\.\d/);
+        expect(result.serverTiming).toMatch(/generation;dur=\d+\.\d/);
         expect(fetchMock).toHaveBeenCalledTimes(2);
         expect(String(fetchMock.mock.calls[0][0])).toContain(
             'https://api.nal.usda.gov/',
@@ -117,7 +183,7 @@ describe('generateMealWithNutritionLab', () => {
         );
     });
 
-    it('maps the API meal and prefers values the user supplied', async () => {
+    it('sends saved macros directly without a food id and maps the returned nutrition', async () => {
         const fetchMock = vi.fn<typeof fetch>(
             async () =>
                 new Response(
@@ -129,7 +195,7 @@ describe('generateMealWithNutritionLab', () => {
                             {
                                 name: 'Rice',
                                 weight: 85,
-                                caloriesPer100g: 365,
+                                caloriesPer100g: 400,
                                 proteinPer100g: 7.13,
                                 carbohydratePer100g: 79.95,
                                 fatPer100g: 0.66,
@@ -149,12 +215,28 @@ describe('generateMealWithNutritionLab', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         const meal = await generateMealWithNutritionLab({
-            ingredients: [{ name: 'rice', caloriesPer100g: 400 }],
+            ingredients: [
+                {
+                    name: 'rice',
+                    caloriesPer100g: 400,
+                    proteinPer100g: 7.13,
+                    carbohydratePer100g: 79.95,
+                    fatPer100g: 0.66,
+                },
+            ],
             requirements: { calories: 600 },
         });
 
         expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
-            ingredients: [{ name: 'rice' }],
+            ingredients: [
+                {
+                    name: 'rice',
+                    caloriesPer100g: 400,
+                    proteinPer100g: 7.13,
+                    carbohydratePer100g: 79.95,
+                    fatPer100g: 0.66,
+                },
+            ],
             requirements: { calories: 600 },
         });
         expect(meal.ingredients[0]).toMatchObject({
@@ -194,7 +276,7 @@ describe('generateMealWithNutritionLab', () => {
         ).rejects.toThrow('invalid meal response');
     });
 
-    it('reuses complete matching nutrition and leaves stale or incomplete sources for the API to resolve', async () => {
+    it('forwards valid direct macros and partial micronutrients, including zeros', async () => {
         const fetchMock = vi.fn<typeof fetch>(
             async () =>
                 new Response(
@@ -208,53 +290,360 @@ describe('generateMealWithNutritionLab', () => {
                                 caloriesPer100g: 365,
                                 proteinPer100g: 7,
                                 carbohydratePer100g: 80,
-                                fatPer100g: 1,
+                                fatPer100g: 0,
+                                micronutrientsPer100g: {
+                                    iron: 1.23,
+                                    vitaminC: 0,
+                                    calcium: 21,
+                                },
+                                usda: {
+                                    fdcId: 168448,
+                                    description: 'NL reference',
+                                },
                             },
                         ],
                     }),
                 ),
         );
         vi.stubGlobal('fetch', fetchMock);
-        const rice = {
-            name: 'rice',
-            caloriesPer100g: 365,
-            proteinPer100g: 7,
-            carbohydratePer100g: 80,
-            fatPer100g: 0,
-            nutritionSource: { fdcId: 169756, description: 'Rice, raw' },
-        };
-
-        await generateMealWithNutritionLab({
+        const meal = await generateMealWithNutritionLab({
             ingredients: [
-                rice,
-                { ...rice, name: 'rice cooked' },
-                { ...rice, proteinPer100g: undefined },
-                { ...rice, caloriesPer100g: NaN },
-                { ...rice, nutritionSource: undefined },
+                {
+                    name: 'rice',
+                    caloriesPer100g: 365,
+                    proteinPer100g: 7,
+                    carbohydratePer100g: 80,
+                    fatPer100g: 0,
+                    sugarPer100g: 0,
+                    saturatedFatPer100g: NaN,
+                    fiberPer100g: -1,
+                    ironPer100g: 1.23,
+                    vitaminCPer100g: 0,
+                    calciumPer100g: Infinity,
+                    nutritionSource: {
+                        fdcId: 169756,
+                        description: 'Rice, raw',
+                    },
+                },
             ],
             requirements: { calories: 600 },
         });
-
         const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-        expect(body.ingredients[0]).toEqual({
-            name: 'rice',
-            match: {
-                fdcId: 169756,
-                description: 'Rice, raw',
+        expect(body.ingredients).toEqual([
+            {
                 name: 'rice',
                 caloriesPer100g: 365,
                 proteinPer100g: 7,
                 carbohydratePer100g: 80,
                 fatPer100g: 0,
-                nutritionSource: 'usda',
+                sugarPer100g: 0,
+                micronutrientsPer100g: { iron: 1.23, vitaminC: 0 },
             },
-        });
-        expect(body.ingredients.slice(1)).toEqual([
-            { name: 'rice cooked' },
-            { name: 'rice' },
-            { name: 'rice' },
-            { name: 'rice' },
         ]);
+        expect(meal.ingredients[0].ironPer100g).toBe(1.23);
+        expect(meal.ingredients[0].vitaminCPer100g).toBe(0);
+        expect(meal.ingredients[0].calciumPer100g).toBe(21);
+        expect(meal.ingredients[0].nutritionSource?.fdcId).toBe(169756);
         expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses returned macros for consistency with generated portions', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn<typeof fetch>(
+                async () =>
+                    new Response(
+                        JSON.stringify({
+                            mealName: 'Rice bowl',
+                            instructions: ['Serve.'],
+                            ingredients: [
+                                {
+                                    name: 'rice',
+                                    weight: 100,
+                                    caloriesPer100g: 365,
+                                    proteinPer100g: 7,
+                                    carbohydratePer100g: 80,
+                                    fatPer100g: 1,
+                                },
+                            ],
+                        }),
+                    ),
+            ),
+        );
+        const meal = await generateMealWithNutritionLab({
+            ingredients: [{ name: 'rice', caloriesPer100g: 400 }],
+            requirements: {},
+        });
+        expect(meal.ingredients[0].caloriesPer100g).toBe(365);
+    });
+    it('keeps explicit unknown micronutrients unavailable while preserving supplied zeros', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn<typeof fetch>(
+                async () =>
+                    new Response(
+                        JSON.stringify({
+                            mealName: 'Unmatched food',
+                            instructions: ['Serve.'],
+                            ingredients: [
+                                {
+                                    name: 'Unknown ingredient',
+                                    weight: 100,
+                                    caloriesPer100g: 100,
+                                    proteinPer100g: 5,
+                                    carbohydratePer100g: 15,
+                                    fatPer100g: 2,
+                                    micronutrientsPer100g: Object.fromEntries(
+                                        MICRONUTRIENTS.map(({ key }) => [
+                                            key.replace('Per100g', ''),
+                                            null,
+                                        ]),
+                                    ),
+                                },
+                            ],
+                        }),
+                    ),
+            ),
+        );
+        const meal = await generateMealWithNutritionLab({
+            ingredients: [{ name: 'Unknown ingredient', ironPer100g: 0 }],
+            requirements: {},
+        });
+        expect(meal.ingredients[0].ironPer100g).toBe(0);
+        expect(meal.ingredients[0].calciumPer100g).toBeUndefined();
+        expect(meal.ingredients[0].unavailableMicronutrients).toEqual(
+            MICRONUTRIENTS.filter(({ key }) => key !== 'ironPer100g').map(
+                ({ key }) => key,
+            ),
+        );
+    });
+
+    it('splits typed text into separate foods only when generating', async () => {
+        const calls: string[] = [];
+        const sent: unknown[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn<typeof fetch>(async (url, init) => {
+                const path = String(url).replace(
+                    'https://example.test/api/v1',
+                    '',
+                );
+                calls.push(path);
+                if (path === '/parse')
+                    return new Response(
+                        JSON.stringify({
+                            ingredients: [
+                                { said: 'chicken', name: 'Chicken, breast' },
+                                { said: 'rice', name: 'Rice, white' },
+                            ],
+                        }),
+                    );
+                if (path === '/foods/resolve') {
+                    const [term] = JSON.parse(String(init?.body)).terms;
+                    return new Response(
+                        JSON.stringify({
+                            results: [
+                                {
+                                    term,
+                                    food: {
+                                        fdcId: term.length,
+                                        description: term,
+                                        match: { tier: 'confident' },
+                                        per100g: {
+                                            kcal: 100,
+                                            proteinG: 5,
+                                            carbsG: 10,
+                                            fatG: 1,
+                                        },
+                                    },
+                                },
+                            ],
+                        }),
+                    );
+                }
+                if (path.startsWith('/foods/'))
+                    return new Response(
+                        JSON.stringify({ nutrientsPer100g: [] }),
+                    );
+                sent.push(JSON.parse(String(init?.body)));
+                return new Response(
+                    JSON.stringify({
+                        mealName: 'Chicken and rice',
+                        instructions: ['Serve.'],
+                        ingredients: [
+                            {
+                                name: 'Chicken, breast',
+                                weight: 100,
+                                caloriesPer100g: 100,
+                                proteinPer100g: 5,
+                                carbohydratePer100g: 10,
+                                fatPer100g: 1,
+                            },
+                        ],
+                    }),
+                );
+            }),
+        );
+
+        const savedOats: UserIngredient = {
+            name: 'Saved oats',
+            ingredientId: 'saved-1',
+            caloriesPer100g: 389,
+            proteinPer100g: 17,
+            carbohydratePer100g: 66,
+            fatPer100g: 7,
+        };
+        await handleGenerateMealRequest(
+            {
+                ingredients: [{ name: 'chicken and rice' }, savedOats],
+                requirements: {},
+            },
+            'nutrition-lab',
+        );
+
+        expect(calls.filter((path) => path === '/parse')).toHaveLength(1);
+        expect(
+            (sent[0] as { ingredients: { name: string }[] }).ingredients.map(
+                ({ name }) => name,
+            ),
+        ).toEqual(['Chicken, breast', 'Rice, white', 'Saved oats']);
+    });
+
+    it('uses prefetched nutrition as sent, with no parse or lookup for it', async () => {
+        const paths: string[] = [];
+        const sent: {
+            ingredients: { name: string; caloriesPer100g?: number }[];
+        }[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn<typeof fetch>(async (url, init) => {
+                const path = String(url).replace(
+                    'https://example.test/api/v1',
+                    '',
+                );
+                paths.push(path);
+                if (path === '/parse')
+                    return new Response(
+                        JSON.stringify({
+                            ingredients: [{ said: 'kale', name: 'Kale, raw' }],
+                        }),
+                    );
+                if (path === '/foods/resolve') {
+                    const [term] = JSON.parse(String(init?.body)).terms;
+                    return new Response(
+                        JSON.stringify({
+                            results: [
+                                {
+                                    term,
+                                    food: {
+                                        fdcId: 168421,
+                                        description: 'Kale, raw',
+                                        match: { tier: 'confident' },
+                                        per100g: {
+                                            kcal: 35,
+                                            proteinG: 3,
+                                            carbsG: 4,
+                                            fatG: 1.5,
+                                        },
+                                    },
+                                },
+                            ],
+                        }),
+                    );
+                }
+                if (path.startsWith('/foods/'))
+                    return new Response(
+                        JSON.stringify({ nutrientsPer100g: [] }),
+                    );
+                sent.push(JSON.parse(String(init?.body)));
+                return new Response(
+                    JSON.stringify({
+                        mealName: 'Bowl',
+                        instructions: ['Serve.'],
+                        ingredients: [
+                            {
+                                name: 'tomato',
+                                weight: 100,
+                                caloriesPer100g: 18,
+                                proteinPer100g: 1,
+                                carbohydratePer100g: 4,
+                                fatPer100g: 0.2,
+                            },
+                        ],
+                    }),
+                );
+            }),
+        );
+
+        await handleGenerateMealRequest(
+            {
+                ingredients: [
+                    {
+                        name: 'tomato',
+                        caloriesPer100g: 18,
+                        proteinPer100g: 1,
+                        carbohydratePer100g: 4,
+                        fatPer100g: 0.2,
+                    },
+                    { name: 'kale' },
+                ],
+                requirements: {},
+            },
+            'nutrition-lab',
+        );
+
+        // Only the ingredient without nutrition is parsed and looked up.
+        expect(paths.filter((path) => path === '/parse')).toHaveLength(1);
+        expect(paths.filter((path) => path === '/foods/resolve')).toHaveLength(
+            1,
+        );
+        expect(sent[0].ingredients).toEqual([
+            expect.objectContaining({ name: 'tomato', caloriesPer100g: 18 }),
+            expect.objectContaining({ name: 'Kale, raw', caloriesPer100g: 35 }),
+        ]);
+    });
+
+    it('returns the lookup name as resolvedName while the ingredient keeps its typed name', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn<typeof fetch>(
+                async () =>
+                    new Response(
+                        JSON.stringify({
+                            mealName: 'Oats',
+                            instructions: ['Serve.'],
+                            ingredients: [
+                                {
+                                    name: 'rolled oats',
+                                    weight: 80,
+                                    caloriesPer100g: 389,
+                                    proteinPer100g: 17,
+                                    carbohydratePer100g: 66,
+                                    fatPer100g: 7,
+                                },
+                            ],
+                        }),
+                    ),
+            ),
+        );
+
+        const meal = await generateMealWithNutritionLab({
+            ingredients: [
+                {
+                    name: 'rolled oats',
+                    resolvedName: 'Rolled oats, dry',
+                    caloriesPer100g: 389,
+                    proteinPer100g: 17,
+                    carbohydratePer100g: 66,
+                    fatPer100g: 7,
+                },
+            ],
+            requirements: {},
+        });
+
+        expect(meal.ingredients[0]).toMatchObject({
+            name: 'rolled oats',
+            resolvedName: 'Rolled oats, dry',
+        });
     });
 });

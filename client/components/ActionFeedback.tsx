@@ -7,18 +7,20 @@ import { useModalDialog } from '../hooks/useModalDialog';
 export default function ActionFeedback({
     message,
     onClose,
+    durationMs = 1800,
 }: {
     message: string;
     onClose: () => void;
+    durationMs?: number;
 }) {
     const panelRef = useModalDialog();
     const titleId = useId();
     useEffect(() => {
-        const timer = window.setTimeout(onClose, 1800);
+        const timer = window.setTimeout(onClose, durationMs);
         return () => {
             window.clearTimeout(timer);
         };
-    }, [onClose]);
+    }, [durationMs, onClose]);
     return createPortal(
         <dialog
             ref={panelRef}

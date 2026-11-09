@@ -20,6 +20,7 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
+            workbox: { navigateFallback: '/index.html' },
             manifest: {
                 name: 'MealMaker',
                 short_name: 'MealMaker',

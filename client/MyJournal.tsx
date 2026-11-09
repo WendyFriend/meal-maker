@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JournalEntry } from '../shared/types/journal';
 import LoadingSpinner from './components/LoadingSpinner';
 import MealMicronutrients from './meal-generator/components/MealMicronutrients';
@@ -7,12 +7,18 @@ import DailyMacros from './journal/DailyMacros';
 import { localDateValue } from './journal/nutrition';
 import { totalNutrition } from './utils/nutrition';
 import { getJournalEntries } from './services/journalService';
+import PullRefreshIndicator from './components/PullRefreshIndicator';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
 import './components/SavedCollection.css';
 import './MyJournal.css';
 
 export default function MyJournal() {
     const [day, setDay] = useState(() => localDateValue());
     const [attempt, setAttempt] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+    const refreshingRef = useRef(false);
+    const requestIdRef = useRef(0);
+    const [refreshError, setRefreshError] = useState('');
     const [result, setResult] = useState<{
         day: string;
         entries: JournalEntry[];
@@ -20,30 +26,62 @@ export default function MyJournal() {
     }>();
     useEffect(() => {
         let active = true;
+        const requestId = ++requestIdRef.current;
         getJournalEntries(day)
             .then((entries) => {
-                if (active) setResult({ day, entries });
+                if (active && requestId === requestIdRef.current) {
+                    setResult({ day, entries });
+                    setRefreshError('');
+                }
             })
             .catch(() => {
-                if (active)
+                if (!active || requestId !== requestIdRef.current) return;
+                if (refreshingRef.current)
+                    setRefreshError('Could not refresh your plan.');
+                else
                     setResult({
                         day,
                         entries: [],
                         error: 'Could not load your journal. Please try again.',
                     });
+            })
+            .finally(() => {
+                if (active && requestId === requestIdRef.current) {
+                    refreshingRef.current = false;
+                    setRefreshing(false);
+                }
             });
         return () => {
             active = false;
         };
     }, [day, attempt]);
     const current = result?.day === day ? result : undefined;
+    const refresh = () => {
+        if (!current || current.error || refreshingRef.current) return;
+        refreshingRef.current = true;
+        requestIdRef.current++;
+        setRefreshing(true);
+        setRefreshError('');
+        setAttempt((value) => value + 1);
+    };
+    const { containerRef, pullDistance } = usePullToRefresh({
+        disabled: !current || Boolean(current.error),
+        refreshing,
+        onRefresh: refresh,
+    });
     const entries = current?.entries ?? [];
     const ingredients = entries.flatMap((entry) => entry.ingredients);
     return (
         <section
-            className="my-journal saved-collection"
+            ref={containerRef}
+            className="my-journal saved-collection pull-refresh-active"
             aria-labelledby="my-journal-heading"
         >
+            <PullRefreshIndicator
+                distance={pullDistance}
+                refreshing={refreshing}
+                label="Refreshing My Plan"
+            />
             <header className="saved-collection-intro">
                 <div className="saved-collection-title">
                     <h1 id="my-journal-heading">My Day</h1>
@@ -56,11 +94,25 @@ export default function MyJournal() {
                         aria-label="Journal date"
                         value={day}
                         onChange={(event) => {
-                            if (event.target.value) setDay(event.target.value);
+                            if (event.target.value) {
+                                refreshingRef.current = false;
+                                requestIdRef.current++;
+                                setRefreshing(false);
+                                setRefreshError('');
+                                setDay(event.target.value);
+                            }
                         }}
                     />
                 </label>
             </header>
+            {refreshError && (
+                <div className="saved-collection-refresh-error" role="alert">
+                    <span>{refreshError}</span>
+                    <button type="button" onClick={refresh}>
+                        Try again
+                    </button>
+                </div>
+            )}
             {!current ? (
                 <div className="journal-loading" role="status">
                     <LoadingSpinner />

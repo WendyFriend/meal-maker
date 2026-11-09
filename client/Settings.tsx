@@ -1,4 +1,8 @@
 import type { MealGenerator } from '../shared/types/types';
+import {
+    QUICK_ADD_LAYOUTS,
+    useQuickAddLayout,
+} from './settings/quickAddLayout';
 import './Settings.css';
 
 const options: { id: MealGenerator; label: string; description: string }[] = [
@@ -22,6 +26,7 @@ export default function Settings({
     mealGenerator: MealGenerator;
     onMealGeneratorChange: (generator: MealGenerator) => void;
 }) {
+    const [quickAddLayout, setQuickAddLayout] = useQuickAddLayout();
     return (
         <section
             className="settings saved-collection"
@@ -53,6 +58,33 @@ export default function Settings({
                             </span>
                             <span className="settings-option-description">
                                 {description}
+                            </span>
+                        </span>
+                    </label>
+                ))}
+            </fieldset>
+            <fieldset className="settings-group">
+                <legend>Quick Add options</legend>
+                {QUICK_ADD_LAYOUTS.map((layout) => (
+                    <label
+                        key={layout}
+                        className={`settings-option${quickAddLayout === layout ? ' settings-option-selected' : ''}`}
+                    >
+                        <input
+                            type="radio"
+                            name="quick-add-layout"
+                            value={layout}
+                            checked={quickAddLayout === layout}
+                            onChange={() => setQuickAddLayout(layout)}
+                        />
+                        <span className="settings-option-text">
+                            <span className="settings-option-label">
+                                {layout === 'tiles' ? 'Tiles' : 'Rows'}
+                            </span>
+                            <span className="settings-option-description">
+                                {layout === 'tiles'
+                                    ? 'Image-forward buttons arranged in a compact grid.'
+                                    : 'Larger full-width options with images and labels.'}
                             </span>
                         </span>
                     </label>

@@ -1,7 +1,9 @@
 import type {
     MealMakerFood,
+    MealMakerFoodSearchResponse,
     MealMakerFoodDetail,
     MealMakerGenerateRequest,
+    MealMakerParseResponse,
 } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://mealmaker.brotherk3d.com/api/v1';
@@ -54,6 +56,26 @@ export async function resolveFood(
 
 export function getFoodDetail(fdcId: number): Promise<MealMakerFoodDetail> {
     return request<MealMakerFoodDetail>(`/foods/${fdcId}`);
+}
+
+export function searchNutritionLabFoods(
+    query: string,
+    limit = 12,
+): Promise<MealMakerFoodSearchResponse> {
+    return request<MealMakerFoodSearchResponse>(
+        `/foods/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+    );
+}
+
+// Multi-word text can consult a model, so allow a few seconds.
+export function parseIngredientText(
+    text: string,
+): Promise<MealMakerParseResponse> {
+    return request<MealMakerParseResponse>(
+        '/parse',
+        { method: 'POST', body: JSON.stringify({ text }) },
+        30_000,
+    );
 }
 
 // Generation takes 4-60 s.

@@ -1,9 +1,12 @@
 import type { UserIngredient } from '../../../shared/types/types';
 import { normalizeIngredientName } from '../../utils/Ingredient';
+import {
+    commonQuickAddIngredients,
+    type CommonQuickAddCategoryId,
+} from './commonQuickAddIngredients';
 
-// The app has saved ingredient records, but no category metadata. These aliases
-// only classify existing records; they never supply ingredients or nutrition.
 export const quickAddCategories = [
+    { id: 'saved', name: 'Saved' },
     { id: 'vegetables', name: 'Veggies' },
     { id: 'proteins', name: 'Protein' },
     { id: 'grains', name: 'Grains' },
@@ -13,155 +16,73 @@ export const quickAddCategories = [
 export type QuickAddCategory = (typeof quickAddCategories)[number];
 export type QuickAddCategoryId = QuickAddCategory['id'];
 
-const categoryAliases = {
-    'nuts-seeds': [
-        'almond',
-        'almonds',
-        'walnut',
-        'walnuts',
-        'cashew',
-        'cashews',
-        'peanut',
-        'peanuts',
-        'pecan',
-        'pecans',
-        'pistachio',
-        'pistachios',
-        'hazelnut',
-        'hazelnuts',
-        'macadamia',
-        'macadamias',
-        'brazil nuts',
-        'pine nuts',
-        'seed',
-        'seeds',
-        'chia',
-        'flax',
-        'linseed',
-        'sesame',
-    ],
-    vegetables: [
-        'broccoli',
-        'carrot',
-        'carrots',
-        'spinach',
-        'kale',
-        'lettuce',
-        'tomato',
-        'tomatoes',
-        'onion',
-        'onions',
-        'pepper',
-        'peppers',
-        'capsicum',
-        'zucchini',
-        'courgette',
-        'cucumber',
-        'mushroom',
-        'mushrooms',
-        'peas',
-        'cabbage',
-        'cauliflower',
-        'pumpkin',
-        'potato',
-        'potatoes',
-        'asparagus',
-        'eggplant',
-        'aubergine',
-        'celery',
-        'beetroot',
-        'green beans',
-    ],
-    proteins: [
-        'chicken',
-        'turkey',
-        'beef',
-        'pork',
-        'lamb',
-        'salmon',
-        'tuna',
-        'fish',
-        'prawn',
-        'prawns',
-        'shrimp',
-        'egg',
-        'eggs',
-        'tofu',
-        'tempeh',
-        'lentil',
-        'lentils',
-        'chickpea',
-        'chickpeas',
-        'chick peas',
-        'beans',
-        'edamame',
-    ],
-    grains: [
-        'rice',
-        'quinoa',
-        'oat',
-        'oats',
-        'pasta',
-        'noodle',
-        'noodles',
-        'couscous',
-        'bulgur',
-        'barley',
-        'bread',
-        'tortilla',
-        'tortillas',
-        'buckwheat',
-    ],
+export type QuickAddOption = {
+    id: string;
+    name: string;
+    fdcId?: number;
 };
 
-function hasAlias(name: string, aliases: readonly string[]) {
-    return aliases.some((alias) => name.includes(` ${alias} `));
-}
+type QuickAddSavedIngredient = Pick<
+    UserIngredient,
+    'ingredientId' | 'name' | 'nutritionSource'
+>;
 
-const pantryAliases = [
-    'oil',
-    'sauce',
-    'stock',
-    'broth',
-    'dressing',
-    'milk',
-    'yogurt',
-    'yoghurt',
-    'cheese',
-    'butter',
-];
-
-export function getQuickAddCategory(
-    name: string,
-): QuickAddCategoryId | undefined {
-    const words = ` ${normalizeIngredientName(name).replace(/[^a-z0-9]+/g, ' ')} `;
-    // Exclude pantry products such as chicken stock or almond milk. Nuts and
-    // seeds take precedence so pumpkin seeds don't appear under Vegetables.
-    if (hasAlias(words, pantryAliases)) return;
-    for (const category of [
-        'nuts-seeds',
-        'vegetables',
-        'proteins',
-        'grains',
-    ] as const) {
-        if (hasAlias(words, categoryAliases[category])) return category;
-    }
-}
-
-export function groupQuickAddIngredients(records: UserIngredient[]) {
-    const groups: Record<QuickAddCategoryId, UserIngredient[]> = {
-        vegetables: [],
-        proteins: [],
-        grains: [],
-        'nuts-seeds': [],
-    };
+function uniqueSavedIngredients(
+    records: QuickAddSavedIngredient[],
+): QuickAddOption[] {
     const seen = new Set<string>();
-    for (const record of records) {
-        const name = normalizeIngredientName(record.name);
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
-        const category = getQuickAddCategory(name);
-        if (category) groups[category].push(record);
-    }
-    return groups;
+    return records.flatMap((record) => {
+        const { ingredientId, name } = record;
+        const key = normalizeIngredientName(name);
+        if (!key || seen.has(key)) return [];
+        seen.add(key);
+        return [
+            {
+                id: `saved:${ingredientId}`,
+                name: name.trim(),
+                fdcId: record.nutritionSource?.fdcId,
+            },
+        ];
+    });
+}
+
+export function groupQuickAddIngredients(
+    savedIngredients: QuickAddSavedIngredient[],
+): Record<QuickAddCategoryId, QuickAddOption[]> {
+    const commonGroup = (category: CommonQuickAddCategoryId) =>
+        commonQuickAddIngredients[category].map((ingredient) => ({
+            id: `common:${normalizeIngredientName(ingredient.name)}`,
+            name: ingredient.name,
+            fdcId: ingredient.nutritionSource?.fdcId,
+        }));
+
+    return {
+        saved: uniqueSavedIngredients(savedIngredients),
+        vegetables: commonGroup('vegetables'),
+        proteins: commonGroup('proteins'),
+        grains: commonGroup('grains'),
+        'nuts-seeds': commonGroup('nuts-seeds'),
+    };
+}
+
+/** Search saved records first, then the same curated catalogue as Quick Add. */
+export function getIngredientSearchOptions(
+    savedIngredients: QuickAddSavedIngredient[],
+): QuickAddOption[] {
+    const groups = groupQuickAddIngredients(savedIngredients);
+    const candidates = [
+        ...groups.saved,
+        ...groups.vegetables,
+        ...groups.proteins,
+        ...groups.grains,
+        ...groups['nuts-seeds'],
+    ];
+    const seen = new Set<string>();
+
+    return candidates.filter(({ name }) => {
+        const key = normalizeIngredientName(name);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }

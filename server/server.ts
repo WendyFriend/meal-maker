@@ -2,8 +2,20 @@ import { createServer, ServerResponse } from 'node:http';
 import type { GenerateMealRequest } from '../shared/types/types.ts';
 import { handleGenerateMealRequest } from './meal-generator/handleGenerateMealRequest.ts';
 import { handleIngredientNutrition } from './nutrition/handleIngredientNutrition.ts';
+import { handleFoodSearch } from './nutrition/handleFoodSearch.ts';
 
 const server = createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    if (req.method === 'GET' && url.pathname === '/api/food-search') {
+        try {
+            const result = await handleFoodSearch(url.searchParams.get('q'));
+            sendJson(res, result.status, result.body);
+        } catch (error) {
+            console.error('Nutrition Lab food search failed:', error);
+            sendJson(res, 502, { message: 'Could not search foods.' });
+        }
+        return;
+    }
     if (req.method === 'POST' && req.url === '/api/ingredient-nutrition') {
         try {
             const input: unknown = JSON.parse(await readRequestBody(req));
@@ -30,6 +42,8 @@ const server = createServer(async (req, res) => {
                 req.headers['x-meal-generator'],
             );
 
+            if (result.serverTiming)
+                res.setHeader('Server-Timing', result.serverTiming);
             sendJson(res, result.status, result.body);
         } catch (error) {
             console.error('server.ts error:', error);

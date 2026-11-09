@@ -1,0 +1,23 @@
+{
+    "ingredients": [
+        {
+            "name": "pumpkin",
+            "caloriesPer100g": 123,
+            "proteinPer100g": 7,
+            "carbohydratePer100g": 17,
+            "fatPer100g": 3,
+            "micronutrientsPer100g": {
+                "iron": 1.23
+            }
+        },
+        {
+            "name": "firm tofu"
+        },
+        {
+            "name": "rolled oats"
+        }
+    ],
+    "requirements": {
+        "calories": 600
+    }
+}

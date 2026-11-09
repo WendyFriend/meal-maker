@@ -54,8 +54,12 @@ it('saves with the actual header tick and updates the retained My Meals list', a
         ],
         instructions: ['Cook: Stir for 2 minutes.'],
     };
-    vi.mocked(getRecipes).mockResolvedValue([recipe]);
-    vi.mocked(updateRecipe).mockImplementation(async (_id, value) => value);
+    let savedRecipe = recipe;
+    vi.mocked(getRecipes).mockImplementation(async () => [savedRecipe]);
+    vi.mocked(updateRecipe).mockImplementation(async (_id, value) => {
+        savedRecipe = value;
+        return value;
+    });
     const user = userEvent.setup();
     render(<App />);
     await user.click(
@@ -83,14 +87,19 @@ it('saves with the actual header tick and updates the retained My Meals list', a
     fireEvent(editMeal, editClick);
     expect(editClick.defaultPrevented).toBe(true);
     expect(editMeal).not.toBeInTheDocument();
+    expect(screen.getByText('Edit Recipe')).toBeInTheDocument();
+    expect(
+        screen.getByRole('img', { name: 'Default recipe image' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save meal' })).not.toBe(
         editMeal,
     );
     const weight = screen.getByRole('spinbutton', {
-        name: 'Tofu weight in grams',
+        name: 'Ingredient 1 weight in grams',
     });
     await user.clear(weight);
     await user.type(weight, '150');
+    await user.click(screen.getByRole('tab', { name: 'Steps (optional)' }));
     await user.clear(screen.getByRole('textbox', { name: 'Instructions' }));
     await user.type(
         screen.getByRole('textbox', { name: 'Instructions' }),
@@ -101,7 +110,9 @@ it('saves with the actual header tick and updates the retained My Meals list', a
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cancel editing' }));
     expect(
-        screen.queryByRole('spinbutton', { name: 'Tofu weight in grams' }),
+        screen.queryByRole('spinbutton', {
+            name: 'Ingredient 1 weight in grams',
+        }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('100 g')).toBeInTheDocument();
     expect(screen.getByText('Stir for 2 minutes.')).toBeInTheDocument();
@@ -115,9 +126,11 @@ it('saves with the actual header tick and updates the retained My Meals list', a
     expect(updateRecipe).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Edit meal' }));
     await user.click(
-        screen.getByRole('button', { name: 'Increase Tofu by 5 grams' }),
+        screen.getByRole('button', { name: 'Increase ingredient 1 weight' }),
     );
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(
+        screen.getByRole('button', { name: 'Add ingredient' }),
+    ).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Save meal' }));
     await waitFor(() =>
         expect(updateRecipe).toHaveBeenCalledWith(
@@ -134,12 +147,12 @@ it('saves with the actual header tick and updates the retained My Meals list', a
     );
     await user.click(screen.getByRole('button', { name: 'Back' }));
     expect(
-        await screen.findByRole('heading', { name: 'My Meals' }),
+        await screen.findByRole('heading', { name: 'My Recipes' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('1 ingredient · 137 kcal')).toBeInTheDocument();
-    expect(getRecipes).toHaveBeenCalledOnce();
+    expect(screen.getByText('Tofu bowl')).toBeInTheDocument();
+    expect(getRecipes).toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: /Tofu bowl/ }));
-    expect(screen.getByText('105 g')).toBeInTheDocument();
+    expect(await screen.findByText('105 g')).toBeInTheDocument();
 });
 
 it('opens ingredient editing from the right side of the app header', async () => {
@@ -165,7 +178,7 @@ it('opens ingredient editing from the right side of the app header', async () =>
             { name: 'My Ingredients' },
         ),
     );
-    await user.click(await screen.findByRole('button', { name: /Tofu.*kcal/ }));
+    await user.click(await screen.findByRole('button', { name: 'Tofu' }));
     const edit = screen.getByRole('button', { name: 'Edit ingredient' });
     expect(document.querySelector('.page-header')).toContainElement(edit);
     expect(document.querySelector('.ingredient-detail')).not.toContainElement(

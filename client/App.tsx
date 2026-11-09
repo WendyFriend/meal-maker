@@ -1,6 +1,14 @@
 import PageHeader from './navigation/PageHeader';
 import NavigationPanel from './navigation/NavigationPanel';
-import { subPageParent, type Page } from './navigation/pages';
+import BottomNavigation from './navigation/BottomNavigation';
+import {
+    mainPageFromPath,
+    mainPagePaths,
+    pageConfig,
+    subPageParent,
+    type MainPage,
+    type Page,
+} from './navigation/pages';
 import {
     useCallback,
     useEffect,
@@ -15,6 +23,7 @@ import {
     type GenerateMealResponse,
     type IngredientInfo,
     type MealGenerator,
+    type MealPreference,
     type UserIngredient,
 } from '../shared/types/types';
 import MyIngredients from './MyIngredients';
@@ -25,9 +34,9 @@ import MyJournal from './MyJournal';
 import Settings from './Settings';
 import { loadMealGenerator, saveMealGenerator } from './settings/mealGenerator';
 import RecipeDetail from './RecipeDetail';
-import { updateRecipe } from './services/recipeService';
-import IngredientInput from './meal-generator/components/IngredientInput';
-import Calories from './meal-generator/components/Calories';
+import CreateRecipe from './CreateRecipe';
+import { saveRecipe, updateRecipe } from './services/recipeService';
+import MealMakerForm from './meal-generator/components/MealMakerForm';
 import { MealMakerIntro } from './meal-generator/components/MealMakerIntro';
 import './meal-generator/MealMaker.css';
 import MealResult from './meal-generator/components/MealResult';
@@ -43,8 +52,18 @@ import {
 import type { Recipe } from '../shared/types/recipe';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
 import AddIngredient from './AddIngredient';
-import { isUserIngredient, normalizeIngredientName } from './utils/Ingredient';
+import {
+    isUserIngredient,
+    mergeIngredientNutrition,
+    needsMacroNutrition,
+    normalizeIngredientName,
+} from './utils/Ingredient';
+import { getIngredientNutrition } from './services/micronutrientService';
 import LoadingSpinner from './components/LoadingSpinner';
+import cookingLoader from './assets/animations/cooking-loader.svg';
+import { IngredientCollectionContext } from './ingredients/IngredientCollectionContext';
+import Brand from './components/Brand';
+import { findCommonQuickAddIngredient } from './meal-generator/components/commonQuickAddIngredients';
 
 function findIngredientByName<T extends IngredientInfo>(
     ingredients: T[],
@@ -57,12 +76,21 @@ function findIngredientByName<T extends IngredientInfo>(
     );
 }
 
+function initialPage(): Page {
+    return mainPageFromPath(window.location.pathname) ?? 'meal-maker';
+}
+
 function App() {
     const { user, loading, signOut } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
+    const moreButtonRef = useRef<HTMLButtonElement>(null);
+    const lastMenuTriggerRef = useRef<HTMLButtonElement>(null);
 
-    const [currentPage, setCurrentPage] = useState<Page>('meal-maker');
+    const [currentPage, setCurrentPage] = useState<Page>(initialPage);
+    const [loginMode, setLoginMode] = useState<'sign-in' | 'sign-up'>(
+        'sign-in',
+    );
     const [pageDirection, setPageDirection] = useState<
         'none' | 'right' | 'left'
     >('none');
@@ -75,7 +103,15 @@ function App() {
     const [userIngredients, setUserIngredients] = useState<UserIngredient[]>(
         [],
     );
+    const [ingredientsRefreshing, setIngredientsRefreshing] = useState(false);
+    const [ingredientsRefreshError, setIngredientsRefreshError] = useState('');
+    const ingredientsRefreshPending = useRef(false);
+    const ingredientsRequestId = useRef(0);
     const [selectedSavedIngredientId, setSelectedSavedIngredientId] =
+        useState<string>();
+    const [addIngredientDraft, setAddIngredientDraft] =
+        useState<IngredientInfo>();
+    const [addIngredientReferencePhoto, setAddIngredientReferencePhoto] =
         useState<string>();
     const [ingredientEditor, setIngredientEditor] = useState({
         editing: false,
@@ -92,6 +128,15 @@ function App() {
     const [updatedRecipes, setUpdatedRecipes] = useState<
         Record<string, Recipe>
     >({});
+    const [recipesRefreshKey, setRecipesRefreshKey] = useState(0);
+    const [hasVisitedRecipes, setHasVisitedRecipes] = useState(
+        currentPage === 'my-recipes',
+    );
+
+    useEffect(() => {
+        const page = mainPageFromPath(window.location.pathname) ?? 'meal-maker';
+        window.history.replaceState({ page }, '', mainPagePaths[page]);
+    }, []);
     const ingredientDetailRef = useRef<DetailEditorHandle>(null);
     const mealDetailRef = useRef<DetailEditorHandle>(null);
     const ingredientListScroll = useRef(0);
@@ -101,7 +146,13 @@ function App() {
         IngredientInfo[]
     >([]);
 
-    const [caloriesGoal, setCaloriesGoal] = useState<number>();
+    const [caloriesGoal, setCaloriesGoal] = useState<number | undefined>();
+    const [proteinGramsGoal, setProteinGramsGoal] = useState<
+        number | undefined
+    >();
+    const [mealPreferences, setMealPreferences] = useState<MealPreference[]>(
+        [],
+    );
     const [mealGenerator, setMealGenerator] =
         useState<MealGenerator>(loadMealGenerator);
 
@@ -116,21 +167,67 @@ function App() {
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
 
     // Scroll target for the generated recipe; scrolls smoothly once the
-    // result is ready (see handleCreate).
+    // result has mounted (see the layout effect below).
     const mealResultRef = useRef<HTMLDivElement>(null);
+    const pendingMealResultScroll = useRef(false);
+    const generatingRef = useRef<HTMLDivElement>(null);
     const mealFormRef = useRef<HTMLDivElement>(null);
-    const mealScreenRef = useRef<HTMLDivElement>(null);
-    const pendingMealSection = useRef<'intro' | 'form' | null>(null);
+    const loginSectionRef = useRef<HTMLDivElement>(null);
 
-    const scrollToMealSection = useCallback((section: 'intro' | 'form') => {
-        const target =
-            section === 'form'
-                ? mealFormRef.current?.parentElement
-                : mealScreenRef.current?.querySelector<HTMLElement>(
-                      '.meal-maker-introduction',
-                  );
-        const focusTarget = section === 'form' ? mealFormRef.current : target;
-        focusTarget?.focus({ preventScroll: true });
+    function focusLogin(mode: 'sign-in' | 'sign-up') {
+        setLoginMode(mode);
+        loginSectionRef.current?.focus({ preventScroll: true });
+        loginSectionRef.current?.scrollIntoView({
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                .matches
+                ? 'auto'
+                : 'smooth',
+            block: 'start',
+        });
+    }
+    const pendingMealForm = useRef(false);
+
+    useEffect(() => {
+        if (!isGenerating) return;
+        const frame = window.requestAnimationFrame(() => {
+            const target = generatingRef.current;
+            if (!target) return;
+            target.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                    .matches
+                    ? 'auto'
+                    : 'smooth',
+                block: 'end',
+            });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [isGenerating]);
+
+    useLayoutEffect(() => {
+        if (
+            isGenerating ||
+            !meal ||
+            !originalMeal ||
+            !pendingMealResultScroll.current
+        )
+            return;
+
+        const target = mealResultRef.current;
+        if (!target) return;
+
+        pendingMealResultScroll.current = false;
+        target.scrollIntoView({
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                .matches
+                ? 'auto'
+                : 'smooth',
+            block: 'start',
+        });
+    }, [isGenerating, meal, originalMeal]);
+
+    const scrollToMealForm = useCallback(() => {
+        const target = mealFormRef.current?.parentElement;
+        mealFormRef.current?.focus({ preventScroll: true });
         target?.scrollIntoView({
             behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
                 .matches
@@ -140,19 +237,19 @@ function App() {
         });
     }, []);
     useLayoutEffect(() => {
-        if (currentPage === 'meal-maker' && pendingMealSection.current) {
-            scrollToMealSection(pendingMealSection.current);
-            pendingMealSection.current = null;
+        if (currentPage === 'meal-maker' && pendingMealForm.current) {
+            scrollToMealForm();
+            pendingMealForm.current = false;
         }
-    }, [currentPage, scrollToMealSection]);
+    }, [currentPage, scrollToMealForm]);
     function closeNavigation() {
-        menuButtonRef.current?.focus({ preventScroll: true });
+        lastMenuTriggerRef.current?.focus({ preventScroll: true });
         setIsSidebarOpen(false);
     }
-    function navigateToMeal(section: 'intro' | 'form') {
-        if (currentPage === 'meal-maker') scrollToMealSection(section);
+    function navigateToMeal() {
+        if (currentPage === 'meal-maker') scrollToMealForm();
         else {
-            pendingMealSection.current = section;
+            pendingMealForm.current = true;
             navigateToPage('meal-maker');
         }
     }
@@ -209,32 +306,68 @@ function App() {
         previousPage.current = currentPage;
     }, [currentPage, selectedSavedIngredientId]);
 
+    const userId = user?.id;
+    const refreshUserIngredients = useCallback(async () => {
+        if (!userId || ingredientsRefreshPending.current) return;
+        ingredientsRefreshPending.current = true;
+        const requestId = ++ingredientsRequestId.current;
+        setIngredientsRefreshing(true);
+        setIngredientsRefreshError('');
+        try {
+            const saved = await getUserIngredients();
+            if (requestId === ingredientsRequestId.current)
+                setUserIngredients(saved);
+        } catch {
+            if (requestId === ingredientsRequestId.current)
+                setIngredientsRefreshError(
+                    'Could not refresh your ingredients.',
+                );
+        } finally {
+            ingredientsRefreshPending.current = false;
+            setIngredientsRefreshing(false);
+        }
+    }, [userId]);
     useEffect(() => {
+        if (!userId) return;
+        const requestId = ++ingredientsRequestId.current;
+        let active = true;
+
         async function loadIngredients() {
             try {
                 const ingredients = await getUserIngredients();
-                setUserIngredients(ingredients);
+                if (active && requestId === ingredientsRequestId.current)
+                    setUserIngredients(ingredients);
             } catch (error) {
-                console.error(error);
+                if (active) console.error(error);
             }
         }
 
-        loadIngredients();
-    }, []);
+        void loadIngredients();
+        return () => {
+            active = false;
+        };
+    }, [userId]);
 
-    // The browser back gesture (swipe from the left edge, Android back
-    // button) pops the history entry navigateToPage pushed when a sub-page
-    // opened. Return to that sub-page's parent instead of leaving the app.
+    // Restore the page represented by the URL or a still-mounted detail entry.
     useEffect(() => {
         function handlePopState() {
-            const parent = subPageParent[currentPage];
-
-            if (!parent) return;
-
-            setPageDirection('right');
+            const mainPage =
+                mainPageFromPath(window.location.pathname) ?? 'meal-maker';
+            const detailPage = window.history.state?.page as Page | undefined;
+            const canRestoreDetail =
+                detailPage &&
+                subPageParent[detailPage] === mainPage &&
+                (detailPage !== 'recipe-detail' || selectedRecipe) &&
+                (detailPage !== 'ingredient-detail' ||
+                    selectedSavedIngredientId);
+            const nextPage = canRestoreDetail ? detailPage : mainPage;
+            setPageDirection(
+                subPageParent[currentPage] === nextPage ? 'right' : 'none',
+            );
             setIngredientEditor({ editing: false, saving: false });
             setMealEditor({ editing: false, saving: false });
-            setCurrentPage(parent);
+            if (nextPage === 'my-recipes') setHasVisitedRecipes(true);
+            setCurrentPage(nextPage);
         }
 
         window.addEventListener('popstate', handlePopState);
@@ -242,7 +375,7 @@ function App() {
         return () => {
             window.removeEventListener('popstate', handlePopState);
         };
-    }, [currentPage]);
+    }, [currentPage, selectedRecipe, selectedSavedIngredientId]);
 
     function navigateToPage(page: Page) {
         const isReturning = subPageParent[currentPage] === page;
@@ -262,25 +395,29 @@ function App() {
             // in; the popstate listener above performs the navigation.
             window.history.back();
             return;
+        } else if (pageConfig[page].type === 'main') {
+            const path = mainPagePaths[page as MainPage];
+            if (window.location.pathname !== path || currentPage !== page)
+                window.history.pushState({ page }, '', path);
         }
 
         setPageDirection(isAdvancing ? 'left' : 'none');
 
         setIngredientEditor({ editing: false, saving: false });
         setMealEditor({ editing: false, saving: false });
+        if (page === 'my-recipes') setHasVisitedRecipes(true);
         setCurrentPage(page);
     }
 
-    function getIngredientInfoFromStoredData(
-        ingredientName: string,
-    ): IngredientInfo | UserIngredient {
-        return (
+    const getIngredientInfoFromStoredData = useCallback(
+        (ingredientName: string): IngredientInfo | UserIngredient =>
             findIngredientByName(thisMealIngredients, ingredientName) ??
             findIngredientByName(userIngredients, ingredientName) ?? {
+                ...findCommonQuickAddIngredient(ingredientName),
                 name: ingredientName,
-            }
-        );
-    }
+            },
+        [thisMealIngredients, userIngredients],
+    );
 
     async function updateUserIngredient(
         ingredientId: string,
@@ -311,11 +448,18 @@ function App() {
         return saved;
     }
 
+    async function createRecipe(recipe: Parameters<typeof saveRecipe>[0]) {
+        await saveRecipe(recipe);
+        setRecipesRefreshKey((current) => current + 1);
+        navigateToPage('my-recipes');
+    }
+
     async function createUserIngredient(ingredient: IngredientInfo) {
         // update database user ingredients
         const created = await saveUserIngredientToDB(ingredient);
         // update local copy of user ingredients
         setUserIngredients((userIngredients) => [...userIngredients, created]);
+        return created;
     }
 
     async function deleteUserIngredients(ids: string[]) {
@@ -329,6 +473,24 @@ function App() {
         return deleted;
     }
 
+    async function saveSheetIngredient(ingredient: IngredientInfo) {
+        const existing = isUserIngredient(ingredient)
+            ? userIngredients.find(
+                  ({ ingredientId }) =>
+                      ingredientId === ingredient.ingredientId,
+              )
+            : findIngredientByName(userIngredients, ingredient.name);
+        if (existing) {
+            await updateUserIngredient(existing.ingredientId, {
+                ...existing,
+                ...ingredient,
+                ingredientId: existing.ingredientId,
+            });
+        } else {
+            await createUserIngredient(ingredient);
+        }
+    }
+
     async function handleIngredientSave(
         savedIngredient: UserIngredient | IngredientInfo,
         saveToUserIngredients: boolean,
@@ -336,7 +498,7 @@ function App() {
         if (selectedIngredientIndex === null) return;
 
         try {
-            // if user checks save to db
+            // Edits to a saved ingredient also update My Ingredients.
             if (saveToUserIngredients) {
                 if (isUserIngredient(savedIngredient)) {
                     await updateUserIngredient(
@@ -346,23 +508,22 @@ function App() {
                 } else {
                     await createUserIngredient(savedIngredient);
                 }
-            } else {
-                // save ingredient nutritional info to use for this meal
-                setThisMealIngredients((current) => {
-                    const exists = current.some(
-                        (ingredient) =>
-                            ingredient.name === savedIngredient.name,
-                    );
-
-                    return exists
-                        ? current.map((ingredient) =>
-                              ingredient.name === savedIngredient.name
-                                  ? savedIngredient
-                                  : ingredient,
-                          )
-                        : [...current, savedIngredient];
-                });
             }
+            // Preserve edited values in this meal even when a local override
+            // existed before the ingredient was saved or removed.
+            setThisMealIngredients((current) => {
+                const originalName = ingredients[selectedIngredientIndex];
+                const matches = (ingredient: IngredientInfo) =>
+                    normalizeIngredientName(ingredient.name) ===
+                        normalizeIngredientName(originalName) ||
+                    normalizeIngredientName(ingredient.name) ===
+                        normalizeIngredientName(savedIngredient.name);
+                return current.some(matches)
+                    ? current.map((ingredient) =>
+                          matches(ingredient) ? savedIngredient : ingredient,
+                      )
+                    : [...current, savedIngredient];
+            });
 
             // Always update the current meal ingredient
             setIngredients((ingredientNames) =>
@@ -372,10 +533,9 @@ function App() {
                         : ingredientName,
                 ),
             );
-
-            setSelectedIngredientIndex(null);
         } catch (error) {
             console.error(error);
+            throw error;
         }
     }
 
@@ -390,6 +550,81 @@ function App() {
         );
     }
 
+    function cacheMealIngredientNutritionByName(
+        name: string,
+        nutrition: IngredientInfo,
+    ) {
+        const enriched = { ...nutrition, name };
+        const key = normalizeIngredientName(name);
+        setThisMealIngredients((current) =>
+            current.some(
+                (ingredient) =>
+                    normalizeIngredientName(ingredient.name) === key,
+            )
+                ? current.map((ingredient) =>
+                      normalizeIngredientName(ingredient.name) === key
+                          ? enriched
+                          : ingredient,
+                  )
+                : [...current, enriched],
+        );
+    }
+
+    function cacheMealIngredientNutrition(
+        index: number,
+        nutrition: IngredientInfo,
+    ) {
+        const name = ingredients[index];
+        if (name) cacheMealIngredientNutritionByName(name, nutrition);
+    }
+
+    useEffect(() => {
+        let active = true;
+
+        ingredients.forEach((name) => {
+            const ingredient = getIngredientInfoFromStoredData(name);
+            if (!needsMacroNutrition(ingredient)) return;
+
+            void getIngredientNutrition(name)
+                .then((nutrition) => {
+                    if (!active) return;
+                    cacheMealIngredientNutritionByName(
+                        name,
+                        mergeIngredientNutrition(ingredient, nutrition),
+                    );
+                })
+                .catch((error) => {
+                    if (active)
+                        console.error(
+                            'Ingredient nutrition prefetch failed:',
+                            error,
+                        );
+                });
+        });
+
+        return () => {
+            active = false;
+        };
+    }, [ingredients, mealGenerator, getIngredientInfoFromStoredData]);
+
+    async function openMealIngredient(index: number) {
+        const ingredient = getIngredientInfoFromStoredData(ingredients[index]);
+        if (needsMacroNutrition(ingredient)) {
+            try {
+                cacheMealIngredientNutrition(
+                    index,
+                    mergeIngredientNutrition(
+                        ingredient,
+                        await getIngredientNutrition(ingredient.name),
+                    ),
+                );
+            } catch (error) {
+                console.error('Ingredient nutrition lookup failed:', error);
+            }
+        }
+        setSelectedIngredientIndex(index);
+    }
+
     async function handleCreate() {
         setIsGenerating(true);
         setMeal(undefined);
@@ -400,22 +635,50 @@ function App() {
                 ingredients: ingredients.map(getIngredientInfoFromStoredData),
                 requirements: {
                     calories: caloriesGoal,
+                    proteinGrams: proteinGramsGoal,
+                    preferences: mealPreferences,
                 },
             };
 
+            const body = JSON.stringify(input);
+            const started = performance.now();
             const response = await fetch('/api/generate-meal', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Meal-Generator': mealGenerator,
                 },
-                body: JSON.stringify(input),
+                body,
             });
 
             const payload = await response.json();
+            const requestMs = Math.round(performance.now() - started);
+            const serverTiming = response.headers?.get('Server-Timing');
+            function duration(metric: string): number | null {
+                const value = serverTiming
+                    ?.split(',')
+                    .find((entry) => entry.trim().startsWith(`${metric};`))
+                    ?.match(/;\s*dur=(\d+(?:\.\d+)?)/)?.[1];
+                return value === undefined ? null : Number(value);
+            }
 
-            console.log('generate-meal status:', response.status);
-            console.log('generate-meal payload:', payload);
+            console.info('Meal generation timing', {
+                generator: mealGenerator,
+                ingredientCount: input.ingredients.length,
+                status: response.status,
+                requestMs,
+                serverMs: duration(
+                    mealGenerator === 'nutrition-lab'
+                        ? 'nutrition_lab'
+                        : 'generation',
+                ),
+                ...(mealGenerator === 'ollama'
+                    ? {
+                          usdaMs: duration('usda'),
+                          ollamaMs: duration('ollama'),
+                      }
+                    : {}),
+            });
 
             if (response.status === 422) {
                 setError((payload as ErrorResponse).error);
@@ -430,21 +693,9 @@ function App() {
                 throw new Error('Invalid meal response');
             }
 
+            pendingMealResultScroll.current = true;
             setMeal(mealResponse);
             setOriginalMeal(mealResponse);
-
-            // Bring the freshly generated recipe into view. Runs after the
-            // result renders; falls back to a jump when motion is reduced.
-            window.requestAnimationFrame(() => {
-                const prefersReducedMotion = window.matchMedia(
-                    '(prefers-reduced-motion: reduce)',
-                ).matches;
-
-                mealResultRef.current?.scrollIntoView({
-                    behavior: prefersReducedMotion ? 'auto' : 'smooth',
-                    block: 'start',
-                });
-            });
         } catch (error) {
             console.error(error);
             setError({
@@ -459,6 +710,10 @@ function App() {
 
     async function handleSignOut() {
         setIsSidebarOpen(false);
+        window.history.replaceState({ page: 'meal-maker' }, '', '/');
+        setCurrentPage('meal-maker');
+        setPageDirection('none');
+        setUserIngredients([]);
         await signOut();
     }
 
@@ -471,257 +726,332 @@ function App() {
     }
 
     if (!user) {
-        return <Login />;
+        return (
+            <div className="app app-public">
+                <header className="page-header page-header-meal-maker">
+                    <div className="page-header-inner">
+                        <Brand className="page-header-brand" />
+                    </div>
+                </header>
+                <div className="page-transition page-transition-meal-maker">
+                    <main className="page-content page-content-meal-maker">
+                        <div className="meal-maker-screen">
+                            <MealMakerIntro
+                                onTryMealMaker={() => focusLogin('sign-in')}
+                                onSignIn={() => focusLogin('sign-in')}
+                                onSignUp={() => focusLogin('sign-up')}
+                            />
+                            <div
+                                ref={loginSectionRef}
+                                className="public-login-section"
+                                tabIndex={-1}
+                            >
+                                <Login
+                                    key={loginMode}
+                                    embedded
+                                    initialMode={loginMode}
+                                />
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="app">
-            <PageHeader
-                currentPage={currentPage}
-                themed={
-                    isMealMaker ||
-                    usesCollectionTheme ||
-                    currentPage === 'recipe-detail'
-                }
-                editor={
-                    isEditingIngredient
-                        ? {
-                              formId: 'ingredient-detail-form',
-                              subject: 'ingredient',
-                              saving: ingredientEditor.saving,
-                          }
-                        : isEditingMeal
-                          ? {
-                                formId: 'meal-detail-form',
-                                subject: 'meal',
-                                saving: mealEditor.saving,
-                            }
-                          : undefined
-                }
-                onBack={() => {
-                    const parent = subPageParent[currentPage];
-                    if (parent) navigateToPage(parent);
-                }}
-                onEdit={
-                    currentPage === 'ingredient-detail'
-                        ? () => ingredientDetailRef.current?.edit()
-                        : currentPage === 'recipe-detail'
-                          ? () => mealDetailRef.current?.edit()
-                          : undefined
-                }
-                onOpenMenu={() => setIsSidebarOpen(true)}
-                onSignOut={handleSignOut}
-                menuOpen={isSidebarOpen}
-                menuButtonRef={menuButtonRef}
-            />
-            <NavigationPanel
-                currentPage={currentPage}
-                open={isSidebarOpen}
-                onClose={closeNavigation}
-                onHome={() => navigateToMeal('intro')}
-                onNavigate={(page) => {
-                    if (page === 'meal-maker') navigateToMeal('form');
-                    else navigateToPage(page);
-                }}
-                onSignOut={handleSignOut}
-            />
+        <IngredientCollectionContext
+            value={{
+                ingredients: userIngredients,
+                save: saveSheetIngredient,
+            }}
+        >
+            <div className="app">
+                <PageHeader
+                    currentPage={currentPage}
+                    themed={
+                        isMealMaker ||
+                        usesCollectionTheme ||
+                        currentPage === 'recipe-detail' ||
+                        currentPage === 'create-recipe'
+                    }
+                    editor={
+                        isEditingIngredient
+                            ? {
+                                  formId: 'ingredient-detail-form',
+                                  subject: 'ingredient',
+                                  saving: ingredientEditor.saving,
+                              }
+                            : isEditingMeal
+                              ? {
+                                    formId: 'meal-detail-form',
+                                    subject: 'meal',
+                                    saving: mealEditor.saving,
+                                }
+                              : undefined
+                    }
+                    onBack={() => {
+                        const parent = subPageParent[currentPage];
+                        if (parent) navigateToPage(parent);
+                    }}
+                    onEdit={
+                        currentPage === 'ingredient-detail'
+                            ? () => ingredientDetailRef.current?.edit()
+                            : currentPage === 'recipe-detail'
+                              ? () => mealDetailRef.current?.edit()
+                              : undefined
+                    }
+                    onOpenMenu={() => {
+                        lastMenuTriggerRef.current = menuButtonRef.current;
+                        setIsSidebarOpen(true);
+                    }}
+                    onSignOut={handleSignOut}
+                    menuOpen={isSidebarOpen}
+                    menuButtonRef={menuButtonRef}
+                />
+                <NavigationPanel
+                    currentPage={currentPage}
+                    open={isSidebarOpen}
+                    onClose={closeNavigation}
+                    onHome={navigateToMeal}
+                    onNavigate={(page) => {
+                        if (page === 'meal-maker') navigateToMeal();
+                        else navigateToPage(page);
+                    }}
+                    onSignOut={handleSignOut}
+                />
 
-            <div
-                className={`page-transition page-transition-${pageDirection}${isMealMaker ? ' page-transition-meal-maker' : ''}`}
-            >
-                <main
-                    className={`page-content ${isMealMaker ? 'page-content-meal-maker' : usesCollectionTheme ? 'page-content-saved-collection' : ''}`}
+                <div
+                    className={`page-transition page-transition-${pageDirection}${isMealMaker ? ' page-transition-meal-maker' : ''}`}
                 >
-                    {isMealMaker && (
-                        <div className="meal-maker-screen" ref={mealScreenRef}>
-                            <MealMakerIntro
-                                onGetStarted={() => scrollToMealSection('form')}
-                            />
-
-                            <section
-                                className="meal-maker-tool"
-                                aria-label="Meal maker"
-                            >
-                                <div
-                                    className="meal-maker-form"
-                                    ref={mealFormRef}
-                                    tabIndex={-1}
+                    <main
+                        className={`page-content ${isMealMaker ? 'page-content-meal-maker' : usesCollectionTheme ? 'page-content-saved-collection' : ''}`}
+                    >
+                        {isMealMaker && (
+                            <div className="meal-maker-screen">
+                                <section
+                                    className="meal-maker-tool"
+                                    aria-label="Meal maker"
                                 >
-                                    <div className="meal-maker-fields">
-                                        <IngredientInput
-                                            ingredients={ingredients}
-                                            savedIngredients={userIngredients}
-                                            onChange={setIngredients}
-                                            removeIngredient={removeIngredient}
-                                            onIngredientClick={
-                                                setSelectedIngredientIndex
+                                    <MealMakerForm
+                                        ref={mealFormRef}
+                                        ingredients={ingredients}
+                                        savedIngredients={userIngredients}
+                                        onIngredientsChange={setIngredients}
+                                        onRemoveIngredient={removeIngredient}
+                                        onIngredientClick={openMealIngredient}
+                                        calories={caloriesGoal}
+                                        onCaloriesChange={setCaloriesGoal}
+                                        proteinGrams={proteinGramsGoal}
+                                        onProteinGramsChange={
+                                            setProteinGramsGoal
+                                        }
+                                        preferences={mealPreferences}
+                                        onPreferencesChange={setMealPreferences}
+                                        generating={isGenerating}
+                                        onCreate={handleCreate}
+                                    />
+                                </section>
+
+                                {selectedIngredientIndex !== null && (
+                                    <NutritionDialog
+                                        ingredientInfo={getIngredientInfoFromStoredData(
+                                            ingredients[
+                                                selectedIngredientIndex
+                                            ],
+                                        )}
+                                        onClose={() =>
+                                            setSelectedIngredientIndex(null)
+                                        }
+                                        onSave={handleIngredientSave}
+                                        onNutritionResolved={(nutrition) =>
+                                            cacheMealIngredientNutrition(
+                                                selectedIngredientIndex,
+                                                nutrition,
+                                            )
+                                        }
+                                    />
+                                )}
+
+                                {isGenerating && (
+                                    <div
+                                        ref={generatingRef}
+                                        className="generating-indicator"
+                                        role="status"
+                                        aria-live="polite"
+                                    >
+                                        <img
+                                            className="meal-cooking-loader"
+                                            src={cookingLoader}
+                                            width={160}
+                                            height={160}
+                                            alt=""
+                                        />
+                                        <span
+                                            className="meal-cooking-loader-static"
+                                            aria-hidden="true"
+                                        >
+                                            <LoadingSpinner size="large" />
+                                        </span>
+                                        <p className="generating-message">
+                                            Creating your meal…
+                                        </p>
+                                    </div>
+                                )}
+
+                                {error?.code === 'UNKNOWN_ERROR' && (
+                                    <div className="error-message" role="alert">
+                                        {error.message}
+                                    </div>
+                                )}
+
+                                {!isGenerating && meal && originalMeal && (
+                                    <div
+                                        ref={mealResultRef}
+                                        className="meal-maker-result"
+                                    >
+                                        <MealResult
+                                            meal={meal}
+                                            originalMeal={originalMeal}
+                                            onChange={setMeal}
+                                            onSavedRecipesChange={() =>
+                                                setRecipesRefreshKey(
+                                                    (current) => current + 1,
+                                                )
                                             }
                                         />
-
-                                        <section className="meal-maker-calories">
-                                            <Calories
-                                                value={caloriesGoal}
-                                                onChange={setCaloriesGoal}
-                                            />
-                                        </section>
                                     </div>
+                                )}
+                            </div>
+                        )}
 
-                                    <button
-                                        type="button"
-                                        className="create-button meal-maker-create-button"
-                                        onClick={handleCreate}
-                                        disabled={
-                                            isGenerating ||
-                                            ingredients.length === 0
-                                        }
-                                    >
-                                        {isGenerating ? (
-                                            <>
-                                                <LoadingSpinner
-                                                    size="small"
-                                                    tone="inherit"
-                                                />
-                                                Creating your meal…
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span aria-hidden="true">
-                                                    ✦
-                                                </span>
-                                                Create my meal
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </section>
+                        {isIngredientsPage && (
+                            <MyIngredients
+                                isActive={currentPage === 'my-ingredients'}
+                                ingredients={userIngredients}
+                                refreshing={ingredientsRefreshing}
+                                refreshError={ingredientsRefreshError}
+                                onRefresh={() => void refreshUserIngredients()}
+                                onDeleteMany={deleteUserIngredients}
+                                onSaveFromDatabase={createUserIngredient}
+                                onAdd={(ingredient, referencePhoto) => {
+                                    setAddIngredientDraft(ingredient);
+                                    setAddIngredientReferencePhoto(
+                                        referencePhoto,
+                                    );
+                                    ingredientListScroll.current =
+                                        document.querySelector(
+                                            '.page-transition',
+                                        )?.scrollTop ?? 0;
+                                    navigateToPage('add-ingredient');
+                                }}
+                                onOpen={(ingredient) => {
+                                    ingredientListScroll.current =
+                                        document.querySelector(
+                                            '.page-transition',
+                                        )?.scrollTop ?? 0;
+                                    setIngredientEditor({
+                                        editing: false,
+                                        saving: false,
+                                    });
+                                    setSelectedSavedIngredientId(
+                                        ingredient.ingredientId,
+                                    );
+                                    navigateToPage('ingredient-detail');
+                                }}
+                            />
+                        )}
 
-                            {selectedIngredientIndex !== null && (
-                                <NutritionDialog
-                                    ingredientInfo={getIngredientInfoFromStoredData(
-                                        ingredients[selectedIngredientIndex],
-                                    )}
-                                    onClose={() =>
-                                        setSelectedIngredientIndex(null)
-                                    }
-                                    onSave={handleIngredientSave}
+                        {currentPage === 'ingredient-detail' &&
+                            selectedSavedIngredient && (
+                                <IngredientDetail
+                                    ref={ingredientDetailRef}
+                                    ingredient={selectedSavedIngredient}
+                                    onUpdate={updateUserIngredient}
+                                    onEditorStateChange={setIngredientEditor}
                                 />
                             )}
 
-                            {isGenerating && (
-                                <div
-                                    className="generating-indicator"
-                                    role="status"
-                                    aria-live="polite"
-                                >
-                                    <LoadingSpinner size="large" />
-                                    <p className="generating-message">
-                                        Creating your meal…
-                                    </p>
-                                </div>
-                            )}
-
-                            {error?.code === 'UNKNOWN_ERROR' && (
-                                <div className="error-message" role="alert">
-                                    {error.message}
-                                </div>
-                            )}
-
-                            {!isGenerating && meal && originalMeal && (
-                                <div
-                                    ref={mealResultRef}
-                                    className="meal-maker-result"
-                                >
-                                    <MealResult
-                                        meal={meal}
-                                        originalMeal={originalMeal}
-                                        onChange={setMeal}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {isIngredientsPage && (
-                        <MyIngredients
-                            isActive={currentPage === 'my-ingredients'}
-                            ingredients={userIngredients}
-                            onDeleteMany={deleteUserIngredients}
-                            onAdd={() => {
-                                ingredientListScroll.current =
-                                    document.querySelector('.page-transition')
-                                        ?.scrollTop ?? 0;
-                                navigateToPage('add-ingredient');
-                            }}
-                            onOpen={(ingredient) => {
-                                ingredientListScroll.current =
-                                    document.querySelector('.page-transition')
-                                        ?.scrollTop ?? 0;
-                                setIngredientEditor({
-                                    editing: false,
-                                    saving: false,
-                                });
-                                setSelectedSavedIngredientId(
-                                    ingredient.ingredientId,
-                                );
-                                navigateToPage('ingredient-detail');
-                            }}
-                        />
-                    )}
-
-                    {currentPage === 'ingredient-detail' &&
-                        selectedSavedIngredient && (
-                            <IngredientDetail
-                                ref={ingredientDetailRef}
-                                ingredient={selectedSavedIngredient}
-                                onUpdate={updateUserIngredient}
+                        {currentPage === 'add-ingredient' && (
+                            <AddIngredient
+                                initialIngredient={addIngredientDraft}
+                                referencePhoto={addIngredientReferencePhoto}
+                                onBack={() => navigateToPage('my-ingredients')}
+                                onSave={async (ingredient) => {
+                                    await createUserIngredient(ingredient);
+                                }}
+                                findExistingIngredient={findExistingIngredient}
                                 onEditorStateChange={setIngredientEditor}
                             />
                         )}
 
-                    {currentPage === 'add-ingredient' && (
-                        <AddIngredient
-                            onBack={() => navigateToPage('my-ingredients')}
-                            onSave={createUserIngredient}
-                            findExistingIngredient={findExistingIngredient}
-                            onEditorStateChange={setIngredientEditor}
-                        />
-                    )}
+                        {currentPage === 'my-journal' && <MyJournal />}
 
-                    {currentPage === 'my-journal' && <MyJournal />}
+                        {currentPage === 'settings' && (
+                            <Settings
+                                mealGenerator={mealGenerator}
+                                onMealGeneratorChange={(generator) => {
+                                    saveMealGenerator(generator);
+                                    setMealGenerator(generator);
+                                }}
+                            />
+                        )}
 
-                    {currentPage === 'settings' && (
-                        <Settings
-                            mealGenerator={mealGenerator}
-                            onMealGeneratorChange={(generator) => {
-                                saveMealGenerator(generator);
-                                setMealGenerator(generator);
-                            }}
-                        />
-                    )}
+                        {(isRecipesPage || hasVisitedRecipes) && (
+                            <MyMeals
+                                key={user.id}
+                                isActive={currentPage === 'my-recipes'}
+                                updatedRecipes={updatedRecipes}
+                                onRecipesRefreshed={
+                                    Object.keys(updatedRecipes).length
+                                        ? () => setUpdatedRecipes({})
+                                        : undefined
+                                }
+                                refreshKey={recipesRefreshKey}
+                                onCreate={() => navigateToPage('create-recipe')}
+                                onOpenRecipe={(recipe) => {
+                                    setSelectedRecipe(recipe);
+                                    navigateToPage('recipe-detail');
+                                }}
+                            />
+                        )}
 
-                    {isRecipesPage && (
-                        <MyMeals
-                            isActive={currentPage === 'my-recipes'}
-                            updatedRecipes={updatedRecipes}
-                            onOpenRecipe={(recipe) => {
-                                setSelectedRecipe(recipe);
-                                navigateToPage('recipe-detail');
-                            }}
-                        />
-                    )}
+                        {currentPage === 'recipe-detail' && selectedRecipe && (
+                            <RecipeDetail
+                                ref={mealDetailRef}
+                                key={selectedRecipe.id}
+                                recipe={selectedRecipe}
+                                savedIngredients={userIngredients}
+                                onSave={saveMealChanges}
+                                onEditorStateChange={setMealEditor}
+                            />
+                        )}
 
-                    {currentPage === 'recipe-detail' && selectedRecipe && (
-                        <RecipeDetail
-                            ref={mealDetailRef}
-                            key={selectedRecipe.id}
-                            recipe={selectedRecipe}
-                            onSave={saveMealChanges}
-                            onEditorStateChange={setMealEditor}
-                        />
-                    )}
-                </main>
+                        {currentPage === 'create-recipe' && (
+                            <CreateRecipe
+                                savedIngredients={userIngredients}
+                                onSave={createRecipe}
+                            />
+                        )}
+                    </main>
+                </div>
+                {pageConfig[currentPage].type === 'main' && (
+                    <BottomNavigation
+                        currentPage={currentPage}
+                        menuOpen={isSidebarOpen}
+                        moreButtonRef={moreButtonRef}
+                        onNavigate={(page) => {
+                            if (page === 'meal-maker') navigateToMeal();
+                            else navigateToPage(page);
+                        }}
+                        onMore={() => {
+                            lastMenuTriggerRef.current = moreButtonRef.current;
+                            setIsSidebarOpen(true);
+                        }}
+                    />
+                )}
             </div>
-        </div>
+        </IngredientCollectionContext>
     );
 }
 

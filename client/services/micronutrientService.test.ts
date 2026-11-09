@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { MICRONUTRIENTS } from '../../shared/micronutrients';
 import {
-    getIngredientMicronutrients,
+    getIngredientNutrition,
     needsMicronutrients,
 } from './micronutrientService';
 import { saveMealGenerator } from '../settings/mealGenerator';
@@ -12,19 +12,27 @@ afterEach(() => {
 });
 
 it('sends the selected provider and keeps lookup caches separate when switching providers', async () => {
-    const fetchMock = vi
-        .fn()
-        .mockImplementation(
-            async () => new Response(JSON.stringify({ ironPer100g: 1 })),
-        );
+    const fetchMock = vi.fn().mockImplementation(
+        async () =>
+            new Response(
+                JSON.stringify({
+                    name: 'Rice',
+                    caloriesPer100g: 365,
+                    proteinPer100g: 7.1,
+                    carbohydratePer100g: 80,
+                    fatPer100g: 0.7,
+                    ironPer100g: 1,
+                }),
+            ),
+    );
     vi.stubGlobal('fetch', fetchMock);
     saveMealGenerator('ollama');
-    await getIngredientMicronutrients('provider-test-rice');
+    await getIngredientNutrition('provider-test-rice');
     saveMealGenerator('nutrition-lab');
-    await getIngredientMicronutrients('provider-test-rice');
-    await getIngredientMicronutrients('provider-test-rice');
+    await getIngredientNutrition('provider-test-rice');
+    await getIngredientNutrition('provider-test-rice');
     saveMealGenerator('ollama');
-    await getIngredientMicronutrients('provider-test-rice');
+    await getIngredientNutrition('provider-test-rice');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][1].headers['X-Meal-Generator']).toBe(
         'ollama',
@@ -32,6 +40,35 @@ it('sends the selected provider and keeps lookup caches separate when switching 
     expect(fetchMock.mock.calls[1][1].headers['X-Meal-Generator']).toBe(
         'nutrition-lab',
     );
+});
+
+it('keeps macro and micronutrient values returned by the lookup', async () => {
+    vi.stubGlobal(
+        'fetch',
+        vi.fn(
+            async () =>
+                new Response(
+                    JSON.stringify({
+                        name: 'Pumpkin, raw',
+                        caloriesPer100g: 26,
+                        proteinPer100g: 1,
+                        carbohydratePer100g: 6.5,
+                        fatPer100g: 0.1,
+                        ironPer100g: 0.8,
+                    }),
+                ),
+        ),
+    );
+    saveMealGenerator('nutrition-lab');
+
+    await expect(
+        getIngredientNutrition('full-lookup-pumpkin'),
+    ).resolves.toMatchObject({
+        name: 'Pumpkin, raw',
+        caloriesPer100g: 26,
+        carbohydratePer100g: 6.5,
+        ironPer100g: 0.8,
+    });
 });
 
 const allKeys = MICRONUTRIENTS.map(({ key }) => key);

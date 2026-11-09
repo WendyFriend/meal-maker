@@ -27,18 +27,20 @@ export default function MicronutrientContributors({
     percentageText: string;
 }) {
     const top = contribution.ingredients.slice(0, 3);
+    const dailyValueLabel =
+        percentageText === 'N/A'
+            ? percentageText
+            : `${percentageText} of Daily Value`;
     return (
         <NutritionInfo
-            label={`${label}: ${percentageText} of Daily Value. Show contributing ingredients`}
+            label={`${label}: ${dailyValueLabel}. Show contributing and missing ingredients`}
             triggerClassName="ingredient-micronutrient-track micronutrient-contributors-track"
             trigger={trigger}
         >
             <div className="micronutrient-contributors">
                 <h4>{label}</h4>
                 <p className="micronutrient-contributors-caption">
-                    {contribution.missing.length
-                        ? `Top known contributors in ${scopeLabel}`
-                        : `Top contributors in ${scopeLabel}`}
+                    Top 3 contributors in {scopeLabel}
                 </p>
                 {top.length ? (
                     <ol>
@@ -58,17 +60,14 @@ export default function MicronutrientContributors({
                             : 'No ingredient provides a measured amount of this nutrient.'}
                     </p>
                 )}
-                {contribution.ingredients.length > 3 && (
-                    <p className="ingredient-details-note">
-                        Showing the top 3 of {contribution.ingredients.length}{' '}
-                        contributing ingredients.
-                    </p>
-                )}
                 {contribution.missing.length > 0 && (
-                    <p className="ingredient-details-note">
-                        Data unavailable for: {contribution.missing.join(', ')}.
-                        These ingredients are excluded from the ranking.
-                    </p>
+                    <div className="micronutrient-missing-data">
+                        <h5>Missing data</h5>
+                        <p>{contribution.missing.join(', ')}</p>
+                        <span>
+                            These ingredients are excluded from the total above.
+                        </span>
+                    </div>
                 )}
             </div>
         </NutritionInfo>

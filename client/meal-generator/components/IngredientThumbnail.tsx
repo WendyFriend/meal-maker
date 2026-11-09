@@ -2,6 +2,7 @@ import { useState } from 'react';
 import thumbnails from '../../assets/ingredients/ingredient-thumbnails.png';
 import { getFoodThumbnailUrl } from '../../utils/foodThumbnail';
 import { normalizeIngredientName } from '../../utils/Ingredient';
+import { loadMealGenerator } from '../../settings/mealGenerator';
 import './IngredientThumbnail.css';
 
 // Row-major order in the 4 × 4 thumbnail atlas. Match whole words so, for
@@ -28,9 +29,11 @@ const thumbnailAliases: readonly (readonly string[])[] = [
 export default function IngredientThumbnail({
     name,
     fdcId,
+    source,
 }: {
     name: string;
     fdcId?: number;
+    source?: 'nutrition-lab' | 'local';
 }) {
     const [failedFdcId, setFailedFdcId] = useState<number>();
     const words = ` ${normalizeIngredientName(name).replace(/[^a-z0-9]+/g, ' ')} `;
@@ -42,7 +45,12 @@ export default function IngredientThumbnail({
           );
 
     // Many foods have no picture yet; those 404 and use the local thumbnail.
-    if (fdcId !== undefined && failedFdcId !== fdcId) {
+    if (
+        (source === 'nutrition-lab' ||
+            (loadMealGenerator() === 'nutrition-lab' && source !== 'local')) &&
+        fdcId !== undefined &&
+        failedFdcId !== fdcId
+    ) {
         return (
             <img
                 className="meal-ingredient-thumbnail meal-ingredient-thumbnail-photo"

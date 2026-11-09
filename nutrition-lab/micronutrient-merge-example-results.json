@@ -1,0 +1,422 @@
+{
+    "testedAt": "2026-10-31T05:01:43.177Z",
+    "base": "https://mealmaker.brotherk3d.com/api/v1",
+    "syntheticValues": true,
+    "cases": [
+        {
+            "name": "complete-macros-iron-only",
+            "status": 200,
+            "ms": 2634,
+            "request": {
+                "ingredients": [
+                    {
+                        "name": "pumpkin",
+                        "caloriesPer100g": 123,
+                        "proteinPer100g": 7,
+                        "carbohydratePer100g": 17,
+                        "fatPer100g": 3,
+                        "micronutrientsPer100g": {
+                            "iron": 1.23
+                        }
+                    },
+                    {
+                        "name": "firm tofu"
+                    },
+                    {
+                        "name": "rolled oats"
+                    }
+                ],
+                "requirements": {
+                    "calories": 600
+                }
+            },
+            "actual": {
+                "caloriesPer100g": 123,
+                "proteinPer100g": 7,
+                "carbohydratePer100g": 17,
+                "fatPer100g": 3,
+                "sugarPer100g": 2.76,
+                "saturatedFatPer100g": 0.052,
+                "fiberPer100g": 0.5,
+                "micronutrientsPer100g": {
+                    "iron": 1.23,
+                    "calcium": null,
+                    "vitaminC": null
+                }
+            },
+            "matches": {
+                "caloriesPer100g": true,
+                "proteinPer100g": true,
+                "carbohydratePer100g": true,
+                "fatPer100g": true,
+                "sugarPer100g": false,
+                "saturatedFatPer100g": false,
+                "fiberPer100g": false
+            },
+            "weight": 200,
+            "response": {
+                "mealName": "Savory Pumpkin and Tofu Oat Bowl",
+                "ingredients": [
+                    {
+                        "name": "pumpkin",
+                        "weight": 200,
+                        "caloriesPer100g": 123,
+                        "proteinPer100g": 7,
+                        "carbohydratePer100g": 17,
+                        "fatPer100g": 3,
+                        "sugarPer100g": 2.76,
+                        "saturatedFatPer100g": 0.052,
+                        "fiberPer100g": 0.5,
+                        "micronutrientsPer100g": {
+                            "iron": 1.23
+                        },
+                        "nutritionSource": "user"
+                    },
+                    {
+                        "name": "firm tofu",
+                        "weight": 100,
+                        "caloriesPer100g": 80,
+                        "proteinPer100g": 9.08,
+                        "carbohydratePer100g": 1.52,
+                        "fatPer100g": 4.2,
+                        "sugarPer100g": 0.4,
+                        "saturatedFatPer100g": 0.5,
+                        "fiberPer100g": 0.6,
+                        "micronutrientsPer100g": {
+                            "fiber": 0.6,
+                            "sugar": 0.4,
+                            "saturatedFat": 0.5,
+                            "monounsaturatedFat": 1.2,
+                            "polyunsaturatedFat": 2.5,
+                            "transFat": 0,
+                            "cholesterol": 0,
+                            "sodium": 23,
+                            "calcium": 180,
+                            "iron": 1.3
+                        },
+                        "usda": {
+                            "fdcId": 175236,
+                            "description": "Vitasoy USA Azumaya, Firm Tofu"
+                        },
+                        "nutritionSource": "usda"
+                    },
+                    {
+                        "name": "rolled oats",
+                        "weight": 70,
+                        "caloriesPer100g": 389,
+                        "proteinPer100g": 16.9,
+                        "carbohydratePer100g": 66.3,
+                        "fatPer100g": 6.9,
+                        "fiberPer100g": 10.6,
+                        "nutritionSource": "estimated"
+                    }
+                ],
+                "instructions": [
+                    "Peel and cube the pumpkin into small, even pieces.",
+                    "Place the pumpkin in a pot with water and boil until tender, then drain the water.",
+                    "Rinse the rolled oats under cold water to remove excess starch.",
+                    "Combine the rinsed oats with water in a small pot and simmer over medium heat until the water is absorbed and oats are soft.",
+                    "Press the firm tofu to remove excess moisture, then cut into small cubes.",
+                    "Pan-sear the tofu cubes in a non-stick pan over medium heat until golden brown on all sides.",
+                    "Combine the cooked pumpkin, cooked oats, and seared tofu in a bowl.",
+                    "Season to taste and serve warm."
+                ],
+                "servings": 1,
+                "estimatedIngredients": ["rolled oats"],
+                "considerations": [
+                    {
+                        "id": "whole-grains",
+                        "title": "Soak or ferment whole grains",
+                        "severity": "tip",
+                        "compounds": ["phytates"],
+                        "summary": "Phytates in whole grains bind iron, zinc and calcium. Soaking, sprouting or fermenting (sourdough) breaks them down.",
+                        "steps": [
+                            "Soak oats overnight (overnight oats) or grains for 8\u201312 hours before cooking.",
+                            "Prefer sourdough or sprouted-grain breads."
+                        ],
+                        "ingredients": ["rolled oats"]
+                    }
+                ]
+            }
+        },
+        {
+            "name": "complete-macros-vitamin-c-zero",
+            "status": 200,
+            "ms": 2012,
+            "request": {
+                "ingredients": [
+                    {
+                        "name": "pumpkin",
+                        "caloriesPer100g": 123,
+                        "proteinPer100g": 7,
+                        "carbohydratePer100g": 17,
+                        "fatPer100g": 3,
+                        "micronutrientsPer100g": {
+                            "vitaminC": 0
+                        }
+                    },
+                    {
+                        "name": "firm tofu"
+                    },
+                    {
+                        "name": "rolled oats"
+                    }
+                ],
+                "requirements": {
+                    "calories": 600
+                }
+            },
+            "actual": {
+                "caloriesPer100g": 123,
+                "proteinPer100g": 7,
+                "carbohydratePer100g": 17,
+                "fatPer100g": 3,
+                "sugarPer100g": 2.76,
+                "saturatedFatPer100g": 0.052,
+                "fiberPer100g": 0.5,
+                "micronutrientsPer100g": {
+                    "iron": null,
+                    "calcium": null,
+                    "vitaminC": 0
+                }
+            },
+            "matches": {
+                "caloriesPer100g": true,
+                "proteinPer100g": true,
+                "carbohydratePer100g": true,
+                "fatPer100g": true,
+                "sugarPer100g": false,
+                "saturatedFatPer100g": false,
+                "fiberPer100g": false
+            },
+            "weight": 170,
+            "response": {
+                "mealName": "Savory Pumpkin and Tofu Oat Bowl",
+                "ingredients": [
+                    {
+                        "name": "pumpkin",
+                        "weight": 170,
+                        "caloriesPer100g": 123,
+                        "proteinPer100g": 7,
+                        "carbohydratePer100g": 17,
+                        "fatPer100g": 3,
+                        "sugarPer100g": 2.76,
+                        "saturatedFatPer100g": 0.052,
+                        "fiberPer100g": 0.5,
+                        "micronutrientsPer100g": {
+                            "vitaminC": 0
+                        },
+                        "nutritionSource": "user"
+                    },
+                    {
+                        "name": "firm tofu",
+                        "weight": 100,
+                        "caloriesPer100g": 80,
+                        "proteinPer100g": 9.08,
+                        "carbohydratePer100g": 1.52,
+                        "fatPer100g": 4.2,
+                        "sugarPer100g": 0.4,
+                        "saturatedFatPer100g": 0.5,
+                        "fiberPer100g": 0.6,
+                        "micronutrientsPer100g": {
+                            "fiber": 0.6,
+                            "sugar": 0.4,
+                            "saturatedFat": 0.5,
+                            "monounsaturatedFat": 1.2,
+                            "polyunsaturatedFat": 2.5,
+                            "transFat": 0,
+                            "cholesterol": 0,
+                            "sodium": 23,
+                            "calcium": 180,
+                            "iron": 1.3
+                        },
+                        "usda": {
+                            "fdcId": 175236,
+                            "description": "Vitasoy USA Azumaya, Firm Tofu"
+                        },
+                        "nutritionSource": "usda"
+                    },
+                    {
+                        "name": "rolled oats",
+                        "weight": 80,
+                        "caloriesPer100g": 389,
+                        "proteinPer100g": 16.9,
+                        "carbohydratePer100g": 66.3,
+                        "fatPer100g": 6.9,
+                        "fiberPer100g": 10.6,
+                        "nutritionSource": "estimated"
+                    }
+                ],
+                "instructions": [
+                    "Peel and cube the pumpkin into small, uniform pieces.",
+                    "Press the firm tofu to remove excess moisture, then cube it.",
+                    "In a pot, combine the rolled oats with water (ratio 1:2) and simmer on medium heat for 5-10 minutes until soft.",
+                    "While oats cook, steam the pumpkin cubes over boiling water for 10-12 minutes until tender.",
+                    "Pan-sear the tofu cubes in a non-stick pan over medium heat for 5-8 minutes until golden brown on all sides.",
+                    "Stir the steamed pumpkin into the cooked oats.",
+                    "Top the oat and pumpkin mixture with the seared tofu and season to taste."
+                ],
+                "servings": 1,
+                "estimatedIngredients": ["rolled oats"],
+                "considerations": [
+                    {
+                        "id": "whole-grains",
+                        "title": "Soak or ferment whole grains",
+                        "severity": "tip",
+                        "compounds": ["phytates"],
+                        "summary": "Phytates in whole grains bind iron, zinc and calcium. Soaking, sprouting or fermenting (sourdough) breaks them down.",
+                        "steps": [
+                            "Soak oats overnight (overnight oats) or grains for 8\u201312 hours before cooking.",
+                            "Prefer sourdough or sprouted-grain breads."
+                        ],
+                        "ingredients": ["rolled oats"]
+                    }
+                ]
+            }
+        },
+        {
+            "name": "user-nutrition-flat-no-food-id",
+            "status": 200,
+            "ms": 1791,
+            "request": {
+                "ingredients": [
+                    {
+                        "name": "pumpkin",
+                        "caloriesPer100g": 123,
+                        "proteinPer100g": 7,
+                        "carbohydratePer100g": 17,
+                        "fatPer100g": 3,
+                        "sugarPer100g": 0,
+                        "saturatedFatPer100g": 0,
+                        "fiberPer100g": 4.5,
+                        "micronutrientsPer100g": {
+                            "iron": 1.23,
+                            "calcium": 45,
+                            "vitaminC": 0
+                        }
+                    },
+                    {
+                        "name": "firm tofu"
+                    },
+                    {
+                        "name": "rolled oats"
+                    }
+                ],
+                "requirements": {
+                    "calories": 600
+                }
+            },
+            "actual": {
+                "caloriesPer100g": 123,
+                "proteinPer100g": 7,
+                "carbohydratePer100g": 17,
+                "fatPer100g": 3,
+                "sugarPer100g": 0,
+                "saturatedFatPer100g": 0,
+                "fiberPer100g": 4.5,
+                "micronutrientsPer100g": {
+                    "iron": 1.23,
+                    "calcium": 45,
+                    "vitaminC": 0
+                }
+            },
+            "matches": {
+                "caloriesPer100g": true,
+                "proteinPer100g": true,
+                "carbohydratePer100g": true,
+                "fatPer100g": true,
+                "sugarPer100g": true,
+                "saturatedFatPer100g": true,
+                "fiberPer100g": true
+            },
+            "weight": 170,
+            "response": {
+                "mealName": "Savory Pumpkin and Tofu Oat Bowl",
+                "ingredients": [
+                    {
+                        "name": "pumpkin",
+                        "weight": 170,
+                        "caloriesPer100g": 123,
+                        "proteinPer100g": 7,
+                        "carbohydratePer100g": 17,
+                        "fatPer100g": 3,
+                        "sugarPer100g": 0,
+                        "saturatedFatPer100g": 0,
+                        "fiberPer100g": 4.5,
+                        "micronutrientsPer100g": {
+                            "iron": 1.23,
+                            "calcium": 45,
+                            "vitaminC": 0
+                        },
+                        "nutritionSource": "user"
+                    },
+                    {
+                        "name": "firm tofu",
+                        "weight": 100,
+                        "caloriesPer100g": 80,
+                        "proteinPer100g": 9.08,
+                        "carbohydratePer100g": 1.52,
+                        "fatPer100g": 4.2,
+                        "sugarPer100g": 0.4,
+                        "saturatedFatPer100g": 0.5,
+                        "fiberPer100g": 0.6,
+                        "micronutrientsPer100g": {
+                            "fiber": 0.6,
+                            "sugar": 0.4,
+                            "saturatedFat": 0.5,
+                            "monounsaturatedFat": 1.2,
+                            "polyunsaturatedFat": 2.5,
+                            "transFat": 0,
+                            "cholesterol": 0,
+                            "sodium": 23,
+                            "calcium": 180,
+                            "iron": 1.3
+                        },
+                        "usda": {
+                            "fdcId": 175236,
+                            "description": "Vitasoy USA Azumaya, Firm Tofu"
+                        },
+                        "nutritionSource": "usda"
+                    },
+                    {
+                        "name": "rolled oats",
+                        "weight": 80,
+                        "caloriesPer100g": 389,
+                        "proteinPer100g": 16.9,
+                        "carbohydratePer100g": 66.3,
+                        "fatPer100g": 6.9,
+                        "fiberPer100g": 10.6,
+                        "nutritionSource": "estimated"
+                    }
+                ],
+                "instructions": [
+                    "Peel and cube the pumpkin into small pieces.",
+                    "Steam the pumpkin cubes over boiling water for 10-15 minutes until tender, then lightly mash them.",
+                    "Rinse the rolled oats thoroughly in a fine-mesh sieve under cold water.",
+                    "Place the oats in a pot with water (ratio 1:2) and simmer for 5-10 minutes until creamy.",
+                    "Press the firm tofu to remove excess moisture, then cut into small cubes.",
+                    "Sear the tofu cubes in a non-stick pan over medium heat for 5-7 minutes until golden brown.",
+                    "Combine the cooked oats, mashed pumpkin, and seared tofu in a bowl.",
+                    "Season to taste and serve hot."
+                ],
+                "servings": 1,
+                "estimatedIngredients": ["rolled oats"],
+                "considerations": [
+                    {
+                        "id": "whole-grains",
+                        "title": "Soak or ferment whole grains",
+                        "severity": "tip",
+                        "compounds": ["phytates"],
+                        "summary": "Phytates in whole grains bind iron, zinc and calcium. Soaking, sprouting or fermenting (sourdough) breaks them down.",
+                        "steps": [
+                            "Soak oats overnight (overnight oats) or grains for 8\u201312 hours before cooking.",
+                            "Prefer sourdough or sprouted-grain breads."
+                        ],
+                        "ingredients": ["rolled oats"]
+                    }
+                ]
+            },
+            "totalKcal": 600.3
+        }
+    ]
+}

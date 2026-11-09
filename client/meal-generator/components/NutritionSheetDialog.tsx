@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { useModalDialog } from '../../hooks/useModalDialog';
+import type { ReactNode, Ref } from 'react';
+import SlidingSheet from '../../components/SlidingSheet';
 import './IngredientNutritionSheet.css';
 
 export default function NutritionSheetDialog({
@@ -8,38 +7,66 @@ export default function NutritionSheetDialog({
     onClose,
     labelledBy,
     label,
+    editor,
+    readAction,
+    saveButtonRef,
 }: {
     children: ReactNode;
     onClose: () => void;
     labelledBy?: string;
     label?: string;
+    editor?: { formId: string; saving: boolean };
+    readAction?: ReactNode;
+    saveButtonRef?: Ref<HTMLButtonElement>;
 }) {
-    const panelRef = useModalDialog();
-    return createPortal(
-        <dialog
-            ref={panelRef}
-            aria-labelledby={labelledBy}
-            aria-label={label}
-            tabIndex={-1}
+    return (
+        <SlidingSheet
+            label={label}
+            labelledBy={labelledBy}
             className="ingredient-nutrition-sheet"
-            onCancel={(event) => {
-                event.preventDefault();
-                onClose();
-            }}
-            onClick={(event) => {
-                if (event.target !== event.currentTarget) return;
-                const bounds = event.currentTarget.getBoundingClientRect();
-                if (
-                    event.clientX < bounds.left ||
-                    event.clientX > bounds.right ||
-                    event.clientY < bounds.top ||
-                    event.clientY > bounds.bottom
+            onClose={onClose}
+            dismissible={!editor?.saving}
+            header={
+                editor ? (
+                    <>
+                        <button
+                            key="cancel-edit"
+                            type="reset"
+                            form={editor.formId}
+                            className="ingredient-nutrition-close ingredient-sheet-cancel"
+                            disabled={editor.saving}
+                            aria-label="Cancel editing"
+                            title="Cancel editing"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m6 6 12 12M18 6 6 18" />
+                            </svg>
+                        </button>
+                        <button
+                            key="save-edit"
+                            ref={saveButtonRef}
+                            type="submit"
+                            form={editor.formId}
+                            className="ingredient-nutrition-close ingredient-sheet-save"
+                            disabled={editor.saving}
+                            aria-label={
+                                editor.saving
+                                    ? 'Saving changes'
+                                    : 'Save ingredient changes'
+                            }
+                            title="Save ingredient changes"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m5 12 4 4L19 6" />
+                            </svg>
+                        </button>
+                    </>
+                ) : (
+                    readAction
                 )
-                    onClose();
-            }}
+            }
         >
             {children}
-        </dialog>,
-        document.body,
+        </SlidingSheet>
     );
 }

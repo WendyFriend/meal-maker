@@ -84,6 +84,7 @@ the message.
 type Food = {
   fdcId: number;                     // stable id; use it as the key everywhere
   description: string;               // official USDA name, long
+  name: string;                      // short display name, e.g. "Chicken, breast"; use it for chips and lists
   category: string | null;
   thumbnailUrl: string;              // path on the same server, e.g. /api/v1/thumbnails/169756.webp
   match: { tier: 'confident' | 'probable' | 'ambiguous' | 'weak'; score: number; matchedVia: string };
@@ -111,6 +112,7 @@ foods have no picture yet.
 type ParseResponse = {
   ingredients: {
     said: string;                              // the user's words for it
+    name: string;                              // the matched food's short name ("Chicken, breast"), or `said` if none; show this
     match: { fdcId; description; name; caloriesPer100g; proteinPer100g;
              carbohydratePer100g; fatPer100g; sugarPer100g?; saturatedFatPer100g?;
              fiberPer100g?; nutritionSource: 'usda' } | null;   // null = nothing matched
@@ -136,7 +138,10 @@ quantities (only grams and calories are supported).
 ```ts
 // POST /meals/generate
 {
-  ingredients: { name: string; fixedAmount?: { amount: number; unit: 'g' | 'kcal' } }[],  // 1-20
+  ingredients: { name: string; fixedAmount?: { amount: number; unit: 'g' | 'kcal' };
+                 // optional, per 100 g: what you send is kept, what you leave out is filled in
+                 caloriesPer100g?, proteinPer100g?, carbohydratePer100g?, fatPer100g?,
+                 micronutrientsPer100g?: { iron?: number, calcium?: number, ... } }[],  // 1-20
   requirements?: { calories?: number /*per serving*/; proteinGrams?: number; proteinPercentage?: number;
                    servings?: number; mealType?: 'breakfast'|'lunch'|'dinner'|'snack';
                    dietary?: ('vegetarian'|'vegan'|'dairy-free'|'gluten-free')[];
@@ -144,9 +149,15 @@ quantities (only grams and calories are supported).
 }
 // -> { mealName, ingredients: { name, weight /*grams per serving*/, fixed?: boolean,
 //      caloriesPer100g, proteinPer100g, carbohydratePer100g, fatPer100g, fiberPer100g?,
-//      usda?: {fdcId, description}, nutritionSource, micronutrientsPer100g? }[],
+//      usda?: {fdcId, description}, nutritionSource,
+//      micronutrientsPer100g: { fiber, sugar, ..., iron, calcium, ..., vitaminB12, choline } }[],
 //      instructions: string[], servings, considerations?: [...] }
 ```
+
+Every ingredient's `micronutrientsPer100g` lists every micronutrient, with `null` where no
+value is available (`null` = unknown, `0` = none). Values you send in the request are kept
+and the rest are filled in from the ingredient's database match; an ingredient with no
+match keeps what you sent and the rest stay `null`.
 
 An ingredient's `fixedAmount` pins its weight; the others are resized to meet
 `calories` and the protein goal. You can pass the `match` objects from `/parse`
@@ -164,16 +175,23 @@ ingredient = `xPer100g * weight / 100`.
    Do not call it on every utterance or keystroke.
 5. For typed input, debounce about 1.5 s of inactivity before calling `/parse`.
 
-**Search box:** call `/foods/search` after a short debounce (300 ms), show thumbnails and
-`per100g` macros, then `/foods/{fdcId}` for a detail view.
+**Search box:** call `/foods/search` after a short debounce (300 ms), show each result's
+`name` with its thumbnail and `per100g` macros, then `/foods/{fdcId}` for a detail view.
+
+**Typed ingredient entry:** send whatever the user typed to `/parse` and add one ingredient
+per result, labelled with its `name`. One uninterrupted word ("tomato") is looked up
+directly and comes back as "Tomatoes, red, ripe". Anything longer goes to the language
+model, which splits "tomato potato" into two foods, keeps "sweet potato" as one, and
+fixes misspellings ("brocoli" -> "Broccoli").
 
 ## Practical rules
 
 - `/parse` takes up to 500 characters; JSON bodies are capped at 256 KB; audio at 12 MB
   and about 20 s.
-- Typical times: `/foods/search` about 0.1-0.3 s; `/parse` about 0.5 s, plus about 1 s
-  when `usedModel` is true; `/transcribe` about 1.3 s; `/meals/generate` about 2-3 s,
-  occasionally 5 s. Show progress for generation and disable the button while it runs.
+- Typical times: `/foods/search` about 0.1 s; `/parse` about 0.1 s for one word and about
+  1-1.5 s for anything longer (`usedModel` is true); `/transcribe` about 1.3 s;
+  `/meals/generate` about 2-3 s, occasionally 5 s. Show progress for generation and for
+  multi-word `/parse`, and disable the button while it runs.
 - Treat `null` nutrient values as unknown. Never display them as 0.
 - A key in browser code is visible to anyone who opens the page. That is acceptable for
   this project's private use; do not publish a site containing the production key.
@@ -194,3 +212,22 @@ curl -s -X POST $BASE/parse -H "Authorization: Bearer $KEY" -H 'Content-Type: ap
 
 Food names follow Australian usage where it matters ("silverbeet" finds Swiss chard,
 "capsicum" finds peppers, "sirloin" finds top loin).
+
+## Endpoints on this server
+
+Generated from the running server, so always current.
+
+| Method | Path | Scope |
+| --- | --- | --- |
+| GET | `/api/v1` | public |
+| GET | `/api/v1/health` | public |
+| GET | `/api/v1/docs` | any key |
+| GET | `/api/v1/thumbnails/:id.webp` | public |
+| GET | `/api/v1/me` | any key |
+| GET | `/api/v1/foods/search` | foods |
+| GET | `/api/v1/foods/:id` | foods |
+| POST | `/api/v1/foods/resolve` | foods |
+| POST | `/api/v1/parse` | parse |
+| POST | `/api/v1/transcribe` | voice |
+| POST | `/api/v1/voice` | voice |
+| POST | `/api/v1/meals/generate` | generate |

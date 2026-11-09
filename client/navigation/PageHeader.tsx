@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 import Brand from '../components/Brand';
 import EditIcon from '../components/EditIcon';
+import CheckIcon from '../components/CheckIcon';
 import { pageConfig, type Page } from './pages';
 
 type PageHeaderProps = {
@@ -17,6 +18,7 @@ type PageHeaderProps = {
     onSignOut: () => void;
     menuOpen: boolean;
     menuButtonRef: Ref<HTMLButtonElement>;
+    showMenu?: boolean;
 };
 
 export default function PageHeader({
@@ -29,8 +31,75 @@ export default function PageHeader({
     onSignOut,
     menuOpen,
     menuButtonRef,
+    showMenu = true,
 }: PageHeaderProps) {
     const config = pageConfig[currentPage];
+    if (currentPage === 'recipe-detail' && editor) {
+        return (
+            <header className="page-header page-header-create-recipe">
+                <div className="page-header-inner">
+                    <button
+                        key="cancel-recipe-edit"
+                        type="reset"
+                        form={editor.formId}
+                        className="page-header-create-cancel"
+                        disabled={editor.saving}
+                        aria-label="Cancel editing"
+                        title="Cancel editing"
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 5 19 19M19 5 5 19" />
+                        </svg>
+                    </button>
+                    <span className="page-header-create-title">
+                        Edit Recipe
+                    </span>
+                    <button
+                        key="save-recipe-edit"
+                        type="submit"
+                        form={editor.formId}
+                        className="page-header-create-save"
+                        disabled={editor.saving}
+                        aria-label="Save meal"
+                        title="Save meal"
+                    >
+                        <CheckIcon />
+                    </button>
+                </div>
+            </header>
+        );
+    }
+    if (currentPage === 'create-recipe') {
+        return (
+            <header className="page-header page-header-create-recipe">
+                <div className="page-header-inner">
+                    <button
+                        type="button"
+                        className="page-header-create-cancel"
+                        onClick={onBack}
+                        aria-label="Cancel creating recipe"
+                        title="Cancel creating recipe"
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 5 19 19M19 5 5 19" />
+                        </svg>
+                    </button>
+                    <span className="page-header-create-title">
+                        Create Recipe
+                    </span>
+                    <button
+                        type="submit"
+                        form="create-recipe-form"
+                        className="page-header-create-save"
+                        aria-label="Save recipe"
+                        title="Save recipe"
+                    >
+                        <CheckIcon />
+                    </button>
+                </div>
+            </header>
+        );
+    }
     return (
         <header
             className={`page-header ${themed ? 'page-header-meal-maker' : ''}`}
@@ -95,7 +164,7 @@ export default function PageHeader({
                     >
                         <EditIcon />
                     </button>
-                ) : config.type === 'main' ? (
+                ) : config.type === 'main' && showMenu ? (
                     <button
                         ref={menuButtonRef}
                         type="button"
@@ -111,7 +180,7 @@ export default function PageHeader({
                             <span />
                         </span>
                     </button>
-                ) : (
+                ) : config.type !== 'main' ? (
                     <div className="page-header-actions">
                         <button
                             type="button"
@@ -121,7 +190,7 @@ export default function PageHeader({
                             Log out
                         </button>
                     </div>
-                )}
+                ) : null}
             </div>
         </header>
     );

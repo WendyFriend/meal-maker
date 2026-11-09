@@ -192,13 +192,12 @@
 
 .ingredient-calorie-contribution {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    align-items: center;
     min-width: 0;
 }
 
 .ingredient-calorie-track {
+    width: 100%;
     min-width: 0;
     height: 3px;
     overflow: hidden;
@@ -218,15 +217,23 @@
     font-size: var(--font-size-xs);
     font-variant-numeric: tabular-nums;
     line-height: 1.3;
-    text-align: left;
+    text-align: center;
     white-space: nowrap;
+    transform: translateY(-1px);
+}
+
+.ingredient-portion-summary {
+    display: grid;
+    grid-template-rows: minmax(40px, 1fr) 16px;
+    align-self: stretch;
+    place-items: center;
+    min-width: 0;
 }
 
 .ingredient-info {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-rows: minmax(40px, 1fr) 16px;
+    align-self: stretch;
     min-width: 0;
 }
 
@@ -241,6 +248,7 @@ button.ingredient-name-button {
     align-items: center;
     gap: var(--space-1);
     width: fit-content;
+    align-self: center;
     padding: 0;
 
     border: none;
@@ -358,7 +366,7 @@ button.ingredient-name-button:focus-visible {
     color: var(--text-h);
 
     font-family: inherit;
-    font-size: var(--font-size-md);
+    font-size: 18px;
     font-weight: var(--font-weight-medium);
     text-align: center;
 
@@ -379,7 +387,7 @@ button.ingredient-name-button:focus-visible {
 
 .ingredient-weight-control > span {
     color: var(--text-muted);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
 }
 
 /* Reset button */
@@ -565,8 +573,8 @@ button.ingredient-name-button:focus-visible {
     }
 
     .ingredient-weight-control input {
-        width: 38px;
-        font-size: var(--font-size-sm);
+        width: 42px;
+        font-size: var(--font-size-md);
     }
 }
 
@@ -581,7 +589,7 @@ button.ingredient-name-button:focus-visible {
 .ingredient-weight-readonly {
     flex-shrink: 0;
     color: var(--text-h);
-    font-size: 16px;
+    font-size: 18px;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
@@ -606,4 +614,234 @@ button.ingredient-name-button:focus-visible {
 .meal-result-name-input:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+}
+
+/* Shared recipe detail and generated result layout. */
+.meal-result-header {
+    align-items: center;
+    gap: 12px;
+    margin-bottom: var(--space-6);
+    padding-block: 8px 4px;
+}
+
+.meal-result-header h2,
+.meal-result-name-input {
+    font-size: clamp(20px, 4.8vw, 26px);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.22;
+    letter-spacing: -0.65px;
+    overflow-wrap: anywhere;
+}
+
+.meal-result-actions {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 6px;
+}
+
+.meal-bookmark-button,
+.meal-saved-star,
+.meal-result-actions .journal-log-trigger {
+    display: grid;
+    flex: 0 0 40px;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    margin: 0;
+    padding: 7px;
+    border-radius: 9px;
+}
+
+.meal-bookmark-button[aria-pressed='true'],
+.meal-saved-star {
+    color: #f6b900;
+}
+
+.meal-bookmark-button[aria-pressed='true'] svg,
+.meal-saved-star svg {
+    fill: currentColor;
+}
+
+.meal-saved-star svg {
+    width: 24px;
+    height: 24px;
+}
+
+.meal-result-actions .journal-log-trigger {
+    color: var(--deep-green);
+}
+
+.meal-result-actions .journal-log-trigger[aria-pressed='true'] {
+    color: var(--coral);
+}
+
+.meal-result-highlights {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 8px 0 16px;
+}
+
+.meal-result-highlights > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    text-align: center;
+}
+
+.meal-result-highlights strong {
+    color: var(--text-h-strong);
+    font-size: clamp(15px, 4vw, 20px);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.2;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.meal-result-highlights span {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.meal-result-tabs {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 0;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.meal-result-tabs button {
+    position: relative;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 4px 11px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.3;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        color 150ms ease,
+        background-color 150ms ease;
+}
+
+.meal-result-tabs button[aria-selected='true'] {
+    color: var(--deep-green);
+}
+
+.meal-result-tabs button[aria-selected='true']::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    border-radius: 999px;
+    background: var(--coral);
+    content: '';
+}
+
+.meal-result-tabs button:active {
+    background: var(--surface-muted);
+}
+
+.meal-result-tabs button:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -2px;
+}
+
+.meal-result-panel[hidden] {
+    display: none;
+}
+
+.meal-result-panel .meal-ingredients {
+    margin-bottom: 24px;
+}
+
+.meal-result-panel .meal-ingredient {
+    min-height: 56px;
+    padding-block: 8px;
+}
+
+.meal-result-panel .ingredient-weight-control button {
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface);
+}
+
+.meal-nutrition-section > .meal-section-header {
+    margin-bottom: 12px;
+}
+
+.meal-nutrition-section .nutrition-overview {
+    margin-bottom: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.meal-nutrition-section .nutrition-overview-macros {
+    gap: 2px;
+}
+
+.meal-nutrition-section .nutrition-overview-macro {
+    gap: 4px;
+    padding: 8px 2px;
+}
+
+.meal-nutrition-section .nutrition-overview-macro-label {
+    gap: 4px;
+    font-size: 11px;
+}
+
+.meal-nutrition-section .nutrition-overview-dot {
+    width: 8px;
+    height: 8px;
+    flex-basis: 8px;
+}
+
+.meal-nutrition-section .nutrition-overview-amount strong {
+    font-size: 20px;
+}
+
+.meal-nutrition-section .nutrition-overview-chart {
+    margin-top: 12px;
+}
+
+.meal-nutrition-section .nutrition-overview-bar {
+    height: 16px;
+}
+
+.page-content-meal-maker .meal-result .meal-instructions {
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+    scroll-margin-top: 0;
+}
+
+@media (max-width: 360px) {
+    .meal-result-highlights {
+        padding-inline: 4px;
+    }
+    .meal-result-highlights strong {
+        font-size: 14px;
+    }
+    .meal-result-tabs button {
+        font-size: 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .meal-result-tabs button {
+        transition: none;
+    }
 }

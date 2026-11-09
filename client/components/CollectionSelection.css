@@ -1,66 +1,107 @@
+.saved-collection {
+    transition: padding-bottom 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 .saved-collection-selecting {
     padding-bottom: calc(180px + env(safe-area-inset-bottom));
 }
+.collection-selection-toggle,
 .collection-selection-controls button {
-    display: inline-grid;
-    place-items: center;
-    width: 40px;
-    min-height: 40px;
-    padding: 8px;
+    min-height: 44px;
+    padding: 8px 12px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 12px;
     background: transparent;
-    color: var(--accent);
+    color: var(--deep-green);
     font: inherit;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color 160ms ease,
+        transform 160ms ease;
 }
-.collection-selection-controls button svg {
-    width: 21px;
-    height: 21px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.7;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-.collection-cancel-icon {
-    font-size: 22px;
-    font-weight: 400;
-    line-height: 1;
+.collection-selection-toggle:active,
+.collection-selection-controls button:active {
+    transform: scale(0.95);
+    background: var(--surface-muted);
 }
 .collection-selection-toggle {
     margin-left: auto;
+    min-width: 76px;
+    color: var(--coral);
+}
+.collection-selection-controls button {
+    color: var(--coral);
+}
+.collection-selection-controls-slot {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        max-height 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        margin-top 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        opacity 140ms ease;
+}
+.collection-selection-controls-slot.is-visible {
+    max-height: 60px;
+    margin-top: -12px;
+    opacity: 1;
+    pointer-events: auto;
 }
 .collection-selection-controls {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: -12px 0 12px;
+    min-height: 44px;
+    margin: 0 0 16px;
     color: var(--deep-green);
     font-size: 14px;
 }
 .saved-collection-row {
     -webkit-touch-callout: none;
 }
+.saved-collection-selecting .saved-collection-row {
+    position: relative;
+    padding-right: 44px;
+}
 .collection-selection-check {
+    position: absolute;
+    z-index: 1;
+    top: 16px;
+    left: 20px;
     display: grid;
     place-items: center;
     box-sizing: border-box;
-    flex: 0 0 22px;
-    width: 22px;
-    height: 22px;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
     border: 1.5px solid var(--border);
     border-radius: 50%;
     background: var(--surface);
+    box-shadow: 0 1px 5px rgb(0 0 0 / 16%);
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        transform 150ms ease;
+    animation: collection-selection-check-in 160ms ease-out both;
+}
+@keyframes collection-selection-check-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 .collection-selection-check.checked {
     border-color: var(--accent);
     background: var(--accent);
     color: white;
+    transform: scale(1.05);
 }
 .collection-selection-check svg {
     width: 18px;
@@ -77,19 +118,83 @@
     bottom: max(24px, env(safe-area-inset-bottom));
     left: 50%;
     box-sizing: border-box;
-    width: min(640px, calc(100% - 48px));
-    padding: 12px;
+    width: min(640px, calc(100% - 32px));
+    padding: 14px;
     transform: translateX(-50%);
     border: 1px solid var(--border-hairline);
-    border-radius: 14px;
+    border-radius: 18px;
+    animation: collection-bulk-toolbar-in 180ms ease-out both;
     background: var(--surface-tint);
     box-shadow: var(--shadow-md);
+}
+@keyframes collection-bulk-toolbar-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 8px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
 .collection-bulk-toolbar p {
     margin: 0 0 10px;
     color: var(--danger);
     font-size: 13px;
     line-height: 1.5;
+}
+.collection-bulk-toolbar .collection-bulk-confirmation {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    color: var(--deep-green);
+    font-size: 15px;
+    font-weight: 600;
+}
+.collection-bulk-confirm-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+}
+.collection-bulk-confirm-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+}
+.collection-bulk-cancel,
+.collection-bulk-confirm {
+    display: grid;
+    flex: 0 0 44px;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--surface);
+    color: var(--deep-green);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        transform 160ms ease,
+        background-color 160ms ease;
+}
+.collection-bulk-confirm {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: white;
+}
+.collection-bulk-cancel svg,
+.collection-bulk-confirm svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 .collection-bulk-delete {
     display: flex;
@@ -100,14 +205,26 @@
     min-height: 48px;
     padding: 12px;
     border: 0;
-    border-radius: 9px;
-    background: var(--accent);
+    border-radius: 11px;
+    background: var(--danger);
     color: white;
     font: inherit;
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color 160ms ease,
+        transform 160ms ease;
+}
+.collection-bulk-delete:active:not(:disabled),
+.collection-bulk-cancel:active:not(:disabled),
+.collection-bulk-confirm:active:not(:disabled) {
+    transform: scale(0.97);
+}
+.collection-bulk-delete:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 85%, black);
 }
 .collection-bulk-delete svg {
     width: 20px;
@@ -119,13 +236,41 @@
     stroke-linejoin: round;
 }
 .saved-collection button:disabled,
-.collection-bulk-delete:disabled {
+.collection-bulk-delete:disabled,
+.collection-bulk-confirm:disabled {
     opacity: 0.5;
     cursor: default;
 }
 .collection-selection-toggle:focus-visible,
 .collection-selection-controls button:focus-visible,
+.collection-bulk-cancel:focus-visible,
+.collection-bulk-confirm:focus-visible,
 .collection-bulk-delete:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
+}
+@media (max-width: 640px) {
+    .collection-bulk-toolbar {
+        bottom: calc(64px + env(safe-area-inset-bottom) + 12px);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .saved-collection,
+    .collection-selection-controls-slot {
+        transition: none;
+    }
+
+    .collection-selection-toggle,
+    .collection-selection-controls button,
+    .collection-selection-check,
+    .collection-bulk-delete,
+    .collection-bulk-cancel,
+    .collection-bulk-confirm {
+        transition: none;
+    }
+
+    .collection-selection-check,
+    .collection-bulk-toolbar {
+        animation: none;
+    }
 }

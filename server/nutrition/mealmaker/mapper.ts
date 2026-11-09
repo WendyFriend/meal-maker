@@ -24,6 +24,7 @@ export function mapMealMakerFoodToIngredientNutrition(
         ),
         nutritionSource: { fdcId: food.fdcId, description: food.description },
         name: food.description,
+        resolvedName: food.name?.trim() || undefined,
         caloriesPer100g: nutrient(208) ?? valid(food.per100g.kcal) ?? 0,
         proteinPer100g: nutrient(203) ?? valid(food.per100g.proteinG) ?? 0,
         carbohydratePer100g: nutrient(205) ?? valid(food.per100g.carbsG) ?? 0,

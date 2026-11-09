@@ -73,7 +73,10 @@
     color: #ffffff;
 }
 
-.sidebar-settings {
+.sidebar-secondary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
     margin-top: auto;
 }
 

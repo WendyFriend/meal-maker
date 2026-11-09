@@ -1,7 +1,9 @@
 import type { DetailEditorHandle } from './components/DetailEditorHandle';
 import { useImperativeHandle, useState, type Ref, type FormEvent } from 'react';
-import type { IngredientNutrition } from '../shared/types/types';
-import { getIngredientPreparation } from '../shared/ingredientPreparation';
+import type {
+    IngredientInfo,
+    IngredientNutrition,
+} from '../shared/types/types';
 import IngredientNutritionContent from './meal-generator/components/IngredientNutritionContent';
 import type { NutritionFieldId } from './meal-generator/components/NutritionField';
 import './IngredientDetail.css';
@@ -25,7 +27,6 @@ const requiredFields = new Set<NutritionFieldId>([
 type Draft = {
     name: string;
     values: Record<NutritionFieldId, string>;
-    preparationTips: string;
     micronutrients: Partial<Record<MicronutrientKey, string>>;
 };
 
@@ -40,7 +41,7 @@ export default function IngredientPage({
 }: {
     onEditorStateChange: (state: { editing: boolean; saving: boolean }) => void;
     ref?: Ref<DetailEditorHandle>;
-    ingredient: IngredientNutrition;
+    ingredient: IngredientInfo;
     onSave: (ingredient: IngredientNutrition) => Promise<void>;
     creating?: boolean;
     onCancel?: () => void;
@@ -49,11 +50,15 @@ export default function IngredientPage({
     const [draft, setDraft] = useState<Draft | null>(() =>
         creating
             ? {
-                  name: '',
+                  name: ingredient.name,
                   values: Object.fromEntries(
-                      fields.map((field) => [field, '']),
+                      fields.map((field) => [
+                          field,
+                          ingredient.name && ingredient[field] !== undefined
+                              ? String(ingredient[field])
+                              : '',
+                      ]),
                   ) as Draft['values'],
-                  preparationTips: '',
                   micronutrients: {},
               }
             : null,
@@ -71,10 +76,6 @@ export default function IngredientPage({
             values: Object.fromEntries(
                 fields.map((field) => [field, String(ingredient[field] ?? '')]),
             ) as Draft['values'],
-            preparationTips: getIngredientPreparation(
-                ingredient.name,
-                ingredient.preparationTips,
-            ).tips.join('\n'),
         });
     }
     useImperativeHandle(ref, () => ({ edit: beginEdit }));
@@ -119,21 +120,7 @@ export default function IngredientPage({
             setError(`${existing} is already in your ingredients.`);
             return;
         }
-        const tips = draft.preparationTips
-            .split('\n')
-            .map((tip) => tip.trim())
-            .filter(Boolean);
-        const originalTips = getIngredientPreparation(
-            ingredient.name,
-            ingredient.preparationTips,
-        ).tips;
-        const preparationTips =
-            creating && !tips.length
-                ? undefined
-                : JSON.stringify(tips) === JSON.stringify(originalTips)
-                  ? ingredient.preparationTips
-                  : tips;
-        const updated: IngredientNutrition = {
+        const updated = {
             ...ingredient,
             name,
             ...Object.fromEntries(
@@ -144,14 +131,13 @@ export default function IngredientPage({
                         : Number(draft.values[field]),
                 ]),
             ),
-            preparationTips,
             ...Object.fromEntries(
                 Object.entries(draft.micronutrients).map(([key, value]) => [
                     key,
                     value.trim() === '' ? undefined : Number(value),
                 ]),
             ),
-        };
+        } as IngredientNutrition;
         setSaving(true);
         onEditorStateChange({ editing: true, saving: true });
         setError(undefined);
@@ -234,14 +220,6 @@ export default function IngredientPage({
                                                       ...current.values,
                                                       [field]: value,
                                                   },
-                                              },
-                                      ),
-                                  onPreparationChange: (preparationTips) =>
-                                      setDraft(
-                                          (current) =>
-                                              current && {
-                                                  ...current,
-                                                  preparationTips,
                                               },
                                       ),
                               }

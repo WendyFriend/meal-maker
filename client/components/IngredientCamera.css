@@ -1,0 +1,235 @@
+.ingredient-camera {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: #171713;
+    color: white;
+    overflow: hidden;
+}
+
+.ingredient-camera::backdrop {
+    background: #171713;
+}
+
+.ingredient-camera-header {
+    position: relative;
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    min-height: 64px;
+    padding-top: env(safe-area-inset-top);
+    background: var(--surface-tint);
+    color: var(--text-h);
+}
+
+.ingredient-camera-header h2 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.ingredient-camera-header button {
+    position: absolute;
+    left: 12px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 36px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ingredient-camera-view {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    background: #302b22;
+}
+
+.ingredient-camera-view video,
+.ingredient-camera-view img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ingredient-camera-view img {
+    position: absolute;
+    inset: 0;
+}
+
+.ingredient-camera-frame {
+    position: absolute;
+    inset: 12% 10%;
+    box-shadow: 0 0 0 999px rgb(0 0 0 / 13%);
+    pointer-events: none;
+}
+
+.ingredient-camera-frame span {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border: 3px solid white;
+}
+
+.ingredient-camera-frame span:nth-child(1) {
+    top: 0;
+    left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-radius: 12px 0 0;
+}
+
+.ingredient-camera-frame span:nth-child(2) {
+    top: 0;
+    right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0 12px 0 0;
+}
+
+.ingredient-camera-frame span:nth-child(3) {
+    right: 0;
+    bottom: 0;
+    border-top: 0;
+    border-left: 0;
+    border-radius: 0 0 12px;
+}
+
+.ingredient-camera-frame span:nth-child(4) {
+    bottom: 0;
+    left: 0;
+    border-top: 0;
+    border-right: 0;
+    border-radius: 0 0 0 12px;
+}
+
+.ingredient-camera-guide,
+.ingredient-camera-error {
+    position: absolute;
+    right: 16px;
+    bottom: 20px;
+    left: 16px;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 54%);
+    color: white;
+    font-size: 13px;
+    text-align: center;
+}
+
+.ingredient-camera-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-around;
+    gap: 22px;
+    min-height: 112px;
+    padding: 10px 24px max(10px, env(safe-area-inset-bottom));
+    background: #201c17;
+}
+
+.ingredient-camera-controls button {
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+}
+
+.ingredient-camera-side {
+    width: 48px;
+    height: 48px;
+    padding: 10px;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 12%);
+    color: white;
+}
+
+.ingredient-camera-side:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.ingredient-camera-side svg {
+    width: 25px;
+    height: 25px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ingredient-camera-shutter {
+    width: 72px;
+    height: 72px;
+    padding: 0;
+    border: 5px solid white;
+    border-radius: 50%;
+    background: #fffdf8;
+    box-shadow: inset 0 0 0 4px #201c17;
+    transition: transform 140ms ease;
+}
+
+.ingredient-camera-shutter:active:not(:disabled) {
+    transform: scale(0.92);
+}
+
+.ingredient-camera-shutter:disabled {
+    opacity: 0.45;
+}
+
+.ingredient-camera-secondary,
+.ingredient-camera-continue {
+    min-height: 48px;
+    padding: 0 20px;
+    border: 1px solid rgb(255 255 255 / 45%);
+    border-radius: 999px;
+    background: transparent;
+    color: white;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.ingredient-camera-continue {
+    border-color: var(--coral);
+    background: var(--coral);
+}
+
+.ingredient-camera-note {
+    margin: 0;
+    padding: 0 22px max(16px, env(safe-area-inset-bottom));
+    background: #201c17;
+    color: rgb(255 255 255 / 80%);
+    font-size: 13px;
+    text-align: center;
+}
+
+.ingredient-camera button:focus-visible {
+    outline: 3px solid var(--coral);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-camera-shutter {
+        transition: none;
+    }
+}

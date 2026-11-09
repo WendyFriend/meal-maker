@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import {
     MICRONUTRIENTS,
     type MicronutrientValues,
@@ -26,12 +26,14 @@ export default function MicronutrientList({
     contributions,
     editor,
     contributionScope,
+    leadingItem,
 }: {
     amounts: MicronutrientValues;
     contributionScope?: string;
     editor?: MicronutrientEditor;
     basis?: string;
     contributions?: MicronutrientContributions;
+    leadingItem?: ReactNode;
 }) {
     const [expandedNutrient, setExpandedNutrient] = useState<
         (typeof MICRONUTRIENTS)[number]['key'] | null
@@ -39,6 +41,7 @@ export default function MicronutrientList({
     const detailsId = useId();
     return (
         <ul className="ingredient-micronutrients">
+            {leadingItem}
             {MICRONUTRIENTS.map(({ key, label, unit, dailyValue }) => {
                 const inputValue =
                     editor?.values[key] ?? String(amounts[key] ?? '');
@@ -57,13 +60,14 @@ export default function MicronutrientList({
                 const information = MICRONUTRIENT_INFORMATION[key];
                 const informationId = `${detailsId}-${key}`;
                 const contribution = contributions?.[key];
+                const hasMissingData = Boolean(contribution?.missing.length);
                 const trackContent = (
                     <>
                         <progress
                             max={100}
                             value={Math.min(100, percentage)}
                             aria-label={`${label} daily value ${basis}`}
-                            aria-valuetext={`${percentageText} of Daily Value`}
+                            aria-valuetext={`${percentageText} of Daily Value${hasMissingData ? ' from ingredients with available data' : ''}`}
                         />
                         <span aria-hidden="true">{percentageText} DV</span>
                     </>
@@ -106,28 +110,44 @@ export default function MicronutrientList({
                                     </span>
                                 </label>
                             ) : (
-                                <span>
-                                    {available
-                                        ? `${Number(amount.toFixed(2))} ${unit}`
-                                        : 'N/A'}
+                                <span className="ingredient-micronutrient-value">
+                                    <span>
+                                        {available
+                                            ? `${Number(amount.toFixed(2))} ${unit}`
+                                            : 'N/A'}
+                                    </span>
+                                    {!available && hasMissingData && (
+                                        <small>Missing</small>
+                                    )}
                                 </span>
                             )}
                         </div>
-                        {available &&
-                            (contribution ? (
-                                <MicronutrientContributors
-                                    label={label}
-                                    scopeLabel={contributionScope}
-                                    unit={unit}
-                                    contribution={contribution}
-                                    percentageText={percentageText}
-                                    trigger={trackContent}
-                                />
-                            ) : (
-                                <div className="ingredient-micronutrient-track">
-                                    {trackContent}
-                                </div>
-                            ))}
+                        {contribution
+                            ? (available || hasMissingData) && (
+                                  <MicronutrientContributors
+                                      label={label}
+                                      scopeLabel={contributionScope}
+                                      unit={unit}
+                                      contribution={contribution}
+                                      percentageText={
+                                          available ? percentageText : 'N/A'
+                                      }
+                                      trigger={
+                                          available ? (
+                                              trackContent
+                                          ) : (
+                                              <span className="micronutrient-missing-trigger">
+                                                  See missing ingredients
+                                              </span>
+                                          )
+                                      }
+                                  />
+                              )
+                            : available && (
+                                  <div className="ingredient-micronutrient-track">
+                                      {trackContent}
+                                  </div>
+                              )}
                         <div
                             id={informationId}
                             hidden={!expanded}

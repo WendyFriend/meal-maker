@@ -1,30 +1,221 @@
-.meal-list-icon {
-    display: grid;
-    flex: 0 0 40px;
-    place-items: center;
-    width: 40px;
-    height: 40px;
+.my-meals.saved-collection {
+    padding-top: 24px;
+}
+
+.my-meals .saved-collection-intro {
+    margin-bottom: 28px;
+}
+
+.my-meals .saved-collection-search-field {
+    margin-bottom: 20px;
+}
+
+.my-meals .saved-collection-list {
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+}
+
+.my-meals .saved-collection-row-wrapper {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: visible;
+    border: 1px solid rgb(36 69 65 / 5%);
+    border-radius: 16px;
+    background: rgb(255 255 255 / 70%);
+    box-shadow: 0 3px 12px rgb(54 44 31 / 4%);
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease;
+}
+
+.my-meals .saved-collection-row-wrapper + .saved-collection-row-wrapper {
+    border-top: 1px solid rgb(36 69 65 / 5%);
+}
+
+.my-meals .saved-collection-row {
+    flex: 1;
+    min-height: 82px;
+    padding: 5px 4px 5px 5px;
+    border-radius: 16px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.my-meals .saved-collection-row,
+.my-meals .saved-collection-row:hover,
+.my-meals .saved-collection-row:active {
+    background: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .my-meals
+        .saved-collection-row-wrapper:not(
+            .saved-collection-row-wrapper-selected
+        ):has(> .saved-collection-row:hover) {
+        background: var(--warm-cream);
+    }
+}
+
+.my-meals
+    .saved-collection-row-wrapper:not(
+        .saved-collection-row-wrapper-selected
+    ):has(> .saved-collection-row:active) {
+    background: rgb(244 121 108 / 8%);
+}
+
+.my-meals.saved-collection-selecting .saved-collection-row {
+    padding-right: 4px;
+}
+
+.my-meals .collection-selection-check {
+    position: static;
+    box-shadow: none;
+}
+
+.my-meals .saved-collection-row-wrapper-selected {
+    border-color: color-mix(in srgb, var(--coral) 55%, white);
+    background: var(--accent-bg);
+}
+
+.my-meals .saved-collection-row-wrapper-selected .saved-collection-row,
+.my-meals .saved-collection-row-wrapper-selected .my-meals-selection-action {
+    background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .my-meals .saved-collection-row-wrapper {
+        transition: none;
+    }
+}
+
+.my-meals .my-meals-row-exiting {
+    overflow: hidden;
+    pointer-events: none;
+    animation: my-meals-delete-row 180ms ease-in both;
+}
+
+@keyframes my-meals-delete-row {
+    from {
+        height: var(--exit-height);
+        opacity: 1;
+    }
+    to {
+        height: 0;
+        margin-bottom: -8px;
+        opacity: 0;
+    }
+}
+
+.my-meals-row-photo {
+    display: block;
+    flex: 0 0 72px;
+    width: 72px;
+    height: 72px;
     border-radius: 12px;
-    background: #f3f0e8;
-    color: #8a9d85;
+    background: var(--surface-muted);
+    object-fit: cover;
 }
-.meal-list-icon svg {
-    width: 26px;
-    height: 26px;
+
+.my-meals .saved-collection-row-info strong {
+    color: var(--deep-green);
+    font-size: 15px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.35;
 }
-.meal-list-icon svg,
-.my-meals .saved-collection-empty-icon svg {
-    stroke: currentColor;
-    stroke-width: 1.6;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+
+.my-meals-row-actions {
+    display: flex;
+    flex: 0 0 44px;
+    box-sizing: border-box;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    width: 44px;
+    padding: 0;
 }
+
+.my-meals-selection-action {
+    border: 0;
+    border-radius: 0 16px 16px 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.my-meals-selection-action:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -3px;
+}
+
+.my-meals .journal-log-trigger {
+    position: relative;
+    isolation: isolate;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: white;
+    transition: transform 160ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.my-meals .journal-log-trigger::before {
+    position: absolute;
+    z-index: -1;
+    inset: 8px;
+    border-radius: 9px;
+    background: var(--coral);
+    box-shadow: 0 2px 6px rgb(244 121 108 / 14%);
+    content: '';
+    transition:
+        background-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.my-meals .journal-log-trigger svg {
+    width: 17px;
+    height: 17px;
+    stroke-width: 2.5;
+}
+
+.my-meals .journal-log-trigger:hover:not(:disabled) {
+    background: transparent;
+    color: white;
+}
+
+.my-meals .journal-log-trigger:hover:not(:disabled)::before {
+    background: var(--accent-strong);
+}
+
+.my-meals .journal-log-trigger:active:not(:disabled) {
+    transform: scale(0.94);
+    background: transparent;
+}
+
+.my-meals .journal-log-trigger:active:not(:disabled)::before {
+    background: var(--accent-strong);
+    box-shadow: 0 1px 4px rgb(244 121 108 / 14%);
+}
+
+.my-meals .journal-log-trigger[aria-pressed='true'] {
+    color: white;
+}
+
+.my-meals .journal-log-trigger .loading-spinner {
+    border-color: rgb(255 255 255 / 35%);
+    border-top-color: white;
+}
+
 .my-meals-error {
     padding: 24px 0;
     color: var(--danger);
     font-size: 14px;
     text-align: center;
 }
+
 .my-meals-error button {
     min-height: 40px;
     padding: 8px 16px;
@@ -35,11 +226,54 @@
     font: inherit;
     cursor: pointer;
 }
+
 .my-meals-error button:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
 }
 
+.my-meals-refresh-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--danger-bg);
+    text-align: left;
+}
+
+.my-meals-refresh-error p {
+    margin: 0;
+}
+
+.my-meals-refresh-error button {
+    flex-shrink: 0;
+}
+
 .my-meals-loading {
     gap: 14px;
+}
+
+@media (max-width: 360px) {
+    .my-meals .saved-collection-title {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .my-meals .journal-log-trigger,
+    .my-meals .journal-log-trigger::before {
+        transition: none;
+    }
+
+    .my-meals .my-meals-row-exiting {
+        animation: none;
+    }
+    .my-meals .journal-log-trigger {
+        transition: none;
+    }
 }

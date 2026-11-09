@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { IngredientInfo } from '../../shared/types/types';
-import type { MicronutrientValues } from '../../shared/micronutrients';
 import { loadMealGenerator } from '../settings/mealGenerator';
 import {
-    getIngredientMicronutrients,
+    getIngredientNutrition,
     micronutrientLookupKey,
     needsMicronutrients,
 } from '../services/micronutrientService';
 
-export function useMicronutrientLookup(ingredients: IngredientInfo[]) {
+export function useMicronutrientLookup(
+    ingredients: IngredientInfo[],
+    options: { includeFoodSource?: boolean } = {},
+) {
     const generator = loadMealGenerator();
     const names = JSON.stringify(
         [
@@ -17,7 +19,9 @@ export function useMicronutrientLookup(ingredients: IngredientInfo[]) {
                     .filter(
                         (ingredient) =>
                             ingredient.name.trim() &&
-                            needsMicronutrients(ingredient),
+                            (needsMicronutrients(ingredient) ||
+                                (options.includeFoodSource &&
+                                    !ingredient.nutritionSource)),
                     )
                     .map(({ name }) => micronutrientLookupKey(name)),
             ),
@@ -27,7 +31,7 @@ export function useMicronutrientLookup(ingredients: IngredientInfo[]) {
     const requestKey = `${generator}:${attempt}:${names}`;
     const [result, setResult] = useState<{
         key: string;
-        data: Record<string, MicronutrientValues>;
+        data: Record<string, IngredientInfo>;
         failed: string[];
     } | null>(null);
 
@@ -35,10 +39,10 @@ export function useMicronutrientLookup(ingredients: IngredientInfo[]) {
         const requested: string[] = JSON.parse(names);
         if (!requested.length) return;
         let active = true;
-        Promise.allSettled(requested.map(getIngredientMicronutrients)).then(
+        Promise.allSettled(requested.map(getIngredientNutrition)).then(
             (responses) => {
                 if (!active) return;
-                const data: Record<string, MicronutrientValues> = {};
+                const data: Record<string, IngredientInfo> = {};
                 const failed: string[] = [];
                 responses.forEach((response, index) => {
                     if (response.status === 'fulfilled')

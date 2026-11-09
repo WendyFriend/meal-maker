@@ -51,6 +51,20 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
+.ingredient-micronutrient-value {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 3px 6px;
+}
+.ingredient-micronutrient-value small {
+    color: var(--accent);
+    font-size: 9px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
 .ingredient-micronutrient-trigger {
     display: inline-flex;
     align-items: center;
@@ -72,6 +86,9 @@
 .ingredient-micronutrient-trigger:hover,
 .ingredient-micronutrient-trigger[aria-expanded='true'] {
     color: var(--text-h);
+}
+.meal-fiber-label {
+    cursor: default;
 }
 .ingredient-micronutrient-trigger svg {
     width: 14px;
@@ -103,6 +120,13 @@
     font-size: 10px;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+}
+.micronutrient-missing-trigger {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+    text-underline-offset: 3px;
 }
 .ingredient-micronutrients progress {
     display: block;
@@ -166,31 +190,4 @@
 .ingredient-nutrition-details :is(a, button):focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
-}
-.ingredient-preparation {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-hairline);
-}
-.ingredient-preparation h4 {
-    margin: 0 0 10px;
-    color: var(--text-h);
-    font-size: 13px;
-    font-weight: 600;
-}
-.ingredient-preparation ul {
-    display: grid;
-    gap: 10px;
-    margin: 0 0 12px;
-    padding-left: 18px;
-    font-size: 13px;
-    line-height: 1.65;
-}
-.ingredient-preparation li::marker {
-    color: var(--accent);
-}
-.ingredient-preparation-source {
-    display: inline-block;
-    padding-block: 4px;
-    font-size: 11px;
 }

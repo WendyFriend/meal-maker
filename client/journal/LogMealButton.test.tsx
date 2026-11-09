@@ -50,10 +50,21 @@ afterEach(() => {
 });
 
 describe('My Day toggle', () => {
+    it('defers adding the meal when authentication is required', async () => {
+        const user = userEvent.setup();
+        const onAuthRequired = vi.fn(() => true);
+        render(<LogMealButton meal={meal} onAuthRequired={onAuthRequired} />);
+
+        await user.click(screen.getByRole('button', { name: 'Add to My Day' }));
+
+        expect(onAuthRequired).toHaveBeenCalledOnce();
+        expect(saveJournalEntry).not.toHaveBeenCalled();
+    });
+
     it('stacks the My Day action after the bookmark in the header', () => {
         render(<MealResult meal={meal} onChange={vi.fn()} />);
         const bookmark = screen.getByRole('button', { name: 'Save this meal' });
-        const add = screen.getByRole('button', { name: 'Add to My Day' });
+        const add = screen.getByRole('button', { name: 'Add to My Plan' });
         expect(add.closest('.meal-result-actions')).toBe(
             bookmark.closest('.meal-result-actions'),
         );

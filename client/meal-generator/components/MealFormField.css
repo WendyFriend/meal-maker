@@ -1,14 +1,14 @@
 /* Shared treatment for the meal form's search and calorie controls. */
 .meal-form-field {
     box-sizing: border-box;
-    min-height: 44px;
+    min-height: 48px;
     padding: 10px 14px;
-    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--warm-cream) 45%, var(--surface));
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-lg);
+    background: var(--surface-tint);
     color: var(--text-h);
     font: inherit;
-    font-size: var(--font-size-sm);
+    font-size: 16px;
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
     outline: none;
@@ -20,7 +20,7 @@
 
 .meal-form-field:focus {
     border-color: var(--accent);
-    background: var(--surface);
+    background: #fff;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
@@ -34,4 +34,13 @@
     .meal-form-field {
         transition: none;
     }
+}
+
+.meal-form-heading {
+    margin: 0;
+    color: var(--deep-green);
+    font-size: 17px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.3;
+    letter-spacing: -0.2px;
 }

@@ -3,6 +3,8 @@ import type { MicronutrientValues } from '../micronutrients.js';
 export type IngredientInfo = MicronutrientValues & {
     preparationTips?: string[];
     name: string;
+    // The Nutrition Lab's name for the matched food; shown in meal results.
+    resolvedName?: string;
     caloriesPer100g?: number;
     proteinPer100g?: number;
     carbohydratePer100g?: number;
@@ -27,6 +29,7 @@ export type UserIngredient = MicronutrientValues & {
 
 export const MEAL_GENERATORS = ['ollama', 'nutrition-lab'] as const;
 export type MealGenerator = (typeof MEAL_GENERATORS)[number];
+export const DEFAULT_MEAL_GENERATOR: MealGenerator = 'nutrition-lab';
 
 export type GenerateMealRequest = {
     ingredients: IngredientInfo[];
@@ -46,12 +49,18 @@ export type UnresolvedIngredient = {
 
 export type MealRequirements = {
     calories?: number;
+    proteinGrams?: number;
     proteinPercentage?: number;
+    preferences?: MealPreference[];
 };
+
+export type MealPreference =
+    'high-protein' | 'under-25-minutes' | 'plant-based' | 'low-carb';
 
 export type IngredientNutrition = MicronutrientValues & {
     preparationTips?: string[];
     name: string;
+    resolvedName?: string;
     caloriesPer100g: number;
     proteinPer100g: number;
     carbohydratePer100g: number;
@@ -63,4 +72,5 @@ export type IngredientNutrition = MicronutrientValues & {
 
 export type MealIngredient = IngredientNutrition & {
     weight: number;
+    thumbnailSource?: 'nutrition-lab' | 'local';
 };

@@ -17,11 +17,15 @@ const emptyIngredient: IngredientNutrition = {
 };
 
 export default function AddIngredient({
+    initialIngredient = emptyIngredient,
+    referencePhoto,
     onBack,
     onSave,
     findExistingIngredient,
     onEditorStateChange,
 }: {
+    initialIngredient?: IngredientInfo;
+    referencePhoto?: string;
     onBack: () => void;
     onSave: (ingredient: IngredientInfo) => Promise<void>;
     findExistingIngredient: (name: string) => string | undefined;
@@ -35,9 +39,18 @@ export default function AddIngredient({
     }, [saved, onBack]);
     return (
         <>
+            {referencePhoto && (
+                <details className="add-ingredient-reference" open>
+                    <summary>Photo reference</summary>
+                    <img
+                        src={referencePhoto}
+                        alt="Captured ingredient reference"
+                    />
+                </details>
+            )}
             <IngredientPage
                 creating
-                ingredient={emptyIngredient}
+                ingredient={initialIngredient}
                 onCancel={onBack}
                 onEditorStateChange={onEditorStateChange}
                 findExistingIngredient={findExistingIngredient}

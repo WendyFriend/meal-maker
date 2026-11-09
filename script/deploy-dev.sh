@@ -1,9 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-DOMAIN="meal-maker-dev.vercel.app"
-# DOMAIN="dev.meal-maker.me"
+cd "$(dirname "$0")/.."
+
+DOMAIN="meal-maker-dev.vercel.app" # This is the default Vercel deployment URL for the app
+
+echo "Incrementing app version..."
+npm run version:bump
 
 echo "Building..."
 npm run build

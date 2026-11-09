@@ -19,7 +19,8 @@ async function lookupWithMealMakerApi(
         (food.match.tier !== 'confident' &&
             food.match.tier !== 'probable' &&
             !food.match.matchedVia?.startsWith('synonym:') &&
-            !matchesFoodDescription(name, food.description))
+            !matchesFoodDescription(name, food.description) &&
+            !(food.name && matchesFoodDescription(name, food.name)))
     ) {
         throw new Error(`No matching food found for ingredient: "${name}"`);
     }

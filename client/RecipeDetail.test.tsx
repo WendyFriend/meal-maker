@@ -1,16 +1,12 @@
 import type { DetailEditorHandle } from './components/DetailEditorHandle';
 import { useRef, useState } from 'react';
-import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-} from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import RecipeDetail from './RecipeDetail';
 import type { Recipe } from '../shared/types/recipe';
+import { mockPickerEnvironment } from './test/pickerEnvironment';
+
 vi.mock('./hooks/useMicronutrientLookup', () => ({
     useMicronutrientLookup: () => ({
         data: {},
@@ -19,6 +15,10 @@ vi.mock('./hooks/useMicronutrientLookup', () => ({
         retry: vi.fn(),
     }),
 }));
+
+beforeEach(() => mockPickerEnvironment(true));
+afterEach(() => vi.unstubAllGlobals());
+
 const recipe: Recipe = {
     id: 'meal-1',
     userId: 'user',
@@ -26,15 +26,20 @@ const recipe: Recipe = {
     ingredients: [
         {
             name: 'Tofu',
+            resolvedName: 'Firm tofu',
             weight: 100,
             caloriesPer100g: 130,
             proteinPer100g: 15,
             carbohydratePer100g: 5.6,
             fatPer100g: 4,
+            sugarPer100g: 1,
+            fiberPer100g: 2,
+            thumbnailSource: 'local',
         },
     ],
     instructions: ['Cook: Stir for 2 minutes.'],
 };
+
 function setup(save = vi.fn(async (value: Recipe) => value)) {
     function Fixture() {
         const ref = useRef<DetailEditorHandle>(null);
@@ -74,6 +79,16 @@ function setup(save = vi.fn(async (value: Recipe) => value)) {
                 <RecipeDetail
                     ref={ref}
                     recipe={recipe}
+                    savedIngredients={[
+                        {
+                            ingredientId: 'broccoli-1',
+                            name: 'Broccoli',
+                            caloriesPer100g: 34,
+                            proteinPer100g: 2.8,
+                            carbohydratePer100g: 6.6,
+                            fatPer100g: 0.4,
+                        },
+                    ]}
                     onSave={save}
                     onEditorStateChange={setEditor}
                 />
@@ -83,200 +98,126 @@ function setup(save = vi.fn(async (value: Recipe) => value)) {
     render(<Fixture />);
     return { user: userEvent.setup(), save };
 }
-const increase = () =>
-    screen.getByRole('button', { name: 'Increase Tofu by 5 grams' });
 
-describe('saved meal header editing', () => {
-    it('starts read-only and enables weights and instructions from the header pencil', async () => {
-        const { user } = setup();
-        expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: /Increase|Decrease/ }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: 'Edit instructions' }),
-        ).not.toBeInTheDocument();
-        expect(screen.getByText('100 g')).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        expect(increase()).toBeInTheDocument();
-        expect(
-            screen.getByRole('textbox', { name: 'Instructions' }),
-        ).toHaveValue('Cook: Stir for 2 minutes.');
-        expect(
-            screen.queryByRole('button', { name: 'Reset instructions' }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Cancel editing' }),
-        ).toBeInTheDocument();
-    });
-    it.each(['Save', 'Save meal'])(
-        'saves via %s and adopts the saved weights as its reset baseline',
-        async (control) => {
-            const { user, save } = setup();
-            await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-            await user.click(increase());
-            await user.click(screen.getByRole('button', { name: control }));
-            expect(
-                await screen.findByRole('button', { name: 'Edit meal' }),
-            ).toBeInTheDocument();
-            expect(screen.getByText('105 g')).toBeInTheDocument();
-            expect(save).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    ingredients: [expect.objectContaining({ weight: 105 })],
-                }),
-            );
-            await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-            await user.click(increase());
-            await user.click(
-                screen.getByRole('button', {
-                    name: 'Reset ingredient weights',
-                }),
-            );
-            expect(
-                screen.getByRole('spinbutton', {
-                    name: 'Tofu weight in grams',
-                }),
-            ).toHaveValue(105);
-            await user.click(screen.getByRole('button', { name: 'Save meal' }));
-            expect(save).toHaveBeenCalledOnce();
-        },
+it('opens the Create Recipe layout with saved name, ingredients, and optional steps', async () => {
+    const { user } = setup();
+    expect(
+        screen.getByRole('img', { name: 'Saved to My Meals' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('100 g')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit meal' }));
+    expect(
+        screen.getByRole('img', { name: 'Default recipe image' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Recipe name' })).toHaveValue(
+        'Tofu bowl',
     );
-    it('cancels weights and instructions, including unfinished numeric drafts', async () => {
-        const { user, save } = setup();
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        await user.clear(
-            screen.getByRole('spinbutton', { name: 'Tofu weight in grams' }),
-        );
-        await user.clear(screen.getByRole('textbox', { name: 'Instructions' }));
-        await user.type(
-            screen.getByRole('textbox', { name: 'Instructions' }),
-            'Changed step.',
-        );
-        await user.click(
-            screen.getByRole('button', { name: 'Cancel editing' }),
-        );
-        expect(screen.getByText('100 g')).toBeInTheDocument();
-        expect(screen.getByText('Stir for 2 minutes.')).toBeInTheDocument();
-        expect(save).not.toHaveBeenCalled();
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        expect(
-            screen.getByRole('spinbutton', { name: 'Tofu weight in grams' }),
-        ).toHaveValue(100);
+    expect(
+        screen.getByRole('spinbutton', {
+            name: 'Ingredient 1 weight in grams',
+        }),
+    ).toHaveValue(100);
+    expect(
+        screen.getByRole('button', { name: 'Add ingredient' }),
+    ).toBeEnabled();
+    expect(
+        screen.getByRole('tab', { name: 'Ingredients & nutrition' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(
+        screen.getByRole('tab', { name: 'Steps (optional)' }),
+    ).toBeInTheDocument();
+    expect(
+        screen.queryByRole('button', { name: 'Add to My Plan' }),
+    ).not.toBeInTheDocument();
+});
+
+it('adds an ingredient and saves edits without dropping existing nutrition data', async () => {
+    const { user, save } = setup();
+    await user.click(screen.getByRole('button', { name: 'Edit meal' }));
+    await user.click(
+        screen.getByRole('button', { name: 'Increase ingredient 1 weight' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    await user.type(
+        screen.getByRole('combobox', { name: 'Ingredient 2' }),
+        'Broccoli{Enter}',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({
+            id: 'meal-1',
+            ingredients: [
+                expect.objectContaining({
+                    name: 'Tofu',
+                    weight: 105,
+                    sugarPer100g: 1,
+                    fiberPer100g: 2,
+                    resolvedName: 'Firm tofu',
+                    thumbnailSource: 'local',
+                }),
+                expect.objectContaining({ name: 'Broccoli', weight: 100 }),
+            ],
+        }),
+    );
+    expect(
+        await screen.findByRole('button', { name: 'Edit meal' }),
+    ).toBeInTheDocument();
+});
+
+it('saves with no steps when the optional Steps tab is cleared', async () => {
+    const { user, save } = setup();
+    await user.click(screen.getByRole('button', { name: 'Edit meal' }));
+    await user.click(screen.getByRole('tab', { name: 'Steps (optional)' }));
+    const instructions = screen.getByRole('textbox', {
+        name: 'Instructions',
     });
-    it('keeps the instruction reset action and resets only instructions', async () => {
-        const { user } = setup();
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        await user.click(increase());
-        const instructions = screen.getByRole('textbox', {
-            name: 'Instructions',
-        });
-        await user.clear(instructions);
-        await user.type(instructions, 'New step.');
-        await user.click(
-            screen.getByRole('button', { name: 'Reset instructions' }),
-        );
-        expect(instructions).toHaveValue('Cook: Stir for 2 minutes.');
-        expect(
-            screen.queryByRole('button', { name: 'Edit instructions' }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: 'Reset instructions' }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('spinbutton', { name: 'Tofu weight in grams' }),
-        ).toHaveValue(105);
-    });
-    it('keeps ingredient reset available even when edited weights return to their original values', async () => {
-        const { user } = setup();
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        await user.click(increase());
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Decrease Tofu by 5 grams' }),
-        );
-        expect(
-            screen.getByRole('button', { name: 'Reset ingredient weights' }),
-        ).toBeInTheDocument();
-        await user.click(
-            screen.getByRole('button', { name: 'Reset ingredient weights' }),
-        );
-        expect(
-            screen.queryByRole('button', { name: 'Reset ingredient weights' }),
-        ).not.toBeInTheDocument();
-    });
-    it('disables editing during saving and keeps failed edits for retry', async () => {
-        let reject!: (error: Error) => void;
-        const save = vi
-            .fn<(value: Recipe) => Promise<Recipe>>()
-            .mockImplementationOnce(
-                () =>
-                    new Promise((_resolve, fail) => {
-                        reject = fail;
-                    }),
-            )
-            .mockImplementation(async (value) => value);
-        const { user } = setup(save);
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        await user.click(increase());
-        await user.click(screen.getByRole('button', { name: 'Save meal' }));
-        expect(increase()).toBeDisabled();
-        expect(
-            screen.getByRole('button', { name: 'Cancel editing' }),
-        ).toBeDisabled();
-        await act(async () => reject(new Error('offline')));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'Could not save',
-        );
-        await user.click(screen.getByRole('button', { name: 'Save meal' }));
-        await waitFor(() =>
-            expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
-        );
-        expect(save).toHaveBeenCalledTimes(2);
-    });
-    it('hides My Day actions while editing and persists meal-name changes', async () => {
-        const { user, save } = setup();
-        expect(
-            screen.getByRole('button', { name: 'Add to My Day' }),
-        ).toBeEnabled();
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        expect(
-            screen.queryByRole('button', { name: 'Add to My Day' }),
-        ).not.toBeInTheDocument();
-        expect(
-            document.querySelector('.meal-result-actions'),
-        ).not.toBeInTheDocument();
-        const name = screen.getByRole('textbox', { name: 'Meal name' });
-        await user.clear(name);
-        await user.type(name, '  Crispy tofu bowl  ');
-        await user.click(screen.getByRole('button', { name: 'Save meal' }));
-        expect(
-            await screen.findByRole('heading', { name: 'Crispy tofu bowl' }),
-        ).toBeInTheDocument();
-        expect(save).toHaveBeenCalledWith(
-            expect.objectContaining({ recipeName: 'Crispy tofu bowl' }),
-        );
-        expect(
-            screen.getByRole('button', { name: 'Add to My Day' }),
-        ).toBeEnabled();
-    });
-    it('discards renamed titles on cancel and rejects a whitespace-only name', async () => {
-        const { user, save } = setup();
-        await user.click(screen.getByRole('button', { name: 'Edit meal' }));
-        const name = screen.getByRole('textbox', { name: 'Meal name' });
-        await user.clear(name);
-        await user.type(name, '   ');
-        await user.click(screen.getByRole('button', { name: 'Save meal' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'Enter a meal name',
-        );
-        expect(save).not.toHaveBeenCalled();
-        await user.click(
-            screen.getByRole('button', { name: 'Cancel editing' }),
-        );
-        expect(
-            screen.getByRole('heading', { name: 'Tofu bowl' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Add to My Day' }),
-        ).toBeEnabled();
-    });
+    expect(instructions).toHaveValue('Cook: Stir for 2 minutes.');
+    await user.clear(instructions);
+    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+    expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ instructions: [] }),
+    );
+});
+
+it('cancels unfinished edits and validates a blank recipe name', async () => {
+    const { user, save } = setup();
+    await user.click(screen.getByRole('button', { name: 'Edit meal' }));
+    const name = screen.getByRole('textbox', { name: 'Recipe name' });
+    await user.clear(name);
+    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a recipe name');
+    expect(save).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Cancel editing' }));
+    expect(
+        screen.getByRole('heading', { name: 'Tofu bowl' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit meal' }));
+    expect(screen.getByRole('textbox', { name: 'Recipe name' })).toHaveValue(
+        'Tofu bowl',
+    );
+});
+
+it('keeps the edit form available for retry when saving fails', async () => {
+    const save = vi
+        .fn<(value: Recipe) => Promise<Recipe>>()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockImplementation(async (value) => value);
+    const { user } = setup(save);
+    await user.click(screen.getByRole('button', { name: 'Edit meal' }));
+    const name = screen.getByRole('textbox', { name: 'Recipe name' });
+    await user.clear(name);
+    await user.type(name, 'Crispy tofu bowl');
+    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Could not save your recipe',
+    );
+    expect(name).toHaveValue('Crispy tofu bowl');
+    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+    expect(
+        await screen.findByRole('heading', { name: 'Crispy tofu bowl' }),
+    ).toBeInTheDocument();
+    expect(save).toHaveBeenCalledTimes(2);
 });

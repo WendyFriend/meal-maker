@@ -1,5 +1,22 @@
 export type Page = keyof typeof pageConfig;
 
+export const mainPagePaths = {
+    'meal-maker': '/',
+    'my-journal': '/my-plan',
+    'my-recipes': '/my-recipes',
+    'my-ingredients': '/my-ingredients',
+    settings: '/settings',
+} as const;
+
+export type MainPage = keyof typeof mainPagePaths;
+
+export function mainPageFromPath(pathname: string): MainPage | undefined {
+    const path = pathname.replace(/\/+$/, '') || '/';
+    return (Object.entries(mainPagePaths) as [MainPage, string][]).find(
+        ([, route]) => route === path,
+    )?.[0];
+}
+
 export const pageConfig = {
     'meal-maker': {
         type: 'main',

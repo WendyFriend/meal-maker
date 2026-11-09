@@ -17,6 +17,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             req.headers['x-meal-generator'],
         );
 
+        if (result.serverTiming)
+            res.setHeader('Server-Timing', result.serverTiming);
         res.status(result.status).json(result.body);
     } catch (error) {
         console.error('generate-meal error:', error);

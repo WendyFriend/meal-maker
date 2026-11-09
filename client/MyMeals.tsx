@@ -1,8 +1,15 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useState } from 'react';
+import {
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type CSSProperties,
+} from 'react';
 import type { Recipe } from '../shared/types/recipe';
-import { totalNutrition } from './utils/nutrition';
 import { getRecipes, deleteRecipes } from './services/recipeService';
+import defaultMealPhoto from './assets/default-meal-photo.jpg';
+import LogMealButton from './journal/LogMealButton';
 import { useCollectionSelection } from './hooks/useCollectionSelection';
 import {
     SelectionToggle,
@@ -13,15 +20,23 @@ import {
 import './components/SavedCollection.css';
 import './MyMeals.css';
 import LoadingSpinner from './components/LoadingSpinner';
+import PullRefreshIndicator from './components/PullRefreshIndicator';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
 
 export default function MyMeals({
     onOpenRecipe,
+    onCreate,
     isActive = true,
     updatedRecipes = {},
+    refreshKey = 0,
+    onRecipesRefreshed,
 }: {
     onOpenRecipe: (recipe: Recipe) => void;
+    onCreate?: () => void;
     isActive?: boolean;
     updatedRecipes?: Record<string, Recipe>;
+    refreshKey?: number;
+    onRecipesRefreshed?: () => void;
 }) {
     const [loadedRecipes, setRecipes] = useState<Recipe[]>([]);
     const recipes = loadedRecipes.map(
@@ -29,8 +44,19 @@ export default function MyMeals({
     );
     const [search, setSearch] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const hasLoadedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const [reloadCount, setReloadCount] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const refreshingRef = useRef(false);
+    const previousActiveRef = useRef(isActive);
+    const [exitingRows, setExitingRows] = useState<Record<string, number>>({});
+    const rowElements = useRef(new Map<string, HTMLDivElement>());
+    const onRecipesRefreshedRef = useRef(onRecipesRefreshed);
+    useLayoutEffect(() => {
+        onRecipesRefreshedRef.current = onRecipesRefreshed;
+    }, [onRecipesRefreshed]);
 
     // Keep the loaded list and search while a meal detail or create page is open.
     useEffect(() => {
@@ -38,19 +64,33 @@ export default function MyMeals({
         async function loadMeals() {
             try {
                 const saved = await getRecipes();
-                if (active) setRecipes(saved);
+                if (active) {
+                    setRecipes(saved);
+                    onRecipesRefreshedRef.current?.();
+                    hasLoadedRef.current = true;
+                    setHasLoaded(true);
+                    setError(null);
+                }
             } catch {
                 if (active)
-                    setError('Could not load your meals. Please try again.');
+                    setError(
+                        hasLoadedRef.current
+                            ? 'Could not refresh your meals. Please try again.'
+                            : 'Could not load your meals. Please try again.',
+                    );
             } finally {
-                if (active) setIsLoading(false);
+                if (active) {
+                    setIsLoading(false);
+                    refreshingRef.current = false;
+                    setIsRefreshing(false);
+                }
             }
         }
         void loadMeals();
         return () => {
             active = false;
         };
-    }, [reloadCount]);
+    }, [reloadCount, refreshKey]);
 
     const query = search.trim().toLowerCase();
     const filtered = recipes.filter(
@@ -64,9 +104,27 @@ export default function MyMeals({
     async function deleteMeals(ids: string[]) {
         const deleted = await deleteRecipes(ids);
         const removed = new Set(deleted);
+        const visibleExits = Object.fromEntries(
+            deleted.flatMap((id) => {
+                const row = rowElements.current.get(id);
+                return row
+                    ? [[id, row.getBoundingClientRect().height || 82]]
+                    : [];
+            }),
+        );
+        if (
+            Object.keys(visibleExits).length &&
+            !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+        ) {
+            setExitingRows(visibleExits);
+            await new Promise<void>((resolve) =>
+                window.setTimeout(resolve, 180),
+            );
+        }
         setRecipes((current) =>
             current.filter((recipe) => !recipe.id || !removed.has(recipe.id)),
         );
+        setExitingRows({});
         return deleted;
     }
     const {
@@ -98,9 +156,47 @@ export default function MyMeals({
         isActive,
     });
 
+    function refreshMeals() {
+        if (refreshingRef.current || isLoading || deleting) return;
+        refreshingRef.current = true;
+        setIsRefreshing(true);
+        setReloadCount((count) => count + 1);
+    }
+
+    // Keep a mounted list fresh when returning from another tab or app.
+    useEffect(() => {
+        if (isActive && !previousActiveRef.current && hasLoadedRef.current) {
+            refreshMeals();
+        }
+        previousActiveRef.current = isActive;
+        // The transition itself is the refresh trigger.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isActive]);
+
+    useEffect(() => {
+        if (!isActive) return;
+        const onVisible = () => {
+            if (document.visibilityState === 'visible' && hasLoadedRef.current)
+                refreshMeals();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () =>
+            document.removeEventListener('visibilitychange', onVisible);
+        // Visibility is the refresh trigger.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isActive, isLoading, deleting]);
+
+    const { containerRef, pullDistance } = usePullToRefresh({
+        enabled: isActive,
+        disabled: isLoading || deleting || selecting,
+        refreshing: isRefreshing,
+        onRefresh: refreshMeals,
+    });
+
     return (
         <section
-            className={`my-meals saved-collection${selecting ? ' saved-collection-selecting' : ''}`}
+            ref={containerRef}
+            className={`my-meals saved-collection${isActive ? ' pull-refresh-active' : ''}${selecting ? ' saved-collection-selecting' : ''}`}
             aria-labelledby="my-meals-heading"
             hidden={!isActive}
             inert={!isActive}
@@ -112,12 +208,14 @@ export default function MyMeals({
                 }
             }}
         >
+            <PullRefreshIndicator
+                distance={pullDistance}
+                refreshing={isRefreshing}
+                label="Refreshing recipes"
+            />
             <header className="saved-collection-intro">
                 <div className="saved-collection-title">
-                    <h1 id="my-meals-heading">My Meals</h1>
-                    {!isLoading && !error && (
-                        <span>{recipes.length} saved</span>
-                    )}
+                    <h1 id="my-meals-heading">My Recipes</h1>
                     {!isLoading &&
                         !error &&
                         recipes.some((recipe) => recipe.id) && (
@@ -129,7 +227,6 @@ export default function MyMeals({
                             />
                         )}
                 </div>
-                <p>Your favourite meals, ready to make again.</p>
             </header>
             <div className="saved-collection-search-field">
                 <span
@@ -151,14 +248,30 @@ export default function MyMeals({
                     disabled={deleting}
                 />
             </div>
-            {selecting && (
-                <SelectionControls
-                    count={selectedItems.length}
-                    allVisibleSelected={allVisibleSelected}
-                    label={selectAllLabel}
-                    disabled={deleting || selectableCount === 0}
-                    onToggle={toggleVisible}
-                />
+            <SelectionControls
+                visible={selecting}
+                count={selectedItems.length}
+                allVisibleSelected={allVisibleSelected}
+                label={selectAllLabel}
+                disabled={deleting || selectableCount === 0}
+                onToggle={toggleVisible}
+            />
+            {error && hasLoaded && (
+                <div
+                    className="my-meals-error my-meals-refresh-error"
+                    role="alert"
+                >
+                    <p>{error}</p>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setError(null);
+                            setReloadCount((count) => count + 1);
+                        }}
+                    >
+                        Try again
+                    </button>
+                </div>
             )}
             {isLoading ? (
                 <div
@@ -168,7 +281,7 @@ export default function MyMeals({
                     <LoadingSpinner />
                     <p>Loading your meals…</p>
                 </div>
-            ) : error ? (
+            ) : error && !hasLoaded ? (
                 <div className="my-meals-error" role="alert">
                     <p>{error}</p>
                     <button
@@ -188,7 +301,23 @@ export default function MyMeals({
                         const selected = isSelected(recipe);
                         return (
                             <div
-                                className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}`}
+                                ref={(node) => {
+                                    if (!recipe.id) return;
+                                    if (node)
+                                        rowElements.current.set(
+                                            recipe.id,
+                                            node,
+                                        );
+                                    else rowElements.current.delete(recipe.id);
+                                }}
+                                className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${recipe.id && exitingRows[recipe.id] ? ' my-meals-row-exiting' : ''}`}
+                                style={
+                                    recipe.id && exitingRows[recipe.id]
+                                        ? ({
+                                              '--exit-height': `${exitingRows[recipe.id]}px`,
+                                          } as CSSProperties)
+                                        : undefined
+                                }
                                 key={
                                     recipe.id ?? `${recipe.recipeName}-${index}`
                                 }
@@ -224,43 +353,46 @@ export default function MyMeals({
                                     }}
                                     onClick={() => clickItem(recipe)}
                                 >
-                                    {selecting && (
+                                    <img
+                                        className="my-meals-row-photo"
+                                        src={defaultMealPhoto}
+                                        alt=""
+                                        width="72"
+                                        height="72"
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                    <span className="saved-collection-row-info">
+                                        <strong>{recipe.recipeName}</strong>
+                                    </span>
+                                </button>
+                                {selecting ? (
+                                    <button
+                                        type="button"
+                                        className="my-meals-row-actions my-meals-selection-action"
+                                        aria-label={`Toggle selection for ${recipe.recipeName}`}
+                                        aria-pressed={selected}
+                                        disabled={deleting}
+                                        onClick={() => clickItem(recipe)}
+                                    >
                                         <SelectionIndicator
                                             selected={selected}
                                         />
-                                    )}
-                                    <span
-                                        className="meal-list-icon"
-                                        aria-hidden="true"
-                                    >
-                                        <MealIcon />
-                                    </span>
-                                    <span className="saved-collection-row-info">
-                                        <strong>{recipe.recipeName}</strong>
-                                        <span>
-                                            {recipe.ingredients.length}{' '}
-                                            {recipe.ingredients.length === 1
-                                                ? 'ingredient'
-                                                : 'ingredients'}{' '}
-                                            ·{' '}
-                                            {Math.round(
-                                                totalNutrition(
-                                                    recipe.ingredients,
-                                                ).calories,
-                                            )}{' '}
-                                            kcal
-                                        </span>
-                                    </span>
-                                    {!selecting && (
-                                        <svg
-                                            className="saved-collection-row-chevron"
-                                            viewBox="0 0 24 24"
-                                            aria-hidden="true"
-                                        >
-                                            <path d="m9 5 7 7-7 7" />
-                                        </svg>
-                                    )}
-                                </button>
+                                    </button>
+                                ) : (
+                                    <div className="my-meals-row-actions">
+                                        <LogMealButton
+                                            meal={{
+                                                mealName: recipe.recipeName,
+                                                ingredients: recipe.ingredients,
+                                                instructions:
+                                                    recipe.instructions,
+                                            }}
+                                            destinationLabel="My Plan"
+                                            feedbackDurationMs={1000}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
@@ -281,20 +413,31 @@ export default function MyMeals({
                     <p className="saved-collection-empty-hint">
                         {recipes.length
                             ? 'Try a different search.'
-                            : 'Create a meal and tap the bookmark to save it here.'}
+                            : 'Create and save a meal to see it here.'}
                     </p>
                 </div>
             )}
             {isActive &&
-                selecting &&
                 createPortal(
-                    <BulkDeleteToolbar
-                        count={selectedItems.length}
-                        noun="meal"
-                        deleting={deleting}
-                        error={deleteError}
-                        onDelete={deleteSelected}
-                    />,
+                    selecting ? (
+                        <BulkDeleteToolbar
+                            count={selectedItems.length}
+                            noun="meal"
+                            deleting={deleting}
+                            error={deleteError}
+                            onDelete={deleteSelected}
+                        />
+                    ) : onCreate ? (
+                        <button
+                            type="button"
+                            className="floating-add-button saved-collection-add-button my-meals-add-button"
+                            onClick={onCreate}
+                            aria-label="Create recipe"
+                            title="Create recipe"
+                        >
+                            <span aria-hidden="true">+</span>
+                        </button>
+                    ) : null,
                     document.body,
                 )}
         </section>

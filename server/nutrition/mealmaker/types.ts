@@ -1,6 +1,9 @@
 export type MealMakerFood = {
     fdcId: number;
     description: string;
+    // Nutrition Lab's normalized display name can preserve preparation terms
+    // that are absent from the USDA description (for example, "split").
+    name?: string;
     match: {
         tier: 'confident' | 'probable' | 'ambiguous' | 'weak';
         matchedVia?: string;
@@ -17,6 +20,25 @@ export type MealMakerFood = {
     };
 };
 
+export type MealMakerSearchFood = MealMakerFood & {
+    category?: string;
+};
+
+export type MealMakerFoodSearchResponse = {
+    query: string;
+    results: MealMakerSearchFood[];
+};
+
+// POST /parse: the lab splits typed text into foods, using a model when needed.
+export type MealMakerParseResponse = {
+    ingredients: {
+        said: string;
+        // The matched food's short name ("Chicken, breast").
+        name?: string;
+        match: { fdcId: number; description: string } | null;
+    }[];
+};
+
 export type MealMakerFoodDetail = {
     fdcId: number;
     description: string;
@@ -31,21 +53,23 @@ export type MealMakerFoodDetail = {
 export type MealMakerGenerateRequest = {
     ingredients: {
         name: string;
-        match?: {
-            fdcId: number;
-            description: string;
-            name: string;
-            caloriesPer100g: number;
-            proteinPer100g: number;
-            carbohydratePer100g: number;
-            fatPer100g: number;
-            sugarPer100g?: number;
-            saturatedFatPer100g?: number;
-            fiberPer100g?: number;
-            nutritionSource: 'usda';
-        };
+        caloriesPer100g?: number;
+        proteinPer100g?: number;
+        carbohydratePer100g?: number;
+        fatPer100g?: number;
+        sugarPer100g?: number;
+        saturatedFatPer100g?: number;
+        fiberPer100g?: number;
+        micronutrientsPer100g?: Record<string, number>;
     }[];
-    requirements: { calories?: number };
+    requirements: {
+        calories?: number;
+        proteinGrams?: number;
+        proteinPercentage?: number;
+        servings?: number;
+        dietary?: ('vegetarian' | 'vegan' | 'dairy-free' | 'gluten-free')[];
+        variation?: 'different' | 'higher-protein' | 'lower-calorie';
+    };
 };
 
 export type MealMakerGeneratedIngredient = {

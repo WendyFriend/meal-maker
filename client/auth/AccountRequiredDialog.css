@@ -1,0 +1,91 @@
+.account-required-dialog {
+    width: min(520px, calc(100vw - 32px));
+    max-height: min(820px, calc(100dvh - 32px));
+    margin: auto;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--border-hairline);
+    border-radius: 24px;
+    background: var(--surface-tint);
+    color: var(--text-h);
+    box-shadow: var(--shadow-lg);
+}
+
+.account-required-dialog::backdrop {
+    background: rgb(28 38 35 / 28%);
+    backdrop-filter: blur(3px);
+}
+
+.account-required-content {
+    position: relative;
+    padding: 28px;
+}
+
+.account-required-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-muted);
+    color: var(--text-h);
+    font: inherit;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.account-required-heading {
+    padding-right: 44px;
+}
+
+.account-required-heading h2 {
+    margin: 0 0 8px;
+    font-size: 26px;
+    letter-spacing: -0.5px;
+}
+
+.account-required-heading p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.account-required-dialog .login-page-embedded {
+    min-height: 0;
+    padding: 20px 0 0;
+    background: transparent;
+}
+
+.account-required-dialog .login-shell {
+    width: 100%;
+}
+
+.account-required-dialog .login-brand,
+.account-required-dialog .login-tagline {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .account-required-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+        border-radius: 20px;
+    }
+
+    .account-required-content {
+        padding: 24px 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-required-dialog::backdrop {
+        backdrop-filter: none;
+    }
+}

@@ -1,0 +1,242 @@
+.meal-maker-preferences-sheet {
+    max-width: 480px;
+    padding: 10px 20px max(28px, env(safe-area-inset-bottom));
+    background: var(--warm-cream);
+}
+
+.meal-maker-preferences-sheet .sliding-sheet-header {
+    align-items: center;
+    min-height: 48px;
+    margin: 0 0 12px;
+}
+
+.meal-maker-preferences-sheet-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 0;
+}
+
+.meal-maker-preferences-sheet-heading h2 {
+    margin: 0;
+    color: var(--text-h-strong);
+    font-size: 20px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.5px;
+}
+
+.meal-maker-preferences-sheet-heading button {
+    min-width: 52px;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--accent-strong);
+    font: inherit;
+    font-size: 15px;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+}
+
+.meal-maker-goal-section h3,
+.meal-maker-chip-section h3 {
+    margin: 0 0 9px 2px;
+    color: var(--text-h-strong);
+    font-size: 14px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.2px;
+}
+
+.meal-maker-section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 9px;
+}
+
+.meal-maker-section-heading h3 {
+    margin-bottom: 0;
+}
+
+.meal-maker-goal-group {
+    overflow: hidden;
+    border: 1px solid var(--border-hairline);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.meal-maker-goal-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 54px;
+    padding: 10px 14px;
+    border: 0;
+    background: var(--surface);
+    color: var(--text-h-strong);
+    font: inherit;
+    font-size: 15px;
+    font-weight: var(--font-weight-medium);
+    text-align: left;
+    cursor: pointer;
+}
+
+.meal-maker-goal-row ~ .meal-maker-goal-row {
+    border-top: 1px solid var(--border-hairline);
+}
+
+.meal-maker-goal-row-value {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--font-weight-bold);
+}
+
+.meal-maker-goal-row-value[data-empty='true'] {
+    color: var(--text-muted);
+    font-weight: var(--font-weight-regular);
+}
+
+.meal-maker-goal-row-value small {
+    color: #536861;
+    font-size: 13px;
+    font-weight: var(--font-weight-medium);
+}
+
+.meal-maker-goal-row svg {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 160ms ease;
+}
+
+.meal-maker-goal-row[aria-expanded='true'] svg {
+    transform: rotate(180deg);
+}
+
+.meal-maker-wheel-panel {
+    position: relative;
+    display: grid;
+    grid-template-rows: 0fr;
+    min-height: 0;
+    border-top: 1px solid transparent;
+    background: var(--surface-tint);
+    transition:
+        grid-template-rows 260ms cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 160ms ease;
+}
+
+.meal-maker-wheel-panel[data-open='true'] {
+    grid-template-rows: 1fr;
+    border-top-color: var(--border-hairline);
+}
+
+.meal-maker-wheel-panel-content {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 22px;
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.meal-maker-wheel-panel[data-open='true'] .meal-maker-wheel-panel-content {
+    opacity: 1;
+}
+
+.meal-maker-wheel-unit {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    right: 22px;
+    color: #536861;
+    font-size: 15px;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.meal-maker-chip-section {
+    margin-top: 24px;
+    padding-bottom: 20px;
+}
+
+.meal-maker-preference-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.meal-maker-preference-chips button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid #e8eddf;
+    border-radius: 999px;
+    background: #f0f3e5;
+    color: var(--deep-green);
+    font: inherit;
+    font-size: 15px;
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease;
+}
+
+.meal-maker-preference-chips button.selected {
+    border-color: #8dac73;
+    background: #dce9c7;
+    box-shadow: 0 0 0 1px color-mix(in srgb, #8dac73 40%, transparent);
+    font-weight: var(--font-weight-bold);
+}
+
+.meal-maker-preference-chips button > span {
+    display: grid;
+    flex: 0 0 19px;
+    place-items: center;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: var(--deep-green);
+    color: var(--surface);
+    font-size: 12px;
+    line-height: 1;
+}
+
+.meal-maker-preferences-sheet :is(button, [data-rwp-option]):focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+}
+
+.meal-maker-preferences-sheet button:active {
+    opacity: 0.68;
+}
+
+@media (min-width: 601px) {
+    .meal-maker-preferences-sheet {
+        border-radius: 24px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .meal-maker-goal-row svg,
+    .meal-maker-wheel-panel,
+    .meal-maker-wheel-panel-content,
+    .meal-maker-preference-chips button {
+        transition: none;
+    }
+}

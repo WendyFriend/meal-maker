@@ -1,0 +1,84 @@
+{
+    "mealName": "Savory Pumpkin and Tofu Oat Bowl",
+    "ingredients": [
+        {
+            "name": "pumpkin",
+            "weight": 200,
+            "caloriesPer100g": 123,
+            "proteinPer100g": 7,
+            "carbohydratePer100g": 17,
+            "fatPer100g": 3,
+            "sugarPer100g": 2.76,
+            "saturatedFatPer100g": 0.052,
+            "fiberPer100g": 0.5,
+            "micronutrientsPer100g": {
+                "iron": 1.23
+            },
+            "nutritionSource": "user"
+        },
+        {
+            "name": "firm tofu",
+            "weight": 100,
+            "caloriesPer100g": 80,
+            "proteinPer100g": 9.08,
+            "carbohydratePer100g": 1.52,
+            "fatPer100g": 4.2,
+            "sugarPer100g": 0.4,
+            "saturatedFatPer100g": 0.5,
+            "fiberPer100g": 0.6,
+            "micronutrientsPer100g": {
+                "fiber": 0.6,
+                "sugar": 0.4,
+                "saturatedFat": 0.5,
+                "monounsaturatedFat": 1.2,
+                "polyunsaturatedFat": 2.5,
+                "transFat": 0,
+                "cholesterol": 0,
+                "sodium": 23,
+                "calcium": 180,
+                "iron": 1.3
+            },
+            "usda": {
+                "fdcId": 175236,
+                "description": "Vitasoy USA Azumaya, Firm Tofu"
+            },
+            "nutritionSource": "usda"
+        },
+        {
+            "name": "rolled oats",
+            "weight": 70,
+            "caloriesPer100g": 389,
+            "proteinPer100g": 16.9,
+            "carbohydratePer100g": 66.3,
+            "fatPer100g": 6.9,
+            "fiberPer100g": 10.6,
+            "nutritionSource": "estimated"
+        }
+    ],
+    "instructions": [
+        "Peel and cube the pumpkin into small, even pieces.",
+        "Place the pumpkin in a pot with water and boil until tender, then drain the water.",
+        "Rinse the rolled oats under cold water to remove excess starch.",
+        "Combine the rinsed oats with water in a small pot and simmer over medium heat until the water is absorbed and oats are soft.",
+        "Press the firm tofu to remove excess moisture, then cut into small cubes.",
+        "Pan-sear the tofu cubes in a non-stick pan over medium heat until golden brown on all sides.",
+        "Combine the cooked pumpkin, cooked oats, and seared tofu in a bowl.",
+        "Season to taste and serve warm."
+    ],
+    "servings": 1,
+    "estimatedIngredients": ["rolled oats"],
+    "considerations": [
+        {
+            "id": "whole-grains",
+            "title": "Soak or ferment whole grains",
+            "severity": "tip",
+            "compounds": ["phytates"],
+            "summary": "Phytates in whole grains bind iron, zinc and calcium. Soaking, sprouting or fermenting (sourdough) breaks them down.",
+            "steps": [
+                "Soak oats overnight (overnight oats) or grains for 8–12 hours before cooking.",
+                "Prefer sourdough or sprouted-grain breads."
+            ],
+            "ingredients": ["rolled oats"]
+        }
+    ]
+}

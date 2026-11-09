@@ -152,6 +152,42 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
         ).rejects.toThrow('No matching food');
     });
 
+    it('accepts a weak match when the normalized food name describes the ingredient', async () => {
+        const redLentils = {
+            ...rice,
+            fdcId: 174284,
+            description: 'Lentils, pink or red, raw',
+            name: 'Red split lentils, dry',
+            match: { tier: 'weak', matchedVia: 'words' },
+        };
+        vi.stubGlobal(
+            'fetch',
+            vi.fn<typeof fetch>(async (url) =>
+                String(url).endsWith('/foods/resolve')
+                    ? jsonResponse({
+                          results: [
+                              { term: 'red split lentils', food: redLentils },
+                          ],
+                      })
+                    : jsonResponse({
+                          fdcId: redLentils.fdcId,
+                          description: redLentils.description,
+                          nutrientsPer100g: [],
+                      }),
+            ),
+        );
+
+        const result = await lookupFoodNutrition(
+            'red split lentils',
+            'nutrition-lab',
+        );
+
+        expect(result).toMatchObject({
+            caloriesPer100g: 365,
+            nutritionSource: { fdcId: 174284 },
+        });
+    });
+
     it('accepts an ambiguous synonym match such as capsicum', async () => {
         const pepper = {
             ...rice,

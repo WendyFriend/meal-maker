@@ -55,6 +55,49 @@ async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Add ingredient shared editor', () => {
+    it('prefills values found through database search for review', () => {
+        render(
+            <AddIngredient
+                initialIngredient={{
+                    name: 'Broccoli',
+                    caloriesPer100g: 34,
+                    proteinPer100g: 2.8,
+                    carbohydratePer100g: 6.6,
+                    fatPer100g: 0.4,
+                }}
+                onBack={vi.fn()}
+                onSave={vi.fn()}
+                findExistingIngredient={() => undefined}
+                onEditorStateChange={vi.fn()}
+            />,
+        );
+        expect(
+            screen.getByRole('textbox', { name: 'Ingredient name' }),
+        ).toHaveValue('Broccoli');
+        expect(
+            screen.getByRole('spinbutton', { name: 'Calories per 100 grams' }),
+        ).toHaveValue(34);
+        expect(
+            screen.getByRole('spinbutton', { name: 'Protein per 100 grams' }),
+        ).toHaveValue(2.8);
+    });
+
+    it('keeps a captured label visible while entering nutrition values', () => {
+        render(
+            <AddIngredient
+                referencePhoto="data:image/png;base64,AA=="
+                onBack={vi.fn()}
+                onSave={vi.fn()}
+                findExistingIngredient={() => undefined}
+                onEditorStateChange={vi.fn()}
+            />,
+        );
+        expect(screen.getByText('Photo reference')).toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: 'Captured ingredient reference' }),
+        ).toHaveAttribute('src', 'data:image/png;base64,AA==');
+    });
+
     it('requires name and the four macros while other values remain optional', async () => {
         const { user, onSave, onBack } = setup();
         expect(
@@ -107,7 +150,6 @@ describe('Add ingredient shared editor', () => {
                 fatPer100g: 2.6,
                 carbohydratePer100g: 27.4,
                 sugarPer100g: undefined,
-                preparationTips: undefined,
             }),
         );
         expect(
@@ -118,23 +160,18 @@ describe('Add ingredient shared editor', () => {
         });
     });
 
-    it('saves optional micronutrients and preparation tips through the header tick', async () => {
+    it('saves optional micronutrients through the header tick', async () => {
         const { user, onSave } = setup();
         await fillRequired(user);
         await user.type(
             screen.getByRole('spinbutton', { name: 'Iron per 100 g (mg)' }),
             '2.9',
         );
-        await user.type(
-            screen.getByRole('textbox', { name: 'One tip per line' }),
-            'Rinse before cooking.',
-        );
         await user.click(screen.getByRole('button', { name: '✓' }));
         await waitFor(() =>
             expect(onSave).toHaveBeenCalledWith(
                 expect.objectContaining({
                     ironPer100g: 2.9,
-                    preparationTips: ['Rinse before cooking.'],
                 }),
             ),
         );

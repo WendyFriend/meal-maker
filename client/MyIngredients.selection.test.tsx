@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MyIngredients from './MyIngredients';
 import type { UserIngredient } from '../shared/types/types';
+import { mockPickerEnvironment } from './test/pickerEnvironment';
 
 const records: UserIngredient[] = ['Broccoli', 'Tofu', 'Brown rice'].map(
     (name, index) => ({
@@ -23,6 +24,7 @@ function setup(deleteMany = vi.fn(async (ids: string[]) => ids)) {
             <MyIngredients
                 ingredients={ingredients}
                 onAdd={vi.fn()}
+                onSaveFromDatabase={vi.fn(async () => records[0])}
                 onOpen={onOpen}
                 onDeleteMany={async (ids) => {
                     const deleted = await deleteMany(ids);
@@ -51,6 +53,7 @@ function hold(row: HTMLElement) {
 beforeEach(() => {
     vi.useFakeTimers();
     vi.stubGlobal('PointerEvent', MouseEvent);
+    mockPickerEnvironment();
 });
 afterEach(() => {
     vi.useRealTimers();
@@ -58,8 +61,43 @@ afterEach(() => {
 });
 
 describe('My Ingredients bulk selection', () => {
+    it('matches the My Recipes header and shows a centered empty icon with an add action', () => {
+        const onAdd = vi.fn();
+        render(
+            <MyIngredients
+                ingredients={[]}
+                onAdd={onAdd}
+                onSaveFromDatabase={vi.fn(async () => records[0])}
+                onOpen={vi.fn()}
+                onDeleteMany={vi.fn(async () => [])}
+            />,
+        );
+        expect(
+            screen.getByRole('heading', { name: 'My Ingredients' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('0 saved')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Your ingredients, ready for your next meal.'),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText('No ingredients yet')).toBeInTheDocument();
+        expect(
+            document.querySelector('.saved-collection-empty-icon > svg'),
+        ).toBeInTheDocument();
+        const add = screen.getByRole('button', { name: 'Add ingredient' });
+        expect(add).toHaveClass('saved-collection-add-button');
+        fireEvent.click(add);
+        expect(
+            screen.getByRole('dialog', { name: 'Add Ingredient' }),
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Enter manually' }));
+        expect(onAdd).toHaveBeenCalledOnce();
+    });
+
     it('selects on long press, suppresses the release click, and deletes selected rows together', async () => {
         const { deleteMany, onOpen } = setup();
+        expect(
+            screen.queryByText(/kcal.*protein.*100g/i),
+        ).not.toBeInTheDocument();
         hold(screen.getByRole('button', { name: /Broccoli/ }));
         expect(
             screen.getByRole('button', { name: 'Deselect Broccoli' }),
@@ -67,9 +105,14 @@ describe('My Ingredients bulk selection', () => {
         expect(onOpen).not.toHaveBeenCalled();
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Select Tofu' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Delete 2 ingredients' }),
+        );
         await act(async () => {
             fireEvent.click(
-                screen.getByRole('button', { name: 'Delete 2 ingredients' }),
+                screen.getByRole('button', {
+                    name: 'Confirm delete 2 ingredients',
+                }),
             );
         });
         expect(deleteMany).toHaveBeenCalledExactlyOnceWith(['0', '1']);
@@ -111,9 +154,14 @@ describe('My Ingredients bulk selection', () => {
             target: { value: 'Bro' },
         });
         fireEvent.click(screen.getByRole('button', { name: 'Select results' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Delete 2 ingredients' }),
+        );
         await act(async () => {
             fireEvent.click(
-                screen.getByRole('button', { name: 'Delete 2 ingredients' }),
+                screen.getByRole('button', {
+                    name: 'Confirm delete 2 ingredients',
+                }),
             );
         });
         expect(deleteMany).toHaveBeenCalledExactlyOnceWith(['0', '2']);
@@ -136,18 +184,28 @@ describe('My Ingredients bulk selection', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Select Broccoli' }),
         );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Delete 1 ingredient' }),
+        );
         await act(async () => {
             fireEvent.click(
-                screen.getByRole('button', { name: 'Delete 1 ingredient' }),
+                screen.getByRole('button', {
+                    name: 'Confirm delete 1 ingredient',
+                }),
             );
         });
         expect(screen.getByRole('alert')).toHaveTextContent('Could not delete');
         expect(
             screen.getByRole('button', { name: 'Deselect Broccoli' }),
         ).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Delete 1 ingredient' }),
+        );
         await act(async () => {
             fireEvent.click(
-                screen.getByRole('button', { name: 'Delete 1 ingredient' }),
+                screen.getByRole('button', {
+                    name: 'Confirm delete 1 ingredient',
+                }),
             );
         });
         expect(deleteMany).toHaveBeenNthCalledWith(2, ['0']);

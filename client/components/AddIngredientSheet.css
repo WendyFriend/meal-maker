@@ -1,0 +1,485 @@
+.add-ingredient-sheet.sliding-sheet {
+    --text-muted: #806c60;
+    --sheet-orange: #f5a623;
+    --sheet-orange-soft: #ffe3a3;
+    --sheet-orange-pressed: #ffc58f;
+    --sheet-orange-ink: #7a3e00;
+    --sheet-ink: #35271d;
+    --sheet-line: #efddcf;
+    --sheet-error-bg: #fff0e8;
+    --sheet-error-ink: #a1432e;
+
+    max-width: 440px;
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+    background: var(--warm-cream);
+    color: var(--sheet-ink);
+}
+
+.add-ingredient-sheet .sliding-sheet-header {
+    padding-top: 4px;
+    margin-bottom: 16px;
+}
+
+.add-ingredient-sheet .sliding-sheet-handle {
+    display: none;
+}
+
+.add-ingredient-sheet-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 46px;
+}
+
+.add-ingredient-sheet-heading h2 {
+    margin: 0;
+    color: var(--sheet-ink);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.add-ingredient-sheet-heading > button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--sheet-ink);
+    font: inherit;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.add-ingredient-options {
+    overflow: hidden;
+    padding: 0 14px;
+    border: 1px solid var(--sheet-line);
+    border-radius: 20px;
+    background: var(--surface);
+}
+
+.add-ingredient-options > button {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 82px;
+    padding: 10px 0;
+    border: 0;
+    border-bottom: 1px solid var(--sheet-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--sheet-ink);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        transform 140ms ease,
+        background-color 140ms ease,
+        color 140ms ease;
+}
+
+.add-ingredient-options > button:last-child {
+    border-bottom: 0;
+}
+
+.add-ingredient-options > button:first-child {
+    font-weight: 700;
+}
+
+@media (hover: hover) {
+    .add-ingredient-options > button:hover {
+        background: color-mix(
+            in srgb,
+            var(--sheet-orange-soft) 70%,
+            var(--surface)
+        );
+    }
+}
+
+.add-ingredient-options > button:active {
+    transform: scale(0.99);
+    background: color-mix(in srgb, var(--sheet-orange-pressed) 28%, white);
+}
+
+.add-ingredient-options > button:focus-visible {
+    background: var(--sheet-orange-soft);
+}
+
+.add-ingredient-option-icon {
+    display: grid;
+    flex: 0 0 46px;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--sheet-orange-soft) 56%, white);
+    color: var(--sheet-orange-ink);
+}
+
+.add-ingredient-option-icon svg {
+    width: 26px;
+    height: 26px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.add-ingredient-option-chevron {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 24px;
+    font-weight: 400;
+}
+
+.add-ingredient-database {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    position: relative;
+}
+
+.add-ingredient-sheet-search.sliding-sheet {
+    display: flex;
+    height: min(92dvh, 820px);
+    max-height: 92dvh;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.add-ingredient-sheet-search .sliding-sheet-header {
+    flex: none;
+    margin-bottom: 14px;
+}
+
+.add-ingredient-database-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: var(--surface);
+}
+
+.add-ingredient-database-field:focus-within {
+    border-color: var(--sheet-orange-ink);
+    box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--sheet-orange) 14%, transparent);
+}
+
+.add-ingredient-database-search-icon {
+    display: grid;
+    place-items: center;
+    color: var(--sheet-orange-ink);
+}
+
+.add-ingredient-database-search-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.add-ingredient-database-field input {
+    flex: 1;
+    min-width: 0;
+    min-height: 46px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--sheet-ink);
+    font: inherit;
+    font-size: 16px;
+    outline: 0;
+}
+
+.add-ingredient-database-field input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.add-ingredient-database-field button {
+    flex: none;
+    width: 25px;
+    height: 25px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.add-ingredient-database-results {
+    flex: 1;
+    min-height: 0;
+    margin-top: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.add-ingredient-database-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 64px;
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.add-ingredient-database-row .meal-ingredient-thumbnail {
+    flex: none;
+    width: 48px;
+    height: 48px;
+    background-size: 400% 400%;
+}
+
+.add-ingredient-database-row .meal-ingredient-thumbnail-fallback {
+    background: var(--sheet-orange-soft);
+    color: var(--sheet-orange-ink);
+}
+
+.add-ingredient-database-name {
+    flex: 1;
+    min-width: 0;
+    color: var(--sheet-ink);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.add-ingredient-database-row > button {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--sheet-orange-ink);
+    box-shadow: inset 0 0 0 1.5px var(--sheet-orange-pressed);
+    font: inherit;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        transform 150ms ease,
+        background-color 150ms ease,
+        color 150ms ease,
+        box-shadow 150ms ease;
+}
+
+.add-ingredient-database-row > button:active {
+    transform: scale(0.86);
+    background: var(--sheet-orange-pressed);
+}
+
+.add-ingredient-database-row > button:disabled {
+    cursor: default;
+}
+
+.add-ingredient-database-row > button.add-ingredient-database-added {
+    background: var(--sheet-orange);
+    color: var(--sheet-ink);
+    box-shadow: none;
+}
+
+.add-ingredient-database-row > button.add-ingredient-database-added:active {
+    background: color-mix(
+        in srgb,
+        var(--sheet-orange) 85%,
+        var(--sheet-orange-ink)
+    );
+}
+
+.add-ingredient-database-added svg,
+.add-ingredient-database-toast svg {
+    width: 19px;
+    height: 19px;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.add-ingredient-row-symbol {
+    display: grid;
+    place-items: center;
+    animation: add-ingredient-symbol-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.add-ingredient-database-row > button .loading-spinner {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 11px;
+    height: 11px;
+    border-width: 1.5px;
+    background: var(--warm-cream);
+    border-color: color-mix(in srgb, currentColor 28%, transparent);
+    border-top-color: currentColor;
+}
+
+@keyframes add-ingredient-symbol-in {
+    from {
+        opacity: 0.45;
+        transform: scale(0.7);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.add-ingredient-search-error {
+    flex: none;
+    margin: 8px 0;
+    color: var(--sheet-error-ink);
+    font-size: 14px;
+}
+
+.add-ingredient-search-note {
+    margin: 18px 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.add-ingredient-search-retry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0;
+    color: var(--sheet-error-ink);
+    font-size: 14px;
+}
+
+.add-ingredient-search-retry button {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--sheet-orange-ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.add-ingredient-search-loading {
+    display: grid;
+    place-items: center;
+    min-height: 80px;
+}
+
+.add-ingredient-sheet .loading-spinner {
+    border-color: var(--sheet-orange-soft);
+    border-top-color: var(--sheet-orange-ink);
+}
+
+.add-ingredient-database-toast {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    margin: 10px 0 0;
+    padding: 0 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--sheet-orange-soft) 66%, white);
+    color: var(--sheet-ink);
+    font-size: 14px;
+    font-weight: 650;
+    box-shadow: 0 4px 14px rgb(105 59 21 / 10%);
+}
+
+.add-ingredient-database-toast span {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--sheet-orange);
+    color: var(--sheet-ink);
+}
+
+.add-ingredient-database-error {
+    flex: none;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--sheet-error-bg);
+    color: var(--sheet-error-ink);
+    font-size: 14px;
+}
+
+.add-ingredient-database-error-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.add-ingredient-database-error-main button {
+    flex: none;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--sheet-error-ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.add-ingredient-database-error details {
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.add-ingredient-database-error summary {
+    width: fit-content;
+    cursor: pointer;
+}
+
+.add-ingredient-database-error code {
+    display: block;
+    overflow-wrap: anywhere;
+    margin-top: 4px;
+    font: inherit;
+}
+
+.add-ingredient-sheet button:focus-visible {
+    outline: 2px solid var(--sheet-orange-ink);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .add-ingredient-options > button,
+    .add-ingredient-database-row > button {
+        transition: none;
+    }
+
+    .add-ingredient-row-symbol {
+        animation: none;
+    }
+}

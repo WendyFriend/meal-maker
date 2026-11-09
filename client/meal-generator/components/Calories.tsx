@@ -58,10 +58,9 @@ function Calories({ value, onChange }: CaloriesProps) {
     return (
         <div className="calories">
             <div className="calories-heading">
-                <h2>2. Calorie goal</h2>
+                <h2 className="meal-form-heading">2. Calorie goal</h2>
                 <span className="calories-optional">Optional</span>
             </div>
-            <p className="calories-hint">if you have one</p>
 
             <button
                 type="button"
@@ -90,10 +89,6 @@ function Calories({ value, onChange }: CaloriesProps) {
                         {selectedLabel}
                     </span>
                     <span className="calories-field-unit">kcal</span>
-                    <span
-                        className="calories-field-chevron"
-                        aria-hidden="true"
-                    />
                 </span>
             </button>
 

@@ -94,27 +94,31 @@ export default function NavigationPanel({
                     />
                 </nav>
 
-                <button
-                    type="button"
-                    className={`sidebar-item sidebar-settings${currentPage === 'settings' ? ' sidebar-item-active' : ''}`}
-                    aria-current={
-                        currentPage === 'settings' ? 'page' : undefined
-                    }
-                    onClick={() => {
-                        onClose();
-                        onNavigate('settings');
-                    }}
-                >
-                    Settings
-                </button>
+                <div className="sidebar-secondary">
+                    {import.meta.env.DEV && (
+                        <button
+                            type="button"
+                            className={`sidebar-item sidebar-settings${currentPage === 'settings' ? ' sidebar-item-active' : ''}`}
+                            aria-current={
+                                currentPage === 'settings' ? 'page' : undefined
+                            }
+                            onClick={() => {
+                                onClose();
+                                onNavigate('settings');
+                            }}
+                        >
+                            Settings
+                        </button>
+                    )}
 
-                <button
-                    type="button"
-                    className="sidebar-item"
-                    onClick={onSignOut}
-                >
-                    Log out
-                </button>
+                    <button
+                        type="button"
+                        className="sidebar-item sidebar-logout"
+                        onClick={onSignOut}
+                    >
+                        Log out
+                    </button>
+                </div>
 
                 <div className="app-version">v{APP_VERSION}</div>
             </aside>

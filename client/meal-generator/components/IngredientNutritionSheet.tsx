@@ -1,7 +1,5 @@
-import { useId } from 'react';
 import type { IngredientNutrition } from '../../../shared/types/types';
-import IngredientNutritionContent from './IngredientNutritionContent';
-import NutritionSheetDialog from './NutritionSheetDialog';
+import NutritionDialog from './NutritionDialog';
 
 type IngredientNutritionSheetProps = {
     ingredient: IngredientNutrition & { weight?: number };
@@ -12,14 +10,12 @@ export default function IngredientNutritionSheet({
     ingredient,
     onClose,
 }: IngredientNutritionSheetProps) {
-    const titleId = useId();
     return (
-        <NutritionSheetDialog labelledBy={titleId} onClose={onClose}>
-            <IngredientNutritionContent
-                ingredient={ingredient}
-                titleId={titleId}
-                onClose={onClose}
-            />
-        </NutritionSheetDialog>
+        <NutritionDialog
+            ingredientInfo={ingredient}
+            onClose={onClose}
+            onSave={async () => undefined}
+            editable={false}
+        />
     );
 }

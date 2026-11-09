@@ -35,6 +35,7 @@
     --disabled-text: #a8a196;
 
     --accent: #f4796c;
+    --accent-strong: #bd463b;
     --accent-bg: #fff0ee;
     --accent-border: #f4796c;
     --accent-green: #dce9e8;
@@ -101,6 +102,12 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+@media (max-width: 640px) {
+    :root {
+        --header-height: 52px;
+    }
 }
 
 .input-underline {

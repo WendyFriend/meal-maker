@@ -1,16 +1,20 @@
 .calories {
     display: flex;
-    align-items: center;
-    gap: var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     width: 100%;
     box-sizing: border-box;
     text-align: left;
 }
 
-.calories-field {
+.calories .calories-field {
     display: flex;
     align-items: center;
-    width: 190px;
+    width: 100%;
+    margin-top: 16px;
+    padding: 0 0 0 14px;
+    overflow: hidden;
     min-width: 0;
     text-align: left;
     cursor: pointer;
@@ -18,6 +22,7 @@
 }
 
 .calories-field-content {
+    align-self: stretch;
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -39,32 +44,31 @@
 }
 
 .calories-field-unit {
+    display: grid;
+    align-self: stretch;
+    place-items: center;
+    min-width: 50px;
     margin-left: auto;
-    font-size: 12px;
+    border-left: 1px solid var(--border-hairline);
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 16px;
     font-weight: var(--font-weight-normal);
 }
 
-/* Chevron */
-.calories-field-chevron {
-    flex-shrink: 0;
-    width: 6px;
-    height: 6px;
-    margin-right: 2px;
-
-    border-top: 1.5px solid currentColor;
-    border-right: 1.5px solid currentColor;
-    color: var(--text-muted);
-
-    transform: rotate(135deg);
-
-    transition:
-        border-color 150ms ease,
-        transform 150ms ease;
+.calories-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
 }
-
-.calories-field[aria-expanded='true'] .calories-field-chevron {
-    color: var(--accent);
-    transform: rotate(-45deg);
+.calories-optional {
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #eef1e3;
+    color: var(--deep-green);
+    font-size: 13px;
+    line-height: 1.4;
 }
 
 /* Wheel picker sheet content */
@@ -111,22 +115,4 @@
 .calories-picker-wrapper [data-rwp-highlight-item] {
     color: var(--accent);
     font-weight: var(--font-weight-semibold);
-}
-
-@media (max-width: 640px) {
-    .calories {
-        align-items: stretch;
-        flex-direction: column;
-        gap: var(--space-1);
-    }
-
-    .calories-field {
-        width: 100%;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .calories-field-chevron {
-        transition: none;
-    }
 }

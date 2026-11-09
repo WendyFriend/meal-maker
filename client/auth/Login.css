@@ -11,6 +11,9 @@
         radial-gradient(ellipse at 90% 85%, #fff0e580, transparent 50%),
         var(--app-chrome-bg);
 }
+.login-page-embedded {
+    min-height: calc(100svh - var(--header-height));
+}
 .login-shell {
     display: flex;
     flex-direction: column;
@@ -25,7 +28,7 @@
     gap: 10px;
 }
 .login-brand .brand-mark,
-.login-brand .brand-mark svg {
+.login-brand .brand-mark :is(svg, img) {
     width: 40px;
     height: 40px;
 }

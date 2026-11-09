@@ -1,0 +1,32 @@
+.pull-refresh-indicator {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--coral);
+    font-size: 25px;
+    line-height: 1;
+    transition: height 180ms ease;
+}
+
+.pull-refresh-indicator > span {
+    opacity: 0.8;
+}
+
+.pull-refresh-spinner {
+    animation: pull-refresh-spin 700ms linear infinite;
+}
+
+@keyframes pull-refresh-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pull-refresh-indicator {
+        transition: none;
+    }
+    .pull-refresh-spinner {
+        animation: none;
+    }
+}

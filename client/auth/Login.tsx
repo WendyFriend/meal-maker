@@ -4,12 +4,18 @@ import './Login.css';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Brand from '../components/Brand';
 
-export default function Login() {
+export default function Login({
+    embedded = false,
+    initialMode = 'sign-in',
+}: {
+    embedded?: boolean;
+    initialMode?: 'sign-in' | 'sign-up';
+}) {
     const { signIn, signUp, signInWithGoogle } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isSignUp, setIsSignUp] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(initialMode === 'sign-up');
     const [error, setError] = useState<string>();
     const [message, setMessage] = useState<string>();
     const [isLoading, setIsLoading] = useState(false);
@@ -63,8 +69,13 @@ export default function Login() {
         }
     }
 
+    const Root = embedded ? 'section' : 'main';
+
     return (
-        <main className="login-page">
+        <Root
+            className={`login-page${embedded ? ' login-page-embedded' : ''}`}
+            aria-label={embedded ? 'Sign in or create an account' : undefined}
+        >
             <div className="login-shell">
                 <Brand className="login-brand" />
                 <section className="login" aria-labelledby="login-heading">
@@ -216,6 +227,6 @@ export default function Login() {
                     Your ingredients. A delicious meal.
                 </p>
             </div>
-        </main>
+        </Root>
     );
 }
