@@ -1,4 +1,4 @@
-@import './meal-generator/components/autosuggestions.css';
+@import './meal-generator/components/Autosuggestions.css';
 
 .create-recipe {
     max-width: 720px;

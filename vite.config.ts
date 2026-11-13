@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
@@ -17,6 +18,22 @@ const https =
 
 export default defineConfig({
     plugins: [
+        {
+            name: 'validate-supabase-build-env',
+            configResolved(config) {
+                if (config.command !== 'build') return;
+                const env = loadEnv(config.mode, config.root, 'VITE_');
+                for (const key of [
+                    'VITE_SUPABASE_URL',
+                    'VITE_SUPABASE_PUBLISHABLE_KEY',
+                ]) {
+                    if (!env[key])
+                        throw new Error(
+                            `${key} is required for the client build`,
+                        );
+                }
+            },
+        },
         react(),
         VitePWA({
             registerType: 'autoUpdate',
