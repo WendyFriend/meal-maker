@@ -32,6 +32,7 @@ const spinach = {
     proteinPer100g: 2.9,
     carbohydratePer100g: 3.6,
     fatPer100g: 0.4,
+    nutritionSource: { fdcId: 168462, description: 'Spinach, raw' },
 };
 const tofu = {
     ingredientId: 'tofu',
@@ -40,6 +41,7 @@ const tofu = {
     proteinPer100g: 8,
     carbohydratePer100g: 1.9,
     fatPer100g: 4.8,
+    nutritionSource: { fdcId: 172448, description: 'Tofu, firm' },
 };
 
 beforeEach(() => {
@@ -54,7 +56,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual additions in the generation request', async () => {
+it('uses saved nutrition from Favourites, keeps nutrition edits and search/manual additions in the generation request', async () => {
     const fetch = vi.fn().mockResolvedValue({
         status: 200,
         ok: true,
@@ -67,14 +69,21 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     vi.stubGlobal('fetch', fetch);
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Veggies' }));
-    expect(fetch).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Favourites' }));
+    expect(fetch.mock.calls.some(([url]) => url === '/api/generate-meal')).toBe(
+        false,
+    );
     await user.click(
         await within(
-            screen.getByRole('dialog', { name: 'Veggies' }),
+            screen.getByRole('dialog', { name: 'Add ingredient' }),
         ).findByRole('button', { name: 'Spinach' }),
     );
-    await user.keyboard('{Escape}');
+    await user.click(
+        screen.getByRole('button', { name: 'Close ingredient picker' }),
+    );
+    await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
 
     await user.click(
         screen.getByRole('button', { name: 'Edit nutrition for Spinach' }),
@@ -86,7 +95,7 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     expect(nutrition).toHaveClass('ingredient-nutrition-sheet');
     expect(document.body.style.overflow).toBe('hidden');
     expect(
-        within(nutrition).getByRole('heading', { name: 'Spinach' }),
+        within(nutrition).getByRole('heading', { name: /spinach/i }),
     ).toBeVisible();
     expect(within(nutrition).getByRole('table')).toBeInTheDocument();
     expect(
@@ -107,7 +116,11 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     });
     await user.clear(calories);
     await user.type(calories, '50');
-    await user.click(within(nutrition).getByRole('button', { name: 'Done' }));
+    await user.click(
+        within(nutrition).getByRole('button', {
+            name: 'Save ingredient changes',
+        }),
+    );
     expect(nutrition).toBeInTheDocument();
     expect(
         within(nutrition).getByRole('row', { name: /Calories/ }),
@@ -134,18 +147,15 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
     expect(
         screen.queryByRole('heading', { name: 'Ingredients' }),
     ).not.toBeInTheDocument();
-    const category = screen.getByRole('button', { name: 'Veggies' });
-    const caloriesHeading = screen.getByRole('heading', {
-        name: '2. Calorie goal',
+    const category = screen.getByRole('button', { name: 'Favourites' });
+    const preferences = screen.getByRole('button', {
+        name: /More preferences/,
     });
     for (const [before, after] of [
-        [category, search],
-        [search, selectedSection],
-        [selectedSection, caloriesHeading],
-        [
-            caloriesHeading,
-            screen.getByRole('button', { name: 'Create my meal' }),
-        ],
+        [search, category],
+        [category, selectedSection],
+        [selectedSection, preferences],
+        [preferences, screen.getByRole('button', { name: 'See recipes' })],
     ]) {
         expect(
             before.compareDocumentPosition(after) &
@@ -153,7 +163,7 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
         ).toBeTruthy();
     }
     expect(screen.queryByText('if you have one')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Create my meal' }));
+    await user.click(screen.getByRole('button', { name: 'See recipes' }));
     const generationRequests = () =>
         fetch.mock.calls.filter(([url]) => url === '/api/generate-meal');
     await waitFor(() => expect(generationRequests()).toHaveLength(1));
@@ -165,7 +175,7 @@ it('uses saved nutrition for quick adds, keeps nutrition edits and search/manual
             tofu,
             { name: 'Paprika' },
         ],
-        requirements: {},
+        requirements: { preferences: [] },
     });
     expect(
         await screen.findByRole('heading', { name: 'Spinach and tofu bowl' }),
@@ -187,15 +197,20 @@ it('uses curated Nutrition Lab values without a runtime lookup', async () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await user.click(screen.getByRole('button', { name: 'Favourites' }));
     await user.click(screen.getByRole('button', { name: 'Veggies' }));
     await user.click(
-        within(screen.getByRole('dialog', { name: 'Veggies' })).getByRole(
-            'button',
-            { name: 'Tomato' },
-        ),
+        within(
+            screen.getByRole('dialog', { name: 'Add ingredient' }),
+        ).getByRole('button', { name: 'Tomato' }),
     );
-    await user.keyboard('{Escape}');
-    await user.click(screen.getByRole('button', { name: 'Create my meal' }));
+    await user.click(
+        screen.getByRole('button', { name: 'Close ingredient picker' }),
+    );
+    await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole('button', { name: 'See recipes' }));
 
     await waitFor(() =>
         expect(
@@ -234,17 +249,14 @@ it('clears selected ingredients and disables meal creation', async () => {
     expect(section).toBeVisible();
     await user.click(
         within(section).getByRole('button', {
-            name: 'Clear',
+            name: 'Clear all selected ingredients',
         }),
     );
-    expect(section).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+    expect(section).not.toBeInTheDocument();
     expect(
         screen.queryByRole('button', { name: 'Remove Spinach' }),
     ).not.toBeInTheDocument();
-    expect(
-        screen.getByRole('button', { name: 'Create my meal' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'See recipes' })).toBeDisabled();
 });
 
 it('reveals the cooking animation while waiting, then scrolls to the completed meal', async () => {
@@ -263,7 +275,7 @@ it('reveals the cooking animation while waiting, then scrolls to the completed m
     await user.type(screen.getByRole('combobox'), 'Tofu{Enter}');
     const scroll = vi.mocked(Element.prototype.scrollIntoView);
     scroll.mockClear();
-    await user.click(screen.getByRole('button', { name: 'Create my meal' }));
+    await user.click(screen.getByRole('button', { name: 'See recipes' }));
     await waitFor(() =>
         expect(scroll).toHaveBeenCalledWith({
             behavior: 'smooth',
@@ -360,7 +372,7 @@ it('reuses looked-up nutrition for an unknown ingredient during generation', asy
         await screen.findByRole('row', { name: /Calories/ }),
     ).toHaveTextContent('26 kcal');
     await user.click(screen.getByRole('button', { name: 'Close sheet' }));
-    await user.click(screen.getByRole('button', { name: 'Create my meal' }));
+    await user.click(screen.getByRole('button', { name: 'See recipes' }));
 
     await waitFor(() =>
         expect(
@@ -382,6 +394,6 @@ it('reuses looked-up nutrition for an unknown ingredient during generation', asy
                 ironPer100g: 0.8,
             }),
         ],
-        requirements: {},
+        requirements: { preferences: [] },
     });
 });

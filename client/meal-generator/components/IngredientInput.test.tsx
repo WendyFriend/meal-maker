@@ -235,7 +235,7 @@ describe('ingredient search catalogue', () => {
         ).toBeInTheDocument();
     });
 
-    it('shows curated Quick Add ingredients for guests', async () => {
+    it('shows curated ingredients in search for guests', async () => {
         const user = userEvent.setup();
         render(<Form saved={[]} />);
 
@@ -295,334 +295,55 @@ describe('ingredient search catalogue', () => {
     });
 });
 
-describe('ingredient Quick add integration', () => {
-    it.each([
-        ['tiles', 'quick-add-picker-options-tiles'],
-        ['rows', 'quick-add-picker-options-rows'],
-    ])('uses the saved %s mobile option layout', async (layout, className) => {
-        setMobile(true);
-        localStorage.setItem('meal-maker:quick-add-layout', layout);
+describe('Favourites sheet integration', () => {
+    it('opens saved foods, keeps selections across categories, and returns focus on close', async () => {
         const user = userEvent.setup();
         render(<Form />);
+        const trigger = screen.getByRole('button', { name: 'Favourites' });
 
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-
+        await user.click(trigger);
+        const sheet = screen.getByRole('dialog', { name: 'Add ingredient' });
         expect(
-            screen
-                .getByRole('dialog', { name: 'Veggies' })
-                .querySelector('.quick-add-picker-options'),
-        ).toHaveClass(className);
-    });
-
-    it('shows every saved ingredient in the Saved category', async () => {
-        const user = userEvent.setup();
-        render(<Form />);
-        await user.click(screen.getByRole('button', { name: 'Saved' }));
-        const picker = screen.getByRole('dialog', { name: 'Saved' });
-        for (const ingredient of records)
-            expect(
-                within(picker).getByRole('button', {
-                    name: ingredient.name,
-                }),
-            ).toBeVisible();
-    });
-
-    it('shows the curated common ingredients to every user', async () => {
-        const user = userEvent.setup();
-        render(<Form saved={[]} />);
-
-        for (const [category, names] of [
-            [
-                'Veggies',
-                ['Tomato', 'Carrots', 'Kale', 'Green cabbage', 'Spinach'],
-            ],
-            [
-                'Protein',
-                [
-                    'Firm tofu',
-                    'Chickpea dry',
-                    'Chickpea cooked',
-                    'Edamame',
-                    'Red split lentils dry',
-                    'Tempeh',
-                ],
-            ],
-            [
-                'Grains',
-                [
-                    'Brown rice dry',
-                    'Buckwheat dry',
-                    'Wholemeal bread',
-                    'Pasta',
-                    'Rolled oats',
-                ],
-            ],
-            [
-                'Nuts & Seeds',
-                [
-                    'Linseeds',
-                    'Walnuts',
-                    'Pumpkin seeds',
-                    'Chia seeds',
-                    'Mixed nuts',
-                ],
-            ],
-        ] as const) {
-            await user.click(screen.getByRole('button', { name: category }));
-            const picker = screen.getByRole('dialog', { name: category });
-            const options = within(
-                within(picker).getByRole('group'),
-            ).getAllByRole('button');
-            expect(options.map((button) => button.textContent)).toEqual(names);
-            for (const option of options)
-                expect(
-                    option.querySelector('.meal-ingredient-thumbnail'),
-                ).toBeInTheDocument();
-            await user.click(screen.getByRole('button', { name: category }));
-        }
-    });
-
-    it('adds multiple records without closing, and chip removal updates the open picker', async () => {
-        const user = userEvent.setup();
-        render(<Form />);
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-        const picker = screen.getByRole('dialog', { name: 'Veggies' });
-        for (const name of ['Spinach', 'Tomato']) {
-            const option = within(picker).getByRole('button', { name });
-            await user.click(option);
-            expect(option).toHaveAttribute('aria-pressed', 'true');
-            expect(option).toHaveFocus();
-            expect(
-                screen.getByRole('button', { name: `Remove ${name}` }),
-            ).toBeInTheDocument();
-        }
-        expect(screen.getAllByRole('dialog')).toHaveLength(1);
-        const remove = screen.getByRole('button', { name: 'Remove Spinach' });
-        await user.click(remove);
-        // React uses the WebKit event in jsdom, which lacks AnimationEvent.
-        const event = new Event(
-            'AnimationEvent' in window ? 'animationend' : 'webkitAnimationEnd',
-            { bubbles: true },
-        );
-        Object.defineProperty(event, 'animationName', {
-            value: 'ingredient-chip-delete-out',
-        });
-        fireEvent(remove.closest('.ingredient-chip-wrapper')!, event);
-        expect(
-            screen.queryByRole('button', { name: 'Remove Spinach' }),
-        ).not.toBeInTheDocument();
-        // A chip is outside the desktop popover, so that click also dismisses
-        // it. Reopening must reflect the current shared selection.
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-        expect(
-            within(screen.getByRole('dialog')).getByRole('button', {
-                name: 'Spinach',
-            }),
-        ).toHaveAttribute('aria-pressed', 'false');
-    });
-
-    it('shares case/trim identity and can remove a differently cased selected name', async () => {
-        const user = userEvent.setup();
-        render(
-            <Form
-                initial={[' SPINACH ']}
-                saved={[
-                    ...records,
-                    {
-                        ...records[0],
-                        ingredientId: 'duplicate',
-                        name: ' spinach ',
-                    },
-                ]}
-            />,
-        );
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-        const picker = screen.getByRole('dialog');
-        expect(
-            within(picker).getAllByRole('button', { name: 'Spinach' }),
-        ).toHaveLength(1);
-        const option = within(picker).getByRole('button', { name: 'Spinach' });
-        expect(option).toHaveAttribute('aria-pressed', 'true');
-        await user.click(option);
-        expect(option).toHaveAttribute('aria-pressed', 'false');
-        await user.click(option);
-        expect(
-            screen.getAllByRole('button', { name: 'Remove Spinach' }),
-        ).toHaveLength(1);
-    });
-
-    it('switches categories with selections preserved and only one picker open', async () => {
-        const user = userEvent.setup();
-        render(<Form />);
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-        await user.click(
-            within(screen.getByRole('dialog')).getByRole('button', {
-                name: 'Spinach',
-            }),
-        );
-        await user.click(screen.getByRole('button', { name: 'Protein' }));
-        expect(screen.getAllByRole('dialog')).toHaveLength(1);
-        await user.click(
-            within(screen.getByRole('dialog')).getByRole('button', {
-                name: 'Firm tofu',
-            }),
-        );
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-        expect(
-            within(screen.getByRole('dialog')).getByRole('button', {
-                name: 'Spinach',
-            }),
+            within(sheet).getByRole('button', { name: 'Favourites' }),
         ).toHaveAttribute('aria-pressed', 'true');
+        await user.click(
+            within(sheet).getByRole('button', { name: 'Spinach' }),
+        );
         expect(
-            screen.getByRole('button', { name: 'Remove Firm tofu' }),
+            screen.getByRole('button', { name: 'Remove Spinach' }),
         ).toBeInTheDocument();
-    });
 
-    it.each(['Escape', 'close', 'category', 'outside'])(
-        'dismisses desktop with %s and restores focus',
-        async (method) => {
-            const user = userEvent.setup();
-            render(<Form />);
-            const trigger = screen.getByRole('button', { name: 'Grains' });
-            await user.click(trigger);
-            expect(screen.getByRole('dialog')).toHaveFocus();
-            if (method === 'Escape') await user.keyboard('{Escape}');
-            if (method === 'close')
-                await user.click(
-                    screen.getByRole('button', {
-                        name: 'Close ingredient picker',
-                    }),
-                );
-            if (method === 'category') await user.click(trigger);
-            if (method === 'outside')
-                fireEvent.pointerDown(
-                    screen.getByRole('button', { name: 'Outside control' }),
-                );
+        await user.click(
+            within(sheet).getByRole('button', { name: 'Veggies' }),
+        );
+        await user.click(within(sheet).getByRole('button', { name: 'Tomato' }));
+        expect(
+            screen.getByRole('button', { name: 'Remove Tomato' }),
+        ).toBeInTheDocument();
+        expect(screen.getAllByRole('dialog')).toHaveLength(1);
+
+        await user.click(
+            within(sheet).getByRole('button', {
+                name: 'Close ingredient picker',
+            }),
+        );
+        await waitFor(() => {
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
             expect(trigger).toHaveFocus();
-            expect(trigger).toHaveAttribute('aria-expanded', 'false');
-        },
-    );
-
-    it.each(['Escape', 'backdrop', 'handle'])(
-        'dismisses the mobile sheet with %s and restores focus after sliding out',
-        async (method) => {
-            setMobile(true);
-            const user = userEvent.setup();
-            render(<Form />);
-            const originalOverflow = document.body.style.overflow;
-            const trigger = screen.getByRole('button', {
-                name: 'Nuts & Seeds',
-            });
-            await user.click(trigger);
-            const picker = screen.getByRole('dialog');
-            expect(picker).toHaveClass('sliding-sheet', 'quick-add-sheet');
-            expect(picker).toHaveAttribute('aria-modal', 'true');
-            expect(trigger).toHaveAttribute('aria-controls', picker.id);
-            expect(document.body.style.overflow).toBe('hidden');
-            expect(
-                within(picker).queryByRole('button', {
-                    name: 'Close ingredient picker',
-                }),
-            ).not.toBeInTheDocument();
-            if (method === 'Escape')
-                fireEvent(picker, new Event('cancel', { cancelable: true }));
-            if (method === 'backdrop')
-                fireEvent.click(picker, { clientX: -10, clientY: -10 });
-            if (method === 'handle')
-                await user.click(
-                    within(picker).getByRole('button', { name: 'Close sheet' }),
-                );
-            expect(picker).toHaveAttribute('data-phase', 'closing');
-            expect(document.body.style.overflow).toBe('hidden');
-            await waitFor(() => {
-                expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-                expect(document.body.style.overflow).toBe(originalOverflow);
-                expect(trigger).toHaveFocus();
-            });
-        },
-    );
-
-    it('keeps mobile selections while resizing between a sheet and desktop popover', async () => {
-        setMobile(true);
-        const user = userEvent.setup();
-        render(<Form />);
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-        const picker = screen.getByRole('dialog');
-        await user.tab();
-        expect(
-            within(picker).getByRole('button', { name: 'Close sheet' }),
-        ).toHaveFocus();
-        for (const name of ['Spinach', 'Tomato']) {
-            const option = within(picker).getByRole('button', { name });
-            await user.click(option);
-            expect(option).toHaveAttribute('aria-pressed', 'true');
-            expect(option).toHaveFocus();
-            expect(picker).toHaveAttribute('data-phase', 'idle');
-        }
-        act(() => setMobile(false));
-        const popover = screen.getByRole('dialog');
-        expect(popover).toHaveClass('quick-add-picker');
-        expect(popover).not.toHaveAttribute('aria-modal');
-        expect(popover).toHaveFocus();
-        expect(document.body.style.overflow).not.toBe('hidden');
-        expect(
-            within(popover).getByRole('button', { name: 'Spinach' }),
-        ).toHaveAttribute('aria-pressed', 'true');
-        act(() => setMobile(true));
-        expect(screen.getByRole('dialog')).toHaveClass('quick-add-sheet');
-        expect(screen.getByRole('dialog')).toHaveFocus();
-        expect(
-            within(screen.getByRole('dialog')).getByRole('button', {
-                name: 'Tomato',
-            }),
-        ).toHaveAttribute('aria-pressed', 'true');
-        expect(
-            screen.queryByRole('button', { name: 'Done' }),
-        ).not.toBeInTheDocument();
+        });
     });
 
-    it('keeps a useful empty state for Saved without fetching', async () => {
+    it('shows the saved-food empty state without requesting search results', async () => {
         const fetch = vi.fn();
         vi.stubGlobal('fetch', fetch);
         const user = userEvent.setup();
         render(<Form saved={[]} />);
-        await user.click(screen.getByRole('button', { name: 'Saved' }));
-        expect(
-            within(screen.getByRole('dialog')).getByText(
-                /No saved ingredients/,
-            ),
-        ).toBeInTheDocument();
-        expect(
-            within(screen.getByRole('dialog')).getAllByRole('button'),
-        ).toHaveLength(1);
-        expect(fetch).not.toHaveBeenCalled();
-    });
 
-    it('preserves saved search, duplicate prevention, manual entry and nutrition editing', async () => {
-        const user = userEvent.setup();
-        const edit = vi.fn();
-        render(<Form onEdit={edit} />);
-        const search = screen.getByRole('combobox');
-        await user.type(search, 'spinach{Enter}');
-        await user.type(search, ' SPINACH {Enter}');
+        await user.click(screen.getByRole('button', { name: 'Favourites' }));
         expect(
-            screen.getAllByRole('button', { name: 'Remove Spinach' }),
-        ).toHaveLength(1);
-        await user.type(search, 'Paprika{Enter}');
-        expect(
-            screen.getByRole('button', { name: 'Remove Paprika' }),
-        ).toBeInTheDocument();
-        await user.click(
-            screen.getByRole('button', { name: 'Edit nutrition for Spinach' }),
-        );
-        expect(edit).toHaveBeenCalledWith(0);
-        await user.click(screen.getByRole('button', { name: 'Veggies' }));
-        expect(
-            within(screen.getByRole('dialog')).getByRole('button', {
-                name: 'Spinach',
-            }),
-        ).toHaveAttribute('aria-pressed', 'true');
+            screen.getByText('Your saved ingredients will appear here.'),
+        ).toBeVisible();
+        expect(fetch).not.toHaveBeenCalled();
     });
 });
 

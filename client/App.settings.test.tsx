@@ -118,9 +118,7 @@ it.each(['nutrition-lab', 'ollama'] as const)(
         );
         await user.click(screen.getByRole('button', { name: 'Create Meal' }));
         await user.type(screen.getByRole('combobox'), 'Tofu{Enter}');
-        await user.click(
-            screen.getByRole('button', { name: 'Create my meal' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'See recipes' }));
 
         await waitFor(() =>
             expect(
