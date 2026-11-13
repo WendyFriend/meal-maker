@@ -26,12 +26,9 @@
 
 .page-content-meal-maker {
     --meal-maker-header-height: var(--header-height);
-    --deep-green: #0b4652;
-    --text: #6e8798;
-    --text-muted: #78909f;
     max-width: none;
     padding: 0;
-    background: radial-gradient(ellipse at 50% 35%, #fffdf8, #fcf8f0);
+    background: var(--page-canvas);
 }
 
 .app-guest-landing .page-content-meal-maker {
@@ -49,8 +46,7 @@
 }
 
 .meal-maker-introduction,
-.meal-maker-tool,
-.public-login-section {
+.meal-maker-tool {
     scroll-snap-align: start;
     scroll-snap-stop: always;
 }
@@ -63,10 +59,6 @@
             var(--mobile-bottom-nav-height)
     );
     padding: clamp(40px, 7vh, 72px) 32px 28px;
-}
-
-.public-login-section {
-    outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -477,7 +469,6 @@
         overflow-anchor: none;
         transition: padding-top 180ms ease;
     }
-
 }
 
 @media (min-width: 641px) and (max-width: 1000px) and (max-height: 500px) {

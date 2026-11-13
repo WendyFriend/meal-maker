@@ -13,7 +13,7 @@ it('shows the Nutrition Lab picture for a food id and falls back when it is miss
     const image = container.querySelector('img');
     expect(image).toHaveAttribute(
         'src',
-        'https://mealmaker.brotherk3d.com/api/v1/thumbnails/170379.webp',
+        'https://mealmaker.brotherk3d.com/api/v1/thumbnails/170379.webp?size=128',
     );
     expect(image).toHaveAttribute('alt', '');
 
@@ -23,6 +23,16 @@ it('shows the Nutrition Lab picture for a food id and falls back when it is miss
     expect(
         container.querySelector('.meal-ingredient-thumbnail'),
     ).toBeInTheDocument();
+});
+
+it('can request the smaller Nutrition Lab thumbnail for compact uses', () => {
+    const { container } = render(
+        <IngredientThumbnail name="Broccoli" fdcId={170379} size={64} />,
+    );
+    expect(container.querySelector('img')).toHaveAttribute(
+        'src',
+        'https://mealmaker.brotherk3d.com/api/v1/thumbnails/170379.webp?size=64',
+    );
 });
 
 it('uses the local thumbnail when the ingredient has no food id', () => {

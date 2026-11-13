@@ -47,6 +47,10 @@ export function usePullToRefresh({
                 !target.closest('input, textarea, select');
         };
         const onMove = (event: TouchEvent) => {
+            if (stateRef.current.disabled || stateRef.current.refreshing) {
+                reset();
+                return;
+            }
             if (startY === null || !canRefresh || event.touches.length !== 1)
                 return;
             const deltaY = event.touches[0].clientY - startY;

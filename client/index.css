@@ -11,14 +11,15 @@
     --coral: #f4796c;
     --warm-cream: #fff8f0;
     --soft-sage: #dce9e8;
-    --deep-green: #244541;
+    --deep-green: #0b4652;
 
-    --text: #5a655f;
+    --text: #6e8798;
     --text-h: #244541;
     --text-h-strong: #1b332f;
 
     --bg: #fbf5ec;
-    --app-chrome-bg: #fbf6ee;
+    --app-chrome-bg: color-mix(in srgb, var(--bg) 92%, #ffffff);
+    --page-canvas: radial-gradient(ellipse at 50% 35%, #fffdf8, #fcf8f0);
     --surface: #ffffff;
     --surface-tint: #fffdf9;
 
@@ -43,7 +44,7 @@
     --error: #c8452f;
 
     /* Semantic colors */
-    --text-muted: #8b9189;
+    --text-muted: #78909f;
     --danger: #c8452f;
     --danger-bg: #fdf3f0;
 
@@ -96,7 +97,7 @@
     font: 16px/150% var(--sans);
     letter-spacing: 0.1px;
     color: var(--text);
-    background: var(--app-chrome-bg);
+    background: var(--page-canvas);
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -202,7 +203,7 @@ html,
 body,
 #root {
     min-height: 100%;
-    background-color: var(--app-chrome-bg);
+    background: var(--page-canvas);
 }
 
 body {

@@ -3,7 +3,7 @@ import type { MicronutrientValues } from '../micronutrients.js';
 export type IngredientInfo = MicronutrientValues & {
     preparationTips?: string[];
     name: string;
-    // The Nutrition Lab's name for the matched food; shown in meal results.
+    // The Nutrition Lab's name for the matched food; shown in nutrition details.
     resolvedName?: string;
     caloriesPer100g?: number;
     proteinPer100g?: number;
@@ -73,4 +73,6 @@ export type IngredientNutrition = MicronutrientValues & {
 export type MealIngredient = IngredientNutrition & {
     weight: number;
     thumbnailSource?: 'nutrition-lab' | 'local';
+    /** The name was entered without reliable macro data; numeric placeholders are not nutrition values. */
+    nutritionUnavailable?: true;
 };

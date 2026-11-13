@@ -12,6 +12,7 @@ import App from './App';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
 import { getRecipes } from './services/recipeService';
 import { getUserIngredients } from './services/ingredientService';
+import { getJournalEntries } from './services/journalService';
 
 vi.mock('./auth/useAuth', () => ({
     useAuth: () => ({ user: { id: 'user' }, loading: false, signOut: vi.fn() }),
@@ -52,7 +53,7 @@ it('uses a single menu trigger with four destinations and supports Escape and ou
         within(screen.getByRole('navigation', { name: 'Primary' }))
             .getAllByRole('button')
             .map((button) => button.textContent),
-    ).toEqual(['Create Meal', 'My Ingredients', 'My Meals', 'My Day']);
+    ).toEqual(['Create Meal', 'My Ingredients', 'My Meals', 'My Plan']);
     expect(screen.getByRole('button', { name: 'Meal Maker' })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(menu).toHaveFocus();
@@ -101,11 +102,11 @@ it('targets the form from Create Meal and the Meal Maker logo, including from ot
     await user.click(screen.getByRole('button', { name: 'Meal Maker' }));
     expect(lastScrollTarget()).toHaveClass('meal-maker-tool');
     await open();
-    await select('My Day');
+    await select('My Plan');
     expect(
-        await screen.findByRole('heading', { name: 'My Day' }),
+        await screen.findByRole('heading', { name: 'My Plan' }),
     ).toBeInTheDocument();
-    await screen.findByText('No food logged for this day');
+    await screen.findByText('No meals in your plan for this day');
     await open();
     await select('My Meals');
     expect(
@@ -137,7 +138,7 @@ it('navigates from the bottom tabs and returns focus to More after closing the m
 
     await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
     expect(
-        await screen.findByRole('heading', { name: 'My Day' }),
+        await screen.findByRole('heading', { name: 'My Plan' }),
     ).toBeInTheDocument();
 
     const more = within(tabs).getByRole('button', { name: 'More' });
@@ -174,6 +175,27 @@ it('keeps My Recipes loaded when switching tabs', async () => {
     expect(getRecipes).toHaveBeenCalledTimes(2);
 });
 
+it('keeps My Plan loaded when switching tabs', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const tabs = screen.getByRole('navigation', { name: 'Main tabs' });
+
+    await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
+    expect(
+        await screen.findByText('No meals in your plan for this day'),
+    ).toBeInTheDocument();
+    expect(getJournalEntries).toHaveBeenCalledOnce();
+
+    await user.click(within(tabs).getByRole('button', { name: 'Recipes' }));
+    await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
+
+    expect(
+        screen.getByRole('heading', { name: 'My Plan' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Loading your plan…')).not.toBeInTheDocument();
+    expect(getJournalEntries).toHaveBeenCalledOnce();
+});
+
 it('returns to My Recipes after a page reload while that tab is open', async () => {
     const user = userEvent.setup();
     const view = render(<App />);
@@ -206,7 +228,9 @@ it('gives main tabs URLs and restores them with browser Back', async () => {
     expect(window.location.pathname).toBe('/my-recipes');
     act(() => window.history.back());
     await waitFor(() => expect(window.location.pathname).toBe('/my-plan'));
-    expect(screen.getByRole('heading', { name: 'My Day' })).toBeInTheDocument();
+    expect(
+        screen.getByRole('heading', { name: 'My Plan' }),
+    ).toBeInTheDocument();
     act(() => window.history.forward());
     await waitFor(() => expect(window.location.pathname).toBe('/my-recipes'));
     expect(
@@ -279,7 +303,7 @@ it('opens My Ingredients directly from its URL and refreshes on pull', async () 
 });
 
 it.each([
-    ['/my-plan', 'My Day'],
+    ['/my-plan', 'My Plan'],
     ['/settings', 'Settings'],
 ])('opens %s directly', (path, heading) => {
     window.history.replaceState(null, '', path);

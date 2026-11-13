@@ -1,0 +1,65 @@
+.saved-collection-swipe {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.saved-collection-swipe:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -2px;
+}
+
+.saved-collection-swipe-delete {
+    position: absolute;
+    inset: 0 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 80px;
+    padding: 0;
+    border: 0;
+    background: var(--coral);
+    color: white;
+    cursor: pointer;
+}
+
+.saved-collection-swipe-delete svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.saved-collection-swipe-delete:focus-visible {
+    outline: 2px solid var(--text-h);
+    outline-offset: -4px;
+}
+
+.saved-collection-swipe[data-open='false'] .saved-collection-swipe-delete {
+    pointer-events: none;
+}
+
+.saved-collection-swipe-content {
+    position: relative;
+    z-index: 1;
+    background: var(--surface);
+    touch-action: pan-y;
+    transform: translateX(0);
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.saved-collection-swipe[data-open='true'] .saved-collection-swipe-content {
+    transform: translateX(-80px);
+}
+
+.saved-collection-swipe-content[data-dragging='true'] {
+    transform: translateX(var(--swipe-offset, 0px));
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .saved-collection-swipe-content {
+        transition: none;
+    }
+}

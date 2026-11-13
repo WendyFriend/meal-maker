@@ -73,19 +73,23 @@ describe('My Day toggle', () => {
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
     });
-    it('adds and removes the exact entry, showing the shared centered confirmation for both', async () => {
+    it('confirms adding the exact entry and removes it without a modal', async () => {
         const outerSave = vi.fn((event) => event.preventDefault());
         const user = userEvent.setup();
         render(
             <form onSubmit={outerSave}>
-                <LogMealButton meal={meal} />
+                <LogMealButton meal={meal} destinationLabel="My Plan" />
             </form>,
         );
-        await user.click(screen.getByRole('button', { name: 'Add to My Day' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Add to My Plan' }),
+        );
         expect(
-            await screen.findByRole('dialog', { name: 'Added to My Day' }),
+            await screen.findByRole('dialog', { name: 'Added to My Plan' }),
         ).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent('Added to My Day');
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Added to My Plan',
+        );
         expect(saveJournalEntry).toHaveBeenCalledOnce();
         expect(vi.mocked(saveJournalEntry).mock.calls[0][0]).toMatchObject({
             mealName: meal.mealName,
@@ -93,22 +97,16 @@ describe('My Day toggle', () => {
         });
         await user.click(screen.getByRole('dialog'));
         const remove = screen.getByRole('button', {
-            name: 'Remove from My Day',
+            name: 'Remove from My Plan',
         });
         expect(remove).toHaveAttribute('aria-pressed', 'true');
         await user.click(remove);
         expect(deleteJournalEntry).toHaveBeenCalledExactlyOnceWith('entry-1');
         expect(
-            await screen.findByRole('dialog', { name: 'Removed from My Day' }),
-        ).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent(
-            'Removed from My Day',
-        );
-        expect(outerSave).not.toHaveBeenCalled();
-        await user.click(screen.getByRole('dialog'));
-        expect(
-            screen.getByRole('button', { name: 'Add to My Day' }),
+            screen.getByRole('button', { name: 'Add to My Plan' }),
         ).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(outerSave).not.toHaveBeenCalled();
     });
     it('dismisses the confirmation automatically without forgetting the journal entry', async () => {
         vi.useFakeTimers();

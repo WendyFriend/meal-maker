@@ -47,7 +47,6 @@ export default function LogMealButton({
             if (entryId) {
                 await deleteJournalEntry(entryId);
                 setEntryId(null);
-                setFeedback(`Removed from ${destinationLabel}`);
             } else {
                 const entry = await saveJournalEntry({
                     eatenAt: new Date().toISOString(),
@@ -91,7 +90,7 @@ export default function LogMealButton({
                 onClick={toggleMeal}
             >
                 {saving ? (
-                    <LoadingSpinner size="small" />
+                    <LoadingSpinner size="small" tone="inherit" />
                 ) : (
                     <MyDayIcon remove={Boolean(entryId)} />
                 )}

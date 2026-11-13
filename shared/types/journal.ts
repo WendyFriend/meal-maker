@@ -6,5 +6,6 @@ export type JournalEntry = {
     eatenAt: string;
     mealName: string;
     ingredients: MealIngredient[];
+    planPosition?: number;
 };
-export type JournalEntryInput = Omit<JournalEntry, 'id'>;
+export type JournalEntryInput = Omit<JournalEntry, 'id' | 'planPosition'>;

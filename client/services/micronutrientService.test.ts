@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { MICRONUTRIENTS } from '../../shared/micronutrients';
 import {
+    getCachedIngredientNutrition,
     getIngredientNutrition,
     needsMicronutrients,
 } from './micronutrientService';
@@ -69,6 +70,34 @@ it('keeps macro and micronutrient values returned by the lookup', async () => {
         carbohydratePer100g: 6.5,
         ironPer100g: 0.8,
     });
+});
+
+it('reuses successful nutrient lookups after an app reload', async () => {
+    const fetchMock = vi.fn(
+        async () =>
+            new Response(
+                JSON.stringify({
+                    name: 'Persisted rice',
+                    ironPer100g: 1.2,
+                }),
+            ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    saveMealGenerator('nutrition-lab');
+    await getIngredientNutrition('persisted-rice');
+    expect(getCachedIngredientNutrition('persisted-rice')).toMatchObject({
+        ironPer100g: 1.2,
+    });
+
+    vi.resetModules();
+    const reloaded = await import('./micronutrientService');
+    expect(
+        reloaded.getCachedIngredientNutrition('persisted-rice'),
+    ).toMatchObject({
+        ironPer100g: 1.2,
+    });
+    await reloaded.getIngredientNutrition('persisted-rice');
+    expect(fetchMock).toHaveBeenCalledOnce();
 });
 
 const allKeys = MICRONUTRIENTS.map(({ key }) => key);

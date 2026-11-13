@@ -12,7 +12,7 @@
         box-sizing: border-box;
         padding: 4px 10px max(4px, env(safe-area-inset-bottom));
         border-top: 1px solid var(--border-hairline);
-        background: var(--surface-tint);
+        background: var(--app-chrome-bg);
     }
 
     .bottom-navigation-tab {
@@ -69,12 +69,12 @@
     }
 
     .bottom-navigation-icon .bottom-navigation-icon-detail {
-        stroke: var(--surface-tint);
+        stroke: var(--app-chrome-bg);
     }
 
     .bottom-navigation-icon .bottom-navigation-icon-cutout {
-        fill: var(--surface-tint);
-        stroke: var(--surface-tint);
+        fill: var(--app-chrome-bg);
+        stroke: var(--app-chrome-bg);
     }
 
     .bottom-navigation-tab-active .bottom-navigation-label {

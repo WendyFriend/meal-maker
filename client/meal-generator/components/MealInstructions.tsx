@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import ResetIcon from '../../components/ResetIcon';
 import './MealInstructions.css';
 
@@ -13,9 +13,11 @@ export type InstructionEditor = {
 export default function MealInstructions({
     instructions,
     editor,
+    headerAction,
 }: {
     editor?: InstructionEditor;
     instructions: string[];
+    headerAction?: ReactNode;
 }) {
     const editorId = useId();
     const cooking = instructions
@@ -30,6 +32,7 @@ export default function MealInstructions({
         <section className="meal-instructions" aria-label="Instructions">
             <div className="meal-section-header">
                 <h3>Instructions</h3>
+                {headerAction}
                 {editor?.canReset && (
                     <button
                         type="button"

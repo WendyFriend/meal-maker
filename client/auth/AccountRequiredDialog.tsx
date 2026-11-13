@@ -5,9 +5,9 @@ import './AccountRequiredDialog.css';
 
 const actionCopy: Record<AccountRequiredAction, string> = {
     'sign-in': 'Sign in to continue to your Meal Maker account.',
-    'sign-up': 'Create an account to save meals, ingredients and your day.',
+    'sign-up': 'Create an account to save meals, ingredients and your food journal.',
     'save-meal': 'Create an account or sign in to save this meal.',
-    'my-day': 'Create an account or sign in to add this meal to My Day.',
+    'my-day': 'Create an account or sign in to add this meal to My Plan.',
     'save-ingredient': 'Create an account or sign in to save this ingredient.',
 };
 

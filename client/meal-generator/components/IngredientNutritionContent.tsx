@@ -94,6 +94,8 @@ export default function IngredientNutritionContent({
     const resolvedIngredient = lookup
         ? mergeIngredientNutrition(ingredient, lookup)
         : ingredient;
+    const nutritionName =
+        resolvedIngredient.resolvedName ?? lookup?.name ?? ingredient.name;
     const source = resolvedIngredient.nutritionSource;
     const needsNutritionLookup = needsMacroNutrition(ingredient);
     const onNutritionResolvedRef = useRef(onNutritionResolved);
@@ -294,7 +296,7 @@ export default function IngredientNutritionContent({
                             className="ingredient-nutrition-name"
                             id={nameId}
                         >
-                            {ingredient.name}
+                            {nutritionName}
                         </Heading>
                     )}
                 </div>

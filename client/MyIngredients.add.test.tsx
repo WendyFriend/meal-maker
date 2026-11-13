@@ -101,6 +101,15 @@ it('shows matching ingredients and confirms one was added without closing search
     );
     const dialog = screen.getByRole('dialog', { name: 'Search ingredients' });
     expect(within(dialog).getByText('Tomato')).toBeInTheDocument();
+    expect(
+        within(dialog)
+            .getByText('Tomato')
+            .closest('.add-ingredient-database-row')
+            ?.querySelector('img'),
+    ).toHaveAttribute(
+        'src',
+        expect.stringMatching(/\/thumbnails\/170457\.webp\?size=64$/),
+    );
     fireEvent.change(
         within(dialog).getByRole('searchbox', { name: 'Search ingredients' }),
         {

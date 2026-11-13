@@ -9,7 +9,10 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UserIngredient } from '../../../shared/types/types';
+import type {
+    IngredientInfo,
+    UserIngredient,
+} from '../../../shared/types/types';
 import IngredientInput from './IngredientInput';
 import SelectedIngredients from './SelectedIngredients';
 import { mockPickerEnvironment } from '../../test/pickerEnvironment';
@@ -31,7 +34,17 @@ const records: UserIngredient[] = [
     fatPer100g: 3,
 }));
 
-function Form({ initial = [] as string[], saved = records, onEdit = vi.fn() }) {
+function Form({
+    initial = [] as string[],
+    saved = records,
+    onEdit = vi.fn(),
+    onNutritionSelected = vi.fn(),
+}: {
+    initial?: string[];
+    saved?: UserIngredient[];
+    onEdit?: (index: number) => void;
+    onNutritionSelected?: (name: string, nutrition: IngredientInfo) => void;
+}) {
     const [selected, setSelected] = useState(initial);
     return (
         <>
@@ -39,6 +52,7 @@ function Form({ initial = [] as string[], saved = records, onEdit = vi.fn() }) {
                 ingredients={selected}
                 savedIngredients={saved}
                 onChange={setSelected}
+                onIngredientNutritionSelected={onNutritionSelected}
                 removeIngredient={(name) =>
                     setSelected((current) =>
                         current.filter((item) => item !== name),
@@ -133,6 +147,75 @@ it('does not hide suggestions when the search is refocused before the blur delay
 });
 
 describe('ingredient search catalogue', () => {
+    it('shows only a spinner while Nutrition Lab search is pending', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => new Promise(() => {})),
+        );
+        const user = userEvent.setup();
+        render(<Form saved={[]} />);
+
+        await user.type(screen.getByRole('combobox'), 'unusual ingredient');
+        const status = await screen.findByRole('status', {
+            name: 'Searching ingredients',
+        });
+        expect(status.querySelector('.loading-spinner')).toBeInTheDocument();
+        expect(status.textContent).toBe('');
+    });
+
+    it('offers Nutrition Lab results while keeping manual entry available', async () => {
+        const search = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                results: [
+                    {
+                        fdcId: 991234,
+                        name: 'Dragonfruit, raw',
+                        description: 'Fresh fruit',
+                        per100g: {
+                            kcal: 60,
+                            proteinG: 1.2,
+                            carbsG: 13,
+                            fatG: 0.2,
+                        },
+                    },
+                ],
+            }),
+        });
+        vi.stubGlobal('fetch', search);
+        const onNutritionSelected = vi.fn();
+        const user = userEvent.setup();
+        render(<Form saved={[]} onNutritionSelected={onNutritionSelected} />);
+
+        await user.type(screen.getByRole('combobox'), 'dragonfruit');
+        expect(
+            within(screen.getByRole('listbox')).getByRole('option', {
+                name: /\+ dragonfruit/,
+            }),
+        ).toBeInTheDocument();
+        const result = await screen.findByRole('option', {
+            name: 'Dragonfruit, raw',
+        });
+        expect(result).not.toHaveTextContent('Fresh fruit');
+        expect(search).toHaveBeenCalledWith(
+            '/api/food-search?q=dragonfruit',
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
+        await user.click(result);
+        expect(
+            screen.getByRole('button', {
+                name: 'Edit nutrition for Dragonfruit, raw',
+            }),
+        ).toBeInTheDocument();
+        expect(onNutritionSelected).toHaveBeenCalledWith(
+            'Dragonfruit, raw',
+            expect.objectContaining({
+                caloriesPer100g: 60,
+                nutritionSource: expect.objectContaining({ fdcId: 991234 }),
+            }),
+        );
+    });
+
     it('puts an unknown typed value above partial catalogue matches', async () => {
         const user = userEvent.setup();
         render(<Form saved={[]} />);

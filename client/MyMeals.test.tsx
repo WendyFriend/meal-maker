@@ -58,6 +58,7 @@ const recipes: Recipe[] = [
 
 beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.removeItem('meal-maker:show-recipe-nutrition');
     vi.stubGlobal('PointerEvent', MouseEvent);
     mockPickerEnvironment();
     vi.mocked(deleteRecipes).mockImplementation(async (ids) => ids);
@@ -80,6 +81,195 @@ function hold(row: HTMLElement) {
 }
 
 describe('My Meals collection', () => {
+    it('shows portion nutrition by default and remembers the eye toggle choice', async () => {
+        vi.mocked(getRecipes).mockResolvedValueOnce([
+            {
+                ...recipes[0],
+                recipeName: 'Millet',
+                ingredients: [
+                    {
+                        ...recipes[0].ingredients[0],
+                        name: 'Millet',
+                        weight: 100,
+                        caloriesPer100g: 1559,
+                        proteinPer100g: 9,
+                        fiberPer100g: 4,
+                    },
+                ],
+            },
+        ]);
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        const toggle = screen.getByRole('button', { name: 'Show nutrition' });
+        expect(toggle).toHaveAttribute('aria-pressed', 'true');
+        expect(toggle).toHaveAttribute('title', 'Hide nutrition');
+        expect(toggle.querySelector('.my-meals-eye-open')).toBeInTheDocument();
+        expect(
+            await screen.findByText('1559 kcal · 9 g protein · 4 g fibre'),
+        ).toBeInTheDocument();
+
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-pressed', 'false');
+        expect(toggle).toHaveAttribute('title', 'Show nutrition');
+        expect(
+            toggle.querySelector('.my-meals-eye-closed'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('1559 kcal · 9 g protein · 4 g fibre'),
+        ).not.toBeInTheDocument();
+        expect(localStorage.getItem('meal-maker:show-recipe-nutrition')).toBe(
+            'false',
+        );
+
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-pressed', 'true');
+        expect(
+            screen.getByText('1559 kcal · 9 g protein · 4 g fibre'),
+        ).toBeInTheDocument();
+    });
+
+    it('does not report missing fibre as zero', async () => {
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        expect(
+            await screen.findByText('195 kcal · 23 g protein · — g fibre'),
+        ).toBeInTheDocument();
+    });
+
+    it('reveals delete on a left swipe and removes only that meal', async () => {
+        const onOpenRecipe = vi.fn();
+        render(<MyMeals onOpenRecipe={onOpenRecipe} />);
+        const row = await screen.findByRole('button', { name: /Tofu bowl/ });
+        fireEvent.pointerDown(row, {
+            button: 0,
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 160,
+            clientY: 20,
+        });
+        fireEvent.pointerMove(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        fireEvent.pointerUp(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        expect(onOpenRecipe).not.toHaveBeenCalled();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Delete Tofu bowl' }),
+        );
+        await waitFor(() =>
+            expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1']),
+        );
+        await waitFor(() =>
+            expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument(),
+        );
+        expect(screen.getByText('Garden salad')).toBeInTheDocument();
+    });
+
+    it('slides an open row closed when clicking or focusing elsewhere', async () => {
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        const row = await screen.findByRole('button', { name: /Tofu bowl/ });
+        const swipe = row.closest('.saved-collection-swipe');
+        const search = screen.getByRole('searchbox', { name: 'Search meals' });
+
+        fireEvent.pointerDown(row, {
+            button: 0,
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 160,
+            clientY: 20,
+        });
+        fireEvent.pointerMove(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        fireEvent.pointerUp(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        expect(swipe).toHaveAttribute('data-open', 'true');
+
+        fireEvent.pointerDown(search, { pointerType: 'mouse' });
+        expect(swipe).toHaveAttribute('data-open', 'false');
+
+        fireEvent.pointerDown(row, {
+            button: 0,
+            pointerId: 2,
+            pointerType: 'mouse',
+            clientX: 160,
+            clientY: 20,
+        });
+        fireEvent.pointerMove(row, {
+            pointerId: 2,
+            pointerType: 'mouse',
+            clientX: 70,
+            clientY: 20,
+        });
+        fireEvent.pointerUp(row, {
+            pointerId: 2,
+            pointerType: 'mouse',
+            clientX: 70,
+            clientY: 20,
+        });
+        expect(swipe).toHaveAttribute('data-open', 'true');
+
+        fireEvent.focusIn(search);
+        expect(swipe).toHaveAttribute('data-open', 'false');
+    });
+
+    it('opens Edit from a desktop context menu without opening the row', async () => {
+        const onOpenRecipe = vi.fn();
+        const onEditRecipe = vi.fn();
+        render(
+            <MyMeals onOpenRecipe={onOpenRecipe} onEditRecipe={onEditRecipe} />,
+        );
+        const row = await screen.findByRole('button', { name: /Tofu bowl/ });
+        fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
+
+        const menu = screen.getByRole('menu', { name: 'Tofu bowl actions' });
+        expect(menu).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveFocus();
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+
+        expect(onEditRecipe).toHaveBeenCalledExactlyOnceWith(recipes[0]);
+        expect(onOpenRecipe).not.toHaveBeenCalled();
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('deletes the chosen recipe from the context menu', async () => {
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        const row = await screen.findByRole('button', { name: /Tofu bowl/ });
+        fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+        await waitFor(() =>
+            expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1']),
+        );
+        await waitFor(() =>
+            expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument(),
+        );
+        expect(screen.getByText('Garden salad')).toBeInTheDocument();
+    });
+
+    it('opens the context menu from the keyboard and dismisses it with Escape', async () => {
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        const row = await screen.findByRole('button', { name: /Tofu bowl/ });
+        fireEvent.keyDown(row, { key: 'F10', shiftKey: true });
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+        expect(row).toHaveFocus();
+    });
+
     it('uses fresh server data after a refresh instead of a stale local edit', async () => {
         function Fixture() {
             const [overrides, setOverrides] = useState<Record<string, Recipe>>(

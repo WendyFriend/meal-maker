@@ -7,6 +7,7 @@ import grainsPhoto from '../../assets/ingredients/grains-oats.webp';
 import proteinPhoto from '../../assets/ingredients/protein-chickpeas.webp';
 import veggiesPhoto from '../../assets/ingredients/veggies-spinach.webp';
 import IngredientThumbnail from './IngredientThumbnail';
+import useSavedIngredientFoodIds from '../../hooks/useSavedIngredientFoodIds';
 import {
     getIngredientSearchOptions,
     groupQuickAddIngredients,
@@ -39,6 +40,7 @@ export default function FavouriteIngredientsSheet({
 }) {
     const [category, setCategory] = useState<Category>('saved');
     const [search, setSearch] = useState('');
+    const legacyFoodIds = useSavedIngredientFoodIds(savedIngredients);
     const titleId = useId();
     const groups = useMemo(
         () => groupQuickAddIngredients(savedIngredients),
@@ -148,6 +150,13 @@ export default function FavouriteIngredientsSheet({
                             const added = selected.has(
                                 normalizeIngredientName(option.name),
                             );
+                            const fdcId =
+                                option.fdcId ??
+                                (option.id.startsWith('saved:')
+                                    ? legacyFoodIds[
+                                          normalizeIngredientName(option.name)
+                                      ]
+                                    : undefined);
                             return (
                                 <button
                                     type="button"
@@ -161,7 +170,7 @@ export default function FavouriteIngredientsSheet({
                                     <span className="favourite-ingredient-image">
                                         <IngredientThumbnail
                                             name={option.name}
-                                            fdcId={option.fdcId}
+                                            fdcId={fdcId}
                                         />
                                         <span
                                             className="favourite-ingredient-option-state"

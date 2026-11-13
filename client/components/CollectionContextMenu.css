@@ -1,0 +1,87 @@
+.collection-context-menu {
+    position: fixed;
+    z-index: 1100;
+    box-sizing: border-box;
+    width: 188px;
+    padding: 6px;
+    border: 1px solid rgb(35 40 38 / 10%);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 10px 28px rgb(35 40 38 / 13%);
+    animation: collection-context-in 140ms ease-out both;
+}
+
+.collection-context-menu button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-h-strong);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.collection-context-menu button:hover,
+.collection-context-menu button:focus-visible {
+    background: rgb(35 40 38 / 6%);
+}
+
+.collection-context-menu button:active {
+    background: rgb(35 40 38 / 9%);
+}
+
+.collection-context-menu button:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -2px;
+}
+
+.collection-context-menu svg {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.collection-context-separator {
+    height: 1px;
+    margin: 3px 10px;
+    background: rgb(35 40 38 / 10%);
+}
+
+.collection-context-menu .collection-context-delete {
+    color: var(--danger);
+}
+
+.collection-context-menu .collection-context-delete:hover,
+.collection-context-menu .collection-context-delete:focus-visible {
+    background: var(--danger-bg);
+}
+
+@keyframes collection-context-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .collection-context-menu {
+        animation: none;
+    }
+}

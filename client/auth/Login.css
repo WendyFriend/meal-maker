@@ -9,7 +9,7 @@
     background:
         radial-gradient(ellipse at 20% 15%, #edf1e780, transparent 55%),
         radial-gradient(ellipse at 90% 85%, #fff0e580, transparent 50%),
-        var(--app-chrome-bg);
+        var(--page-canvas);
 }
 .login-page-embedded {
     min-height: calc(100svh - var(--header-height));

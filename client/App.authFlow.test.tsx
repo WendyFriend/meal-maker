@@ -45,9 +45,7 @@ it('offers returning and new users authentication before the guest trial', async
         }),
     ).toBeVisible();
     expect(
-        screen.getByText(
-            'Supporting a healthy, well-balanced plant-based journey.',
-        ),
+        screen.getByText('Eat plant-based. Meet your nutrition goals.'),
     ).toBeVisible();
     expect(screen.getByRole('region', { name: 'Meal maker' })).toBeVisible();
     expect(
@@ -72,6 +70,16 @@ it('offers returning and new users authentication before the guest trial', async
 
     await user.click(screen.getByRole('button', { name: /Try it out/i }));
     await waitFor(() =>
+        expect(
+            screen
+                .getByRole('region', { name: 'Meal maker' })
+                .querySelector('.meal-maker-form'),
+        ).toHaveFocus(),
+    );
+    expect(
+        screen.queryByRole('dialog', { name: 'Welcome to Meal Maker' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
         expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({
             behavior: 'smooth',
             block: 'start',
@@ -91,6 +99,41 @@ it('offers returning and new users authentication before the guest trial', async
         }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Meal maker' })).toBeVisible();
+});
+
+it('invites guests to sign in before adding a generated meal to My Plan', async () => {
+    const meal = {
+        mealName: 'Pumpkin bowl',
+        instructions: [],
+        ingredients: [
+            {
+                name: 'Pumpkin',
+                weight: 100,
+                caloriesPer100g: 26,
+                proteinPer100g: 1,
+                carbohydratePer100g: 6.5,
+                fatPer100g: 0.1,
+            },
+        ],
+    };
+    localStorage.setItem(
+        'meal-maker-guest-draft',
+        JSON.stringify({
+            pendingAuth: true,
+            ingredients: ['Pumpkin'],
+            ingredientNutrition: meal.ingredients,
+            meal,
+            originalMeal: meal,
+        }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Add to My Plan' }));
+    expect(
+        screen.getByRole('dialog', { name: 'Keep your meal' }),
+    ).toHaveTextContent('add this meal to My Plan');
+    expect(saveRecipe).not.toHaveBeenCalled();
 });
 
 it('prompts for an account only on a protected meal action and keeps the meal', async () => {

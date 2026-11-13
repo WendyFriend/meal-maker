@@ -35,7 +35,7 @@ it('uses an existing food id for the nutrition header without another lookup', (
     );
     expect(container.querySelector('img')).toHaveAttribute(
         'src',
-        'https://mealmaker.brotherk3d.com/api/v1/thumbnails/170379.webp',
+        'https://mealmaker.brotherk3d.com/api/v1/thumbnails/170379.webp?size=128',
     );
     expect(fetch).not.toHaveBeenCalled();
 });
@@ -61,7 +61,7 @@ it('shares the food lookup between the header image and nutrition details when a
     await waitFor(() =>
         expect(container.querySelector('img')).toHaveAttribute(
             'src',
-            'https://mealmaker.brotherk3d.com/api/v1/thumbnails/172475.webp',
+            'https://mealmaker.brotherk3d.com/api/v1/thumbnails/172475.webp?size=128',
         ),
     );
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -115,6 +115,9 @@ it('shows lookup progress and fills unknown ingredient nutrition from Nutrition 
     expect(
         await screen.findByRole('row', { name: /Calories/ }),
     ).toHaveTextContent('26 kcal');
+    expect(
+        screen.getByRole('heading', { name: 'Pumpkin, raw' }),
+    ).toBeInTheDocument();
     await waitFor(() =>
         expect(onNutritionResolved).toHaveBeenCalledWith(
             expect.objectContaining({

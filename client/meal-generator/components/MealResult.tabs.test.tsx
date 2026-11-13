@@ -119,6 +119,11 @@ describe('meal result detail layout', () => {
         await waitFor(() =>
             expect(onSavedRecipesChange).toHaveBeenCalledOnce(),
         );
+        const feedback = await screen.findByRole('dialog', {
+            name: 'Saved to My Recipes',
+        });
+        expect(feedback).toHaveTextContent('Saved to My Recipes');
+        fireEvent.click(feedback);
         fireEvent.click(
             screen.getByRole('button', { name: 'Remove this meal from saved' }),
         );
@@ -127,17 +132,19 @@ describe('meal result detail layout', () => {
         );
     });
 
-    it('shows calories, protein, fiber, actions, and switches between both tabs', () => {
+    it('shows calories, protein, fiber, actions, and switches between all three tabs', () => {
         render(<MealResult meal={meal} onChange={vi.fn()} />);
-        const summary = document.querySelector('.meal-result-highlights')!;
+        const summary = screen.getByRole('group', {
+            name: 'Meal nutrition summary',
+        });
         expect(
-            within(summary as HTMLElement).getByText('~260 kcal'),
+            within(summary).getByRole('group', { name: 'Total calories' }),
         ).toBeInTheDocument();
         expect(
-            within(summary as HTMLElement).getByText('~30 g'),
+            within(summary).getByRole('button', { name: 'Protein: 30 grams' }),
         ).toBeInTheDocument();
         expect(
-            within(summary as HTMLElement).getByText('~4 g'),
+            within(summary).getByRole('button', { name: 'Fibre: 4 grams' }),
         ).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Save this meal' }),
@@ -146,13 +153,23 @@ describe('meal result detail layout', () => {
             screen.getByRole('button', { name: 'Add to My Plan' }),
         ).toBeInTheDocument();
 
-        const nutrition = screen.getByRole('tab', {
-            name: 'Ingredients & Nutrition',
-        });
+        const ingredients = screen.getByRole('tab', { name: 'Ingredients' });
+        const nutrients = screen.getByRole('tab', { name: 'Key Nutrients' });
         const steps = screen.getByRole('tab', { name: 'Steps' });
-        expect(nutrition).toHaveAttribute('aria-selected', 'true');
+        expect(ingredients).toHaveAttribute('aria-selected', 'true');
         expect(
-            screen.getByRole('heading', { name: 'Nutrition' }),
+            screen.getByRole('region', { name: 'Ingredients' }),
+        ).toBeVisible();
+        expect(
+            screen.queryByRole('heading', { name: 'Nutrition' }),
+        ).not.toBeInTheDocument();
+        fireEvent.click(nutrients);
+        expect(nutrients).toHaveAttribute('aria-selected', 'true');
+        expect(
+            screen.queryByRole('heading', { name: 'Nutrition' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('region', { name: 'Meal key nutrients' }),
         ).toBeVisible();
         fireEvent.click(steps);
         expect(steps).toHaveAttribute('aria-selected', 'true');
@@ -161,8 +178,12 @@ describe('meal result detail layout', () => {
             screen.queryByRole('heading', { name: 'Nutrition' }),
         ).not.toBeInTheDocument();
         fireEvent.keyDown(steps, { key: 'ArrowLeft' });
-        expect(nutrition).toHaveFocus();
-        expect(nutrition).toHaveAttribute('aria-selected', 'true');
+        expect(nutrients).toHaveFocus();
+        expect(nutrients).toHaveAttribute('aria-selected', 'true');
+        fireEvent.keyDown(nutrients, { key: 'ArrowLeft' });
+        expect(ingredients).toHaveFocus();
+        fireEvent.keyDown(ingredients, { key: 'End' });
+        expect(steps).toHaveFocus();
     });
 
     it('marks fiber as unavailable when any ingredient is missing fiber data', () => {
@@ -183,7 +204,9 @@ describe('meal result detail layout', () => {
             />,
         );
         expect(
-            document.querySelector('.meal-result-highlights'),
-        ).toHaveTextContent('—Fiber');
+            within(
+                screen.getByRole('group', { name: 'Meal nutrition summary' }),
+            ).getByRole('button', { name: 'Fibre: unavailable' }),
+        ).toHaveTextContent('—');
     });
 });

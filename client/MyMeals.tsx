@@ -1,7 +1,9 @@
 import { createPortal } from 'react-dom';
 import {
     useEffect,
+    useEffectEvent,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
     type CSSProperties,
@@ -21,17 +23,50 @@ import './components/SavedCollection.css';
 import './MyMeals.css';
 import LoadingSpinner from './components/LoadingSpinner';
 import PullRefreshIndicator from './components/PullRefreshIndicator';
+import SwipeableCollectionRow from './components/SwipeableCollectionRow';
+import CollectionContextMenu from './components/CollectionContextMenu';
+import { contextMenuPosition } from './components/contextMenuPosition';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
+import {
+    hasUnavailableNutrition,
+    totalFiber,
+    totalNutrition,
+} from './utils/nutrition';
+
+const SHOW_NUTRITION_KEY = 'meal-maker:show-recipe-nutrition';
+const EMPTY_UPDATED_RECIPES: Record<string, Recipe> = {};
+
+type RecipeMenu = {
+    recipe: Recipe;
+    trigger: HTMLButtonElement;
+    x: number;
+    y: number;
+};
+
+function recipeNutritionSummary(recipe: Recipe): string {
+    if (
+        !recipe.ingredients.length ||
+        hasUnavailableNutrition(recipe.ingredients)
+    )
+        return 'Nutrition unavailable';
+    const { calories, protein } = totalNutrition(recipe.ingredients);
+    if (!Number.isFinite(calories) || !Number.isFinite(protein))
+        return 'Nutrition unavailable';
+    const fiber = totalFiber(recipe.ingredients);
+    return `${Math.round(calories)} kcal · ${Math.round(protein)} g protein · ${fiber.available ? Math.round(fiber.grams) : '—'} g fibre`;
+}
 
 export default function MyMeals({
     onOpenRecipe,
+    onEditRecipe,
     onCreate,
     isActive = true,
-    updatedRecipes = {},
+    updatedRecipes = EMPTY_UPDATED_RECIPES,
     refreshKey = 0,
     onRecipesRefreshed,
 }: {
     onOpenRecipe: (recipe: Recipe) => void;
+    onEditRecipe?: (recipe: Recipe) => void;
     onCreate?: () => void;
     isActive?: boolean;
     updatedRecipes?: Record<string, Recipe>;
@@ -39,10 +74,21 @@ export default function MyMeals({
     onRecipesRefreshed?: () => void;
 }) {
     const [loadedRecipes, setRecipes] = useState<Recipe[]>([]);
-    const recipes = loadedRecipes.map(
-        (recipe) => (recipe.id && updatedRecipes[recipe.id]) || recipe,
+    const recipes = useMemo(
+        () =>
+            loadedRecipes.map(
+                (recipe) => (recipe.id && updatedRecipes[recipe.id]) || recipe,
+            ),
+        [loadedRecipes, updatedRecipes],
     );
     const [search, setSearch] = useState('');
+    const [showNutrition, setShowNutrition] = useState(
+        () => window.localStorage.getItem(SHOW_NUTRITION_KEY) !== 'false',
+    );
+    const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+    const [recipeMenu, setRecipeMenu] = useState<RecipeMenu | null>(null);
+    const lastPointerType = useRef<string | null>(null);
+    const [swipeError, setSwipeError] = useState<string>();
     const [isLoading, setIsLoading] = useState(true);
     const [hasLoaded, setHasLoaded] = useState(false);
     const hasLoadedRef = useRef(false);
@@ -57,6 +103,20 @@ export default function MyMeals({
     useLayoutEffect(() => {
         onRecipesRefreshedRef.current = onRecipesRefreshed;
     }, [onRecipesRefreshed]);
+    useEffect(() => {
+        window.localStorage.setItem(SHOW_NUTRITION_KEY, String(showNutrition));
+    }, [showNutrition]);
+
+    function openMenu(
+        recipe: Recipe,
+        trigger: HTMLButtonElement,
+        x: number,
+        y: number,
+    ) {
+        if (selecting || deleting || !isActive) return;
+        setOpenSwipeId(null);
+        setRecipeMenu({ recipe, trigger, ...contextMenuPosition(x, y) });
+    }
 
     // Keep the loaded list and search while a meal detail or create page is open.
     useEffect(() => {
@@ -92,16 +152,32 @@ export default function MyMeals({
         };
     }, [reloadCount, refreshKey]);
 
-    const query = search.trim().toLowerCase();
-    const filtered = recipes.filter(
-        (recipe) =>
-            recipe.recipeName.toLowerCase().includes(query) ||
-            recipe.ingredients.some((ingredient) =>
-                ingredient.name.toLowerCase().includes(query),
-            ),
+    const filtered = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return recipes;
+        return recipes.filter(
+            (recipe) =>
+                recipe.recipeName.toLowerCase().includes(query) ||
+                recipe.ingredients.some((ingredient) =>
+                    ingredient.name.toLowerCase().includes(query),
+                ),
+        );
+    }, [recipes, search]);
+    const nutritionSummaries = useMemo(
+        () =>
+            showNutrition
+                ? new Map(
+                      filtered.map((recipe) => [
+                          recipe,
+                          recipeNutritionSummary(recipe),
+                      ]),
+                  )
+                : null,
+        [filtered, showNutrition],
     );
 
     async function deleteMeals(ids: string[]) {
+        setRecipeMenu(null);
         const deleted = await deleteRecipes(ids);
         const removed = new Set(deleted);
         const visibleExits = Object.fromEntries(
@@ -127,6 +203,22 @@ export default function MyMeals({
         setExitingRows({});
         return deleted;
     }
+    async function deleteMeal(recipe: Recipe) {
+        if (!recipe.id) return false;
+        setSwipeError(undefined);
+        try {
+            const deleted = await deleteMeals([recipe.id]);
+            if (!deleted.includes(recipe.id))
+                throw new Error('Meal was not removed.');
+            setOpenSwipeId(null);
+            return true;
+        } catch {
+            setSwipeError(
+                `Could not delete ${recipe.recipeName}. Please try again.`,
+            );
+            return false;
+        }
+    }
     const {
         selecting,
         deleting,
@@ -149,42 +241,49 @@ export default function MyMeals({
         items: recipes,
         visibleItems: filtered,
         getId: (recipe) => recipe.id ?? '',
-        onOpen: onOpenRecipe,
+        onOpen: (recipe) => {
+            setOpenSwipeId(null);
+            setRecipeMenu(null);
+            onOpenRecipe(recipe);
+        },
         onDeleteMany: deleteMeals,
         noun: 'meal',
         search,
         isActive,
+        onSelectionStart: () => {
+            setOpenSwipeId(null);
+            setRecipeMenu(null);
+        },
     });
 
     function refreshMeals() {
         if (refreshingRef.current || isLoading || deleting) return;
+        setOpenSwipeId(null);
+        setRecipeMenu(null);
         refreshingRef.current = true;
         setIsRefreshing(true);
         setReloadCount((count) => count + 1);
     }
+    const refreshMealsFromEffect = useEffectEvent(refreshMeals);
 
     // Keep a mounted list fresh when returning from another tab or app.
     useEffect(() => {
         if (isActive && !previousActiveRef.current && hasLoadedRef.current) {
-            refreshMeals();
+            refreshMealsFromEffect();
         }
         previousActiveRef.current = isActive;
-        // The transition itself is the refresh trigger.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isActive]);
 
     useEffect(() => {
         if (!isActive) return;
         const onVisible = () => {
             if (document.visibilityState === 'visible' && hasLoadedRef.current)
-                refreshMeals();
+                refreshMealsFromEffect();
         };
         document.addEventListener('visibilitychange', onVisible);
         return () =>
             document.removeEventListener('visibilitychange', onVisible);
-        // Visibility is the refresh trigger.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isActive, isLoading, deleting]);
+    }, [isActive]);
 
     const { containerRef, pullDistance } = usePullToRefresh({
         enabled: isActive,
@@ -216,16 +315,68 @@ export default function MyMeals({
             <header className="saved-collection-intro">
                 <div className="saved-collection-title">
                     <h1 id="my-meals-heading">My Recipes</h1>
-                    {!isLoading &&
-                        !error &&
-                        recipes.some((recipe) => recipe.id) && (
-                            <SelectionToggle
-                                selecting={selecting}
-                                disabled={deleting}
-                                noun="meal"
-                                onClick={toggleSelection}
-                            />
-                        )}
+                    <div className="my-meals-title-actions">
+                        <button
+                            type="button"
+                            className="my-meals-nutrition-toggle"
+                            aria-label="Show nutrition"
+                            aria-pressed={showNutrition}
+                            title={
+                                showNutrition
+                                    ? 'Hide nutrition'
+                                    : 'Show nutrition'
+                            }
+                            onClick={() =>
+                                setShowNutrition((current) => !current)
+                            }
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true"
+                                className={
+                                    showNutrition
+                                        ? 'my-meals-eye-open'
+                                        : 'my-meals-eye-closed'
+                                }
+                            >
+                                {showNutrition ? (
+                                    <>
+                                        <path d="M2.5 12C5.3 8.5 8.4 6.8 12 6.8s6.7 1.7 9.5 5.2c-2.8 3.5-5.9 5.2-9.5 5.2S5.3 15.5 2.5 12Z" />
+                                        <circle cx="12" cy="12" r="4.9" />
+                                        <circle
+                                            cx="12"
+                                            cy="12"
+                                            r="1.7"
+                                            fill="currentColor"
+                                            stroke="none"
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <path
+                                            d="M3.2 8.7C7.6 15.9 16.4 15.9 20.8 8.7"
+                                            strokeWidth="2.2"
+                                        />
+                                        <path
+                                            d="m6 12.2-1.7 2.6m4.4-.2-.9 3.1m4.2-2.2v3.4m3.3-4.3.9 3.1m2-5.5 1.7 2.6"
+                                            strokeWidth="2.2"
+                                        />
+                                    </>
+                                )}
+                            </svg>
+                        </button>
+                        {!isLoading &&
+                            !error &&
+                            recipes.some((recipe) => recipe.id) && (
+                                <SelectionToggle
+                                    selecting={selecting}
+                                    disabled={deleting}
+                                    noun="meal"
+                                    onClick={toggleSelection}
+                                />
+                            )}
+                    </div>
                 </div>
             </header>
             <div className="saved-collection-search-field">
@@ -242,7 +393,11 @@ export default function MyMeals({
                     type="search"
                     className="saved-collection-search-input"
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(event) => {
+                        setSearch(event.target.value);
+                        setOpenSwipeId(null);
+                        setRecipeMenu(null);
+                    }}
                     placeholder="Search meals..."
                     aria-label="Search meals"
                     disabled={deleting}
@@ -273,6 +428,11 @@ export default function MyMeals({
                     </button>
                 </div>
             )}
+            {swipeError && (
+                <p className="saved-collection-swipe-error" role="alert">
+                    {swipeError}
+                </p>
+            )}
             {isLoading ? (
                 <div
                     className="saved-collection-empty my-meals-loading"
@@ -300,100 +460,161 @@ export default function MyMeals({
                     {filtered.map((recipe, index) => {
                         const selected = isSelected(recipe);
                         return (
-                            <div
-                                ref={(node) => {
-                                    if (!recipe.id) return;
-                                    if (node)
-                                        rowElements.current.set(
-                                            recipe.id,
-                                            node,
-                                        );
-                                    else rowElements.current.delete(recipe.id);
-                                }}
-                                className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${recipe.id && exitingRows[recipe.id] ? ' my-meals-row-exiting' : ''}`}
-                                style={
-                                    recipe.id && exitingRows[recipe.id]
-                                        ? ({
-                                              '--exit-height': `${exitingRows[recipe.id]}px`,
-                                          } as CSSProperties)
-                                        : undefined
-                                }
+                            <SwipeableCollectionRow
                                 key={
                                     recipe.id ?? `${recipe.recipeName}-${index}`
                                 }
+                                name={recipe.recipeName}
+                                enabled={
+                                    Boolean(recipe.id) &&
+                                    !selecting &&
+                                    !deleting
+                                }
+                                open={
+                                    isActive &&
+                                    !selecting &&
+                                    openSwipeId === recipe.id
+                                }
+                                onOpen={() => setOpenSwipeId(recipe.id ?? null)}
+                                onClose={() => setOpenSwipeId(null)}
+                                onDelete={() => deleteMeal(recipe)}
                             >
-                                <button
-                                    type="button"
-                                    className="saved-collection-row"
-                                    aria-pressed={
-                                        selecting ? selected : undefined
-                                    }
-                                    aria-label={
-                                        selecting
-                                            ? `${selected ? 'Deselect' : 'Select'} ${recipe.recipeName}`
+                                <div
+                                    ref={(node) => {
+                                        if (!recipe.id) return;
+                                        if (node)
+                                            rowElements.current.set(
+                                                recipe.id,
+                                                node,
+                                            );
+                                        else
+                                            rowElements.current.delete(
+                                                recipe.id,
+                                            );
+                                    }}
+                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${recipe.id && exitingRows[recipe.id] ? ' my-meals-row-exiting' : ''}`}
+                                    onPointerDownCapture={(event) => {
+                                        lastPointerType.current =
+                                            event.pointerType;
+                                    }}
+                                    onContextMenu={(event) => {
+                                        event.preventDefault();
+                                        if (lastPointerType.current === 'touch')
+                                            return;
+                                        const trigger =
+                                            event.currentTarget.querySelector<HTMLButtonElement>(
+                                                '.saved-collection-row',
+                                            );
+                                        if (trigger)
+                                            openMenu(
+                                                recipe,
+                                                trigger,
+                                                event.clientX,
+                                                event.clientY,
+                                            );
+                                    }}
+                                    style={
+                                        recipe.id && exitingRows[recipe.id]
+                                            ? ({
+                                                  '--exit-height': `${exitingRows[recipe.id]}px`,
+                                              } as CSSProperties)
                                             : undefined
                                     }
-                                    disabled={deleting}
-                                    onPointerDown={(event) =>
-                                        startPress(event, recipe)
-                                    }
-                                    onPointerMove={movePress}
-                                    onPointerUp={endPress}
-                                    onPointerCancel={endPress}
-                                    onPointerLeave={endPress}
-                                    onContextMenu={(event) =>
-                                        event.preventDefault()
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (
-                                            event.key === 'Enter' ||
-                                            event.key === ' '
-                                        )
-                                            resetClickSuppression();
-                                    }}
-                                    onClick={() => clickItem(recipe)}
                                 >
-                                    <img
-                                        className="my-meals-row-photo"
-                                        src={defaultMealPhoto}
-                                        alt=""
-                                        width="72"
-                                        height="72"
-                                        loading="lazy"
-                                        decoding="async"
-                                    />
-                                    <span className="saved-collection-row-info">
-                                        <strong>{recipe.recipeName}</strong>
-                                    </span>
-                                </button>
-                                {selecting ? (
                                     <button
                                         type="button"
-                                        className="my-meals-row-actions my-meals-selection-action"
-                                        aria-label={`Toggle selection for ${recipe.recipeName}`}
-                                        aria-pressed={selected}
+                                        className="saved-collection-row"
+                                        aria-pressed={
+                                            selecting ? selected : undefined
+                                        }
+                                        aria-label={
+                                            selecting
+                                                ? `${selected ? 'Deselect' : 'Select'} ${recipe.recipeName}`
+                                                : undefined
+                                        }
                                         disabled={deleting}
+                                        onPointerDown={(event) =>
+                                            startPress(event, recipe)
+                                        }
+                                        onPointerMove={movePress}
+                                        onPointerUp={endPress}
+                                        onPointerCancel={endPress}
+                                        onPointerLeave={endPress}
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.key === 'ContextMenu' ||
+                                                (event.shiftKey &&
+                                                    event.key === 'F10')
+                                            ) {
+                                                event.preventDefault();
+                                                const rect =
+                                                    event.currentTarget.getBoundingClientRect();
+                                                openMenu(
+                                                    recipe,
+                                                    event.currentTarget,
+                                                    rect.left + 20,
+                                                    rect.bottom - 8,
+                                                );
+                                                return;
+                                            }
+                                            if (
+                                                event.key === 'Enter' ||
+                                                event.key === ' '
+                                            )
+                                                resetClickSuppression();
+                                        }}
                                         onClick={() => clickItem(recipe)}
                                     >
-                                        <SelectionIndicator
-                                            selected={selected}
+                                        <img
+                                            className="my-meals-row-photo"
+                                            src={defaultMealPhoto}
+                                            alt=""
+                                            width="72"
+                                            height="72"
+                                            loading="lazy"
+                                            decoding="async"
                                         />
+                                        <span className="saved-collection-row-info">
+                                            <strong>{recipe.recipeName}</strong>
+                                            {showNutrition && (
+                                                <span className="my-meals-row-nutrition">
+                                                    {nutritionSummaries?.get(
+                                                        recipe,
+                                                    )}
+                                                </span>
+                                            )}
+                                        </span>
                                     </button>
-                                ) : (
-                                    <div className="my-meals-row-actions">
-                                        <LogMealButton
-                                            meal={{
-                                                mealName: recipe.recipeName,
-                                                ingredients: recipe.ingredients,
-                                                instructions:
-                                                    recipe.instructions,
-                                            }}
-                                            destinationLabel="My Plan"
-                                            feedbackDurationMs={1000}
-                                        />
-                                    </div>
-                                )}
-                            </div>
+                                    {selecting ? (
+                                        <button
+                                            type="button"
+                                            className="my-meals-row-actions my-meals-selection-action"
+                                            aria-label={`Toggle selection for ${recipe.recipeName}`}
+                                            aria-pressed={selected}
+                                            disabled={deleting}
+                                            onClick={() => clickItem(recipe)}
+                                        >
+                                            <SelectionIndicator
+                                                selected={selected}
+                                            />
+                                        </button>
+                                    ) : (
+                                        <div className="my-meals-row-actions">
+                                            <LogMealButton
+                                                meal={{
+                                                    mealName: recipe.recipeName,
+                                                    ingredients:
+                                                        recipe.ingredients,
+                                                    instructions:
+                                                        recipe.instructions,
+                                                }}
+                                                destinationLabel="My Plan"
+                                                feedbackDurationMs={1000}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </SwipeableCollectionRow>
                         );
                     })}
                 </div>
@@ -440,6 +661,21 @@ export default function MyMeals({
                     ) : null,
                     document.body,
                 )}
+            {isActive && recipeMenu && !selecting && (
+                <CollectionContextMenu
+                    name={recipeMenu.recipe.recipeName}
+                    x={recipeMenu.x}
+                    y={recipeMenu.y}
+                    trigger={recipeMenu.trigger}
+                    canDelete={Boolean(recipeMenu.recipe.id)}
+                    onClose={() => setRecipeMenu(null)}
+                    onEdit={() => {
+                        if (onEditRecipe) onEditRecipe(recipeMenu.recipe);
+                        else onOpenRecipe(recipeMenu.recipe);
+                    }}
+                    onDelete={() => void deleteMeal(recipeMenu.recipe)}
+                />
+            )}
         </section>
     );
 }

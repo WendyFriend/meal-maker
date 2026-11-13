@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import {
+    ingredientDraftFromFoodSearch,
     ingredientFromFoodSearch,
     searchNutritionLabFoods,
 } from './foodSearchService';
@@ -19,6 +20,22 @@ it('reuses a recent query despite case and spacing changes', async () => {
     await searchNutritionLabFoods('UNIQUE BUCKWHEAT');
     expect(fetchResult).toHaveBeenCalledOnce();
     expect(fetchResult.mock.calls[0][0]).toContain('unique%20buckwheat');
+});
+
+it('keeps known values and leaves missing nutrition editable', () => {
+    const ingredient = ingredientDraftFromFoodSearch({
+        fdcId: 991111,
+        name: 'Custom grain',
+        description: 'Cooked grain',
+        per100g: { kcal: 95, proteinG: null, carbsG: 20, fatG: 0 },
+    });
+    expect(ingredient).toMatchObject({
+        nutritionSource: { fdcId: 991111 },
+        caloriesPer100g: 95,
+        carbohydratePer100g: 20,
+        fatPer100g: 0,
+    });
+    expect(ingredient.proteinPer100g).toBeUndefined();
 });
 
 it('uses the selected search result nutrition and food identity', () => {

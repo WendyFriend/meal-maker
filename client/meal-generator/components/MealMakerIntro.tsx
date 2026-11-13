@@ -26,7 +26,7 @@ export function MealMakerIntro({
                 <div className="meal-maker-intro">
                     <h1 id="meal-maker-heading">Meal Maker</h1>
                     <p className="intro-description">
-                        Supporting a healthy, well-balanced plant-based journey.
+                        Eat plant-based. Meet your nutrition goals.
                     </p>
                 </div>
 

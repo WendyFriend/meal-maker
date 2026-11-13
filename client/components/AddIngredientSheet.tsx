@@ -12,6 +12,7 @@ import { commonQuickAddIngredients } from '../meal-generator/components/commonQu
 import { normalizeIngredientName } from '../utils/Ingredient';
 import SlidingSheet from './SlidingSheet';
 import CheckIcon from './CheckIcon';
+import ActionToast from './ActionToast';
 import LoadingSpinner from './LoadingSpinner';
 import {
     describeIngredientSaveError,
@@ -124,14 +125,14 @@ export default function AddIngredientSheet({
         | undefined
     >();
     const [toast, setToast] = useState<{
+        id: number;
         message: string;
         operation: 'add' | 'remove';
     }>();
-    const toastTimer = useRef<number | undefined>(undefined);
+    const nextToastId = useRef(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const searchKey = foodSearchKey(query);
 
-    useEffect(() => () => window.clearTimeout(toastTimer.current), []);
     useEffect(() => {
         if (!searching || searchKey.length < 2) return;
         const cached = cachedNutritionLabFoods(searchKey);
@@ -249,7 +250,6 @@ export default function AddIngredientSheet({
         setError('');
         setSaveFailure(undefined);
         setToast(undefined);
-        window.clearTimeout(toastTimer.current);
         let ingredient: IngredientInfo;
         try {
             if (option.ingredient) ingredient = option.ingredient;
@@ -273,12 +273,11 @@ export default function AddIngredientSheet({
                 next.delete(created.ingredientId);
                 return next;
             });
-            setToast({ message: `${name} added`, operation: 'add' });
-            window.clearTimeout(toastTimer.current);
-            toastTimer.current = window.setTimeout(
-                () => setToast(undefined),
-                2400,
-            );
+            setToast({
+                id: ++nextToastId.current,
+                message: `${name} added`,
+                operation: 'add',
+            });
         } catch (cause) {
             setSaveFailure({
                 ...describeIngredientSaveError(cause, name),
@@ -297,7 +296,6 @@ export default function AddIngredientSheet({
         setError('');
         setSaveFailure(undefined);
         setToast(undefined);
-        window.clearTimeout(toastTimer.current);
         try {
             await onDatabaseRemove(ingredient.ingredientId);
             setRemovedIds((current) =>
@@ -308,12 +306,11 @@ export default function AddIngredientSheet({
                 delete next[key];
                 return next;
             });
-            setToast({ message: `${name} removed`, operation: 'remove' });
-            window.clearTimeout(toastTimer.current);
-            toastTimer.current = window.setTimeout(
-                () => setToast(undefined),
-                2400,
-            );
+            setToast({
+                id: ++nextToastId.current,
+                message: `${name} removed`,
+                operation: 'remove',
+            });
         } catch (cause) {
             setSaveFailure({
                 ...describeIngredientSaveError(cause, name, 'remove'),
@@ -433,12 +430,13 @@ export default function AddIngredientSheet({
                                 >
                                     <IngredientThumbnail
                                         name={name}
-                                        fdcId={option.food?.fdcId}
-                                        source={
-                                            option.food
-                                                ? 'nutrition-lab'
-                                                : undefined
+                                        size={64}
+                                        fdcId={
+                                            option.food?.fdcId ??
+                                            option.ingredient?.nutritionSource
+                                                ?.fdcId
                                         }
+                                        source="nutrition-lab"
                                     />
                                     <span className="add-ingredient-database-name">
                                         {name}
@@ -562,19 +560,20 @@ export default function AddIngredientSheet({
                         </div>
                     )}
                     {toast && (
-                        <div
-                            className="add-ingredient-database-toast"
-                            role="status"
-                        >
-                            <span aria-hidden="true">
-                                {toast.operation === 'add' ? (
-                                    <CheckIcon />
-                                ) : (
-                                    '−'
-                                )}
-                            </span>
-                            {toast.message}
-                        </div>
+                        <ActionToast
+                            key={toast.id}
+                            message={toast.message}
+                            icon={
+                                toast.operation === 'add' ? <CheckIcon /> : '−'
+                            }
+                            onClose={() =>
+                                setToast((current) =>
+                                    current?.id === toast.id
+                                        ? undefined
+                                        : current,
+                                )
+                            }
+                        />
                     )}
                 </div>
             ) : (

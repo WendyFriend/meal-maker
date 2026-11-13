@@ -1,0 +1,52 @@
+.ingredient-section-edit-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.ingredient-section-edit-actions button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-h);
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ingredient-section-edit-actions .ingredient-section-save {
+    color: var(--coral);
+}
+
+.ingredient-section-edit-actions svg {
+    width: 21px;
+    height: 21px;
+    stroke: currentColor;
+    stroke-width: 2.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.edit-icon-button.ingredient-section-edit-button svg,
+.ingredient-section-edit-actions button:first-child svg {
+    width: 18px;
+    height: 18px;
+}
+
+.ingredient-section-edit-actions button:disabled,
+.ingredient-section-edit-button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.ingredient-section-error {
+    margin: 0 0 8px;
+    color: var(--danger);
+    font-size: 13px;
+}

@@ -105,3 +105,26 @@ export function ingredientFromFoodSearch(
         ...(known(vitaminCMg) ? { vitaminCPer100g: vitaminCMg } : {}),
     };
 }
+
+export function ingredientDraftFromFoodSearch(
+    food: FoodSearchResult,
+): IngredientInfo {
+    const nutrition = food.per100g;
+    const fields = [
+        ['caloriesPer100g', nutrition.kcal],
+        ['proteinPer100g', nutrition.proteinG],
+        ['carbohydratePer100g', nutrition.carbsG],
+        ['fatPer100g', nutrition.fatG],
+        ['fiberPer100g', nutrition.fibreG],
+        ['sugarPer100g', nutrition.sugarG],
+        ['saturatedFatPer100g', nutrition.satFatG],
+        ['calciumPer100g', nutrition.calciumMg],
+        ['ironPer100g', nutrition.ironMg],
+        ['vitaminCPer100g', nutrition.vitaminCMg],
+    ] as const;
+    return {
+        name: food.name,
+        nutritionSource: { fdcId: food.fdcId, description: food.description },
+        ...Object.fromEntries(fields.filter(([, value]) => known(value))),
+    };
+}

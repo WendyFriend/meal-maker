@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type {
     GenerateMealResponse,
     IngredientInfo,
+    MealPreference,
 } from '../../shared/types/types';
 
 export type AccountRequiredAction =
@@ -11,6 +12,8 @@ export type GuestMealDraft = {
     ingredients: string[];
     ingredientNutrition: IngredientInfo[];
     caloriesGoal?: number;
+    proteinGramsGoal?: number;
+    mealPreferences?: MealPreference[];
     meal?: GenerateMealResponse;
     originalMeal?: GenerateMealResponse;
 };
@@ -46,6 +49,8 @@ function loadPendingDraft(): GuestMealDraft {
             ingredients: draft.ingredients ?? [],
             ingredientNutrition: draft.ingredientNutrition ?? [],
             caloriesGoal: draft.caloriesGoal,
+            proteinGramsGoal: draft.proteinGramsGoal,
+            mealPreferences: draft.mealPreferences,
             meal: draft.meal,
             originalMeal: draft.originalMeal,
         };

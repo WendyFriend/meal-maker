@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { IngredientInfo, UserIngredient } from '../shared/types/types';
 import IngredientThumbnail from './meal-generator/components/IngredientThumbnail';
@@ -6,6 +6,8 @@ import AddIngredientSheet from './components/AddIngredientSheet';
 import IngredientCamera from './components/IngredientCamera';
 import PullRefreshIndicator from './components/PullRefreshIndicator';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
+import useSavedIngredientFoodIds from './hooks/useSavedIngredientFoodIds';
+import { normalizeIngredientName } from './utils/Ingredient';
 import './components/SavedCollection.css';
 import { useCollectionSelection } from './hooks/useCollectionSelection';
 import {
@@ -14,6 +16,16 @@ import {
     SelectionIndicator,
     BulkDeleteToolbar,
 } from './components/CollectionSelection';
+import SwipeableCollectionRow from './components/SwipeableCollectionRow';
+import CollectionContextMenu from './components/CollectionContextMenu';
+import { contextMenuPosition } from './components/contextMenuPosition';
+
+type IngredientMenu = {
+    ingredient: UserIngredient;
+    trigger: HTMLButtonElement;
+    x: number;
+    y: number;
+};
 
 type MyIngredientsProps = {
     ingredients: UserIngredient[];
@@ -21,6 +33,7 @@ type MyIngredientsProps = {
     onAdd: (ingredient?: IngredientInfo, referencePhoto?: string) => void;
     onSaveFromDatabase: (ingredient: IngredientInfo) => Promise<UserIngredient>;
     onOpen: (ingredient: UserIngredient) => void;
+    onEdit?: (ingredient: UserIngredient) => void;
     isActive?: boolean;
     refreshing?: boolean;
     refreshError?: string;
@@ -33,18 +46,26 @@ export default function MyIngredients({
     onAdd,
     onSaveFromDatabase,
     onOpen,
+    onEdit,
     isActive = true,
     refreshing = false,
     refreshError,
     onRefresh,
 }: MyIngredientsProps) {
     const [search, setSearch] = useState('');
+    const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+    const [ingredientMenu, setIngredientMenu] = useState<IngredientMenu | null>(
+        null,
+    );
+    const lastPointerType = useRef<string | null>(null);
+    const [swipeError, setSwipeError] = useState<string>();
     const [addMode, setAddMode] = useState<
         'choices' | 'search' | 'camera-food' | 'camera-label' | null
     >(null);
     const filteredIngredients = ingredients.filter(({ name }) =>
         name.toLowerCase().includes(search.trim().toLowerCase()),
     );
+    const legacyFoodIds = useSavedIngredientFoodIds(ingredients, isActive);
     const {
         selecting,
         deleting,
@@ -67,11 +88,19 @@ export default function MyIngredients({
         items: ingredients,
         visibleItems: filteredIngredients,
         getId: (ingredient) => ingredient.ingredientId,
-        onOpen,
+        onOpen: (ingredient) => {
+            setOpenSwipeId(null);
+            setIngredientMenu(null);
+            onOpen(ingredient);
+        },
         onDeleteMany,
         noun: 'ingredient',
         search,
         isActive,
+        onSelectionStart: () => {
+            setOpenSwipeId(null);
+            setIngredientMenu(null);
+        },
     });
     const { containerRef, pullDistance } = usePullToRefresh({
         enabled: isActive && Boolean(onRefresh),
@@ -79,6 +108,38 @@ export default function MyIngredients({
         refreshing,
         onRefresh: () => onRefresh?.(),
     });
+
+    async function deleteIngredient(ingredient: UserIngredient) {
+        setIngredientMenu(null);
+        setSwipeError(undefined);
+        try {
+            const deleted = await onDeleteMany([ingredient.ingredientId]);
+            if (!deleted.includes(ingredient.ingredientId))
+                throw new Error('Ingredient was not removed.');
+            setOpenSwipeId(null);
+            return true;
+        } catch {
+            setSwipeError(
+                `Could not delete ${ingredient.name}. Please try again.`,
+            );
+            return false;
+        }
+    }
+
+    function openMenu(
+        ingredient: UserIngredient,
+        trigger: HTMLButtonElement,
+        x: number,
+        y: number,
+    ) {
+        if (selecting || deleting || !isActive) return;
+        setOpenSwipeId(null);
+        setIngredientMenu({
+            ingredient,
+            trigger,
+            ...contextMenuPosition(x, y),
+        });
+    }
 
     return (
         <section
@@ -129,7 +190,11 @@ export default function MyIngredients({
                     className="saved-collection-search-input"
                     type="search"
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(event) => {
+                        setSearch(event.target.value);
+                        setOpenSwipeId(null);
+                        setIngredientMenu(null);
+                    }}
                     placeholder="Search ingredients..."
                     aria-label="Search ingredients"
                     disabled={deleting}
@@ -142,6 +207,11 @@ export default function MyIngredients({
                         Try again
                     </button>
                 </div>
+            )}
+            {swipeError && (
+                <p className="saved-collection-swipe-error" role="alert">
+                    {swipeError}
+                </p>
             )}
             <SelectionControls
                 visible={selecting}
@@ -156,63 +226,121 @@ export default function MyIngredients({
                     {filteredIngredients.map((ingredient) => {
                         const selected = isSelected(ingredient);
                         return (
-                            <div
+                            <SwipeableCollectionRow
                                 key={ingredient.ingredientId}
-                                className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}`}
+                                name={ingredient.name}
+                                enabled={!selecting && !deleting}
+                                open={
+                                    isActive &&
+                                    !selecting &&
+                                    openSwipeId === ingredient.ingredientId
+                                }
+                                onOpen={() =>
+                                    setOpenSwipeId(ingredient.ingredientId)
+                                }
+                                onClose={() => setOpenSwipeId(null)}
+                                onDelete={() => deleteIngredient(ingredient)}
                             >
-                                <button
-                                    type="button"
-                                    className="saved-collection-row"
-                                    id={`saved-ingredient-${ingredient.ingredientId}`}
-                                    aria-pressed={
-                                        selecting ? selected : undefined
-                                    }
-                                    aria-label={
-                                        selecting
-                                            ? `${selected ? 'Deselect' : 'Select'} ${ingredient.name}`
-                                            : undefined
-                                    }
-                                    disabled={deleting}
-                                    onPointerDown={(event) =>
-                                        startPress(event, ingredient)
-                                    }
-                                    onPointerMove={movePress}
-                                    onPointerUp={endPress}
-                                    onPointerCancel={endPress}
-                                    onPointerLeave={endPress}
-                                    onContextMenu={(event) =>
-                                        event.preventDefault()
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (
-                                            event.key === 'Enter' ||
-                                            event.key === ' '
-                                        )
-                                            resetClickSuppression();
+                                <div
+                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}`}
+                                    onPointerDownCapture={(event) => {
+                                        lastPointerType.current =
+                                            event.pointerType;
                                     }}
-                                    onClick={() => clickItem(ingredient)}
+                                    onContextMenu={(event) => {
+                                        event.preventDefault();
+                                        if (lastPointerType.current === 'touch')
+                                            return;
+                                        const trigger =
+                                            event.currentTarget.querySelector<HTMLButtonElement>(
+                                                '.saved-collection-row',
+                                            );
+                                        if (trigger)
+                                            openMenu(
+                                                ingredient,
+                                                trigger,
+                                                event.clientX,
+                                                event.clientY,
+                                            );
+                                    }}
                                 >
-                                    <IngredientThumbnail
-                                        name={ingredient.name}
-                                    />
-                                    <span className="saved-collection-row-info">
-                                        <strong>{ingredient.name}</strong>
-                                    </span>
-                                    {selecting ? (
-                                        <SelectionIndicator
-                                            selected={selected}
+                                    <button
+                                        type="button"
+                                        className="saved-collection-row"
+                                        id={`saved-ingredient-${ingredient.ingredientId}`}
+                                        aria-pressed={
+                                            selecting ? selected : undefined
+                                        }
+                                        aria-label={
+                                            selecting
+                                                ? `${selected ? 'Deselect' : 'Select'} ${ingredient.name}`
+                                                : undefined
+                                        }
+                                        disabled={deleting}
+                                        onPointerDown={(event) =>
+                                            startPress(event, ingredient)
+                                        }
+                                        onPointerMove={movePress}
+                                        onPointerUp={endPress}
+                                        onPointerCancel={endPress}
+                                        onPointerLeave={endPress}
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.key === 'ContextMenu' ||
+                                                (event.shiftKey &&
+                                                    event.key === 'F10')
+                                            ) {
+                                                event.preventDefault();
+                                                const rect =
+                                                    event.currentTarget.getBoundingClientRect();
+                                                openMenu(
+                                                    ingredient,
+                                                    event.currentTarget,
+                                                    rect.left + 20,
+                                                    rect.bottom - 8,
+                                                );
+                                                return;
+                                            }
+                                            if (
+                                                event.key === 'Enter' ||
+                                                event.key === ' '
+                                            )
+                                                resetClickSuppression();
+                                        }}
+                                        onClick={() => clickItem(ingredient)}
+                                    >
+                                        <IngredientThumbnail
+                                            name={ingredient.name}
+                                            size={64}
+                                            fdcId={
+                                                ingredient.nutritionSource
+                                                    ?.fdcId ??
+                                                legacyFoodIds[
+                                                    normalizeIngredientName(
+                                                        ingredient.name,
+                                                    )
+                                                ]
+                                            }
                                         />
-                                    ) : (
-                                        <svg
-                                            className="saved-collection-row-chevron"
-                                            viewBox="0 0 24 24"
-                                            aria-hidden="true"
-                                        >
-                                            <path d="m9 6 6 6-6 6" />
-                                        </svg>
-                                    )}
-                                </button>
-                            </div>
+                                        <span className="saved-collection-row-info">
+                                            <strong>{ingredient.name}</strong>
+                                        </span>
+                                        {selecting ? (
+                                            <SelectionIndicator
+                                                selected={selected}
+                                            />
+                                        ) : (
+                                            <svg
+                                                className="saved-collection-row-chevron"
+                                                viewBox="0 0 24 24"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="m9 6 6 6-6 6" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                            </SwipeableCollectionRow>
                         );
                     })}
                 </div>
@@ -268,6 +396,22 @@ export default function MyIngredients({
                     ),
                     document.body,
                 )}
+            {isActive && ingredientMenu && !selecting && (
+                <CollectionContextMenu
+                    name={ingredientMenu.ingredient.name}
+                    x={ingredientMenu.x}
+                    y={ingredientMenu.y}
+                    trigger={ingredientMenu.trigger}
+                    onClose={() => setIngredientMenu(null)}
+                    onEdit={() => {
+                        if (onEdit) onEdit(ingredientMenu.ingredient);
+                        else onOpen(ingredientMenu.ingredient);
+                    }}
+                    onDelete={() =>
+                        void deleteIngredient(ingredientMenu.ingredient)
+                    }
+                />
+            )}
             {isActive && (addMode === 'choices' || addMode === 'search') && (
                 <AddIngredientSheet
                     key={addMode}

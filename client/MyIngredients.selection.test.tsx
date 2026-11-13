@@ -18,6 +18,7 @@ const records: UserIngredient[] = ['Broccoli', 'Tofu', 'Brown rice'].map(
 
 function setup(deleteMany = vi.fn(async (ids: string[]) => ids)) {
     const onOpen = vi.fn();
+    const onEdit = vi.fn();
     function Fixture() {
         const [ingredients, setIngredients] = useState(records);
         return (
@@ -26,6 +27,7 @@ function setup(deleteMany = vi.fn(async (ids: string[]) => ids)) {
                 onAdd={vi.fn()}
                 onSaveFromDatabase={vi.fn(async () => records[0])}
                 onOpen={onOpen}
+                onEdit={onEdit}
                 onDeleteMany={async (ids) => {
                     const deleted = await deleteMany(ids);
                     setIngredients((current) =>
@@ -40,7 +42,7 @@ function setup(deleteMany = vi.fn(async (ids: string[]) => ids)) {
         );
     }
     render(<Fixture />);
-    return { deleteMany, onOpen };
+    return { deleteMany, onOpen, onEdit };
 }
 
 function hold(row: HTMLElement) {
@@ -61,6 +63,153 @@ afterEach(() => {
 });
 
 describe('My Ingredients bulk selection', () => {
+    it('opens Edit from a desktop context menu without opening the ingredient', () => {
+        const { onOpen, onEdit } = setup();
+        const row = screen.getByRole('button', { name: /Broccoli/ });
+        fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
+
+        expect(
+            screen.getByRole('menu', { name: 'Broccoli actions' }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveFocus();
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+
+        expect(onEdit).toHaveBeenCalledExactlyOnceWith(records[0]);
+        expect(onOpen).not.toHaveBeenCalled();
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('deletes the chosen ingredient from its context menu', async () => {
+        const { deleteMany } = setup();
+        const row = screen.getByRole('button', { name: /Broccoli/ });
+        fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
+        await act(async () =>
+            fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' })),
+        );
+
+        expect(deleteMany).toHaveBeenCalledExactlyOnceWith(['0']);
+        expect(screen.queryByText('Broccoli')).not.toBeInTheDocument();
+        expect(screen.getByText('Tofu')).toBeInTheDocument();
+    });
+
+    it('opens the context menu from the keyboard and dismisses it with Escape', () => {
+        setup();
+        const row = screen.getByRole('button', { name: /Broccoli/ });
+        fireEvent.keyDown(row, { key: 'F10', shiftKey: true });
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+        expect(row).toHaveFocus();
+    });
+
+    it('reveals delete on a left swipe and removes only that ingredient', async () => {
+        const { deleteMany, onOpen } = setup();
+        const row = screen.getByRole('button', { name: /Broccoli/ });
+        fireEvent.pointerDown(row, {
+            button: 0,
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 160,
+            clientY: 20,
+        });
+        fireEvent.pointerMove(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        fireEvent.pointerUp(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        expect(onOpen).not.toHaveBeenCalled();
+        const remove = screen.getByRole('button', { name: 'Delete Broccoli' });
+        await act(async () => fireEvent.click(remove));
+        expect(deleteMany).toHaveBeenCalledExactlyOnceWith(['0']);
+        expect(screen.queryByText('Broccoli')).not.toBeInTheDocument();
+        expect(screen.getByText('Tofu')).toBeInTheDocument();
+    });
+
+    it('closes a revealed ingredient action when tapping outside the row', () => {
+        setup();
+        const row = screen.getByRole('button', { name: /Broccoli/ });
+        const swipe = row.closest('.saved-collection-swipe');
+        fireEvent.pointerDown(row, {
+            button: 0,
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 160,
+            clientY: 20,
+        });
+        fireEvent.pointerMove(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        fireEvent.pointerUp(row, {
+            pointerId: 1,
+            pointerType: 'touch',
+            clientX: 70,
+            clientY: 20,
+        });
+        expect(swipe).toHaveAttribute('data-open', 'true');
+
+        fireEvent.pointerDown(
+            screen.getByRole('searchbox', { name: 'Search ingredients' }),
+            { pointerType: 'touch' },
+        );
+        expect(swipe).toHaveAttribute('data-open', 'false');
+    });
+
+    it('keeps an ingredient available for retry when swipe deletion fails', async () => {
+        const deleteMany = vi
+            .fn()
+            .mockRejectedValueOnce(new Error('Offline'))
+            .mockResolvedValueOnce(['0']);
+        setup(deleteMany);
+        const row = screen.getByRole('button', { name: /Broccoli/ });
+        fireEvent.pointerDown(row, { button: 0, clientX: 160, clientY: 20 });
+        fireEvent.pointerMove(row, { clientX: 70, clientY: 20 });
+        fireEvent.pointerUp(row, { clientX: 70, clientY: 20 });
+        const remove = screen.getByRole('button', { name: 'Delete Broccoli' });
+
+        await act(async () => fireEvent.click(remove));
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Could not delete Broccoli',
+        );
+        expect(screen.getByText('Broccoli')).toBeInTheDocument();
+
+        await act(async () => fireEvent.click(remove));
+        expect(deleteMany).toHaveBeenCalledTimes(2);
+        expect(screen.queryByText('Broccoli')).not.toBeInTheDocument();
+    });
+
+    it('closes a swiped row when bulk selection begins', () => {
+        setup();
+        const row = screen.getByRole('button', { name: /Broccoli/ });
+        fireEvent.pointerDown(row, { button: 0, clientX: 160, clientY: 20 });
+        fireEvent.pointerMove(row, { clientX: 70, clientY: 20 });
+        fireEvent.pointerUp(row, { clientX: 70, clientY: 20 });
+        expect(row.closest('.saved-collection-swipe')).toHaveAttribute(
+            'data-open',
+            'true',
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Select ingredients' }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Cancel selection' }),
+        );
+        expect(row.closest('.saved-collection-swipe')).toHaveAttribute(
+            'data-open',
+            'false',
+        );
+    });
+
     it('matches the My Recipes header and shows a centered empty icon with an add action', () => {
         const onAdd = vi.fn();
         render(

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { MealIngredient } from '../../../shared/types/types';
 import { useMicronutrientLookup } from '../../hooks/useMicronutrientLookup';
@@ -73,6 +73,86 @@ it('shows known nutrient totals and names ingredients excluded by missing data',
     expect(calciumTrigger.nextElementSibling).toHaveTextContent(
         'Spinach, Tofu',
     );
+});
+
+it('shows saved nutrient values while missing values are still loading', () => {
+    vi.mocked(useMicronutrientLookup).mockReturnValue({
+        data: {},
+        loading: true,
+        failed: [],
+        retry: vi.fn(),
+    });
+    render(
+        <MealMicronutrients
+            ingredients={[{ ...base, name: 'Spinach', ironPer100g: 2 }]}
+        />,
+    );
+    expect(
+        screen.getByRole('status', { name: 'Updating key nutrients' }),
+    ).toBeInTheDocument();
+    expect(
+        screen.getByRole('button', { name: 'Iron' }).closest('li'),
+    ).toHaveTextContent('2 mg');
+});
+
+it('reports newly found nutrients for a saved recipe without replacing its values', async () => {
+    vi.mocked(useMicronutrientLookup).mockReturnValue({
+        data: {
+            rice: {
+                name: 'Rice, brown',
+                ironPer100g: 9,
+                zincPer100g: 1.5,
+            },
+        },
+        loading: false,
+        failed: [],
+        retry: vi.fn(),
+    });
+    const onNutritionFound = vi.fn();
+    render(
+        <MealMicronutrients
+            ingredients={[
+                {
+                    ...base,
+                    name: 'Rice',
+                    ironPer100g: 0,
+                },
+            ]}
+            onNutritionFound={onNutritionFound}
+        />,
+    );
+
+    await waitFor(() => expect(onNutritionFound).toHaveBeenCalledOnce());
+    expect(onNutritionFound).toHaveBeenCalledWith([
+        {
+            index: 0,
+            name: 'Rice',
+            nutrients: { zincPer100g: 1.5 },
+        },
+    ]);
+});
+
+it('keeps explicitly unavailable saved nutrients unavailable after another lookup', () => {
+    vi.mocked(useMicronutrientLookup).mockReturnValue({
+        data: { rice: { name: 'Rice', ironPer100g: 5 } },
+        loading: false,
+        failed: [],
+        retry: vi.fn(),
+    });
+    render(
+        <MealMicronutrients
+            ingredients={[
+                {
+                    ...base,
+                    name: 'Rice',
+                    unavailableMicronutrients: ['ironPer100g'],
+                },
+            ]}
+        />,
+    );
+    expect(
+        screen.getByRole('button', { name: 'Iron' }).closest('li'),
+    ).toHaveTextContent('N/A');
 });
 
 it('shows fiber before iron, scales it by portion, and keeps missing fiber distinct from zero', () => {

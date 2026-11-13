@@ -7,7 +7,66 @@
 }
 
 .my-meals .saved-collection-search-field {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+}
+
+.my-meals .saved-collection-title {
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.my-meals .saved-collection-title h1 {
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.my-meals-title-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.my-meals-title-actions .collection-selection-toggle {
+    margin-left: 0;
+}
+
+.my-meals-nutrition-toggle {
+    display: grid;
+    flex: 0 0 44px;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 9px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color 160ms ease,
+        transform 160ms ease;
+}
+
+.my-meals-nutrition-toggle svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.my-meals-nutrition-toggle:active {
+    background: var(--surface-muted);
+    transform: scale(0.92);
+}
+
+.my-meals-nutrition-toggle:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: 2px;
 }
 
 .my-meals .saved-collection-list {
@@ -15,6 +74,15 @@
     overflow: visible;
     border: 0;
     background: transparent;
+}
+.my-meals .saved-collection-swipe {
+    border-radius: 16px;
+}
+.my-meals
+    .saved-collection-list
+    > .saved-collection-swipe
+    + .saved-collection-swipe {
+    border-top: 0;
 }
 
 .my-meals .saved-collection-row-wrapper {
@@ -125,6 +193,20 @@
     line-height: 1.35;
 }
 
+.my-meals .my-meals-row-nutrition {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .my-meals-nutrition-toggle {
+        transition: none;
+    }
+}
+
 .my-meals-row-actions {
     display: flex;
     flex: 0 0 44px;
@@ -137,6 +219,18 @@
     padding: 0;
 }
 
+.my-meals-row-actions .journal-log-trigger {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    border-radius: 11px;
+}
+
+.my-meals-row-actions .journal-log-trigger svg {
+    width: 20px;
+    height: 20px;
+}
+
 .my-meals-selection-action {
     border: 0;
     border-radius: 0 16px 16px 0;
@@ -147,66 +241,6 @@
 .my-meals-selection-action:focus-visible {
     outline: 2px solid var(--coral);
     outline-offset: -3px;
-}
-
-.my-meals .journal-log-trigger {
-    position: relative;
-    isolation: isolate;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border-radius: 14px;
-    background: transparent;
-    color: white;
-    transition: transform 160ms ease;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.my-meals .journal-log-trigger::before {
-    position: absolute;
-    z-index: -1;
-    inset: 8px;
-    border-radius: 9px;
-    background: var(--coral);
-    box-shadow: 0 2px 6px rgb(244 121 108 / 14%);
-    content: '';
-    transition:
-        background-color 160ms ease,
-        box-shadow 160ms ease;
-}
-
-.my-meals .journal-log-trigger svg {
-    width: 17px;
-    height: 17px;
-    stroke-width: 2.5;
-}
-
-.my-meals .journal-log-trigger:hover:not(:disabled) {
-    background: transparent;
-    color: white;
-}
-
-.my-meals .journal-log-trigger:hover:not(:disabled)::before {
-    background: var(--accent-strong);
-}
-
-.my-meals .journal-log-trigger:active:not(:disabled) {
-    transform: scale(0.94);
-    background: transparent;
-}
-
-.my-meals .journal-log-trigger:active:not(:disabled)::before {
-    background: var(--accent-strong);
-    box-shadow: 0 1px 4px rgb(244 121 108 / 14%);
-}
-
-.my-meals .journal-log-trigger[aria-pressed='true'] {
-    color: white;
-}
-
-.my-meals .journal-log-trigger .loading-spinner {
-    border-color: rgb(255 255 255 / 35%);
-    border-top-color: white;
 }
 
 .my-meals-error {
@@ -265,15 +299,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .my-meals .journal-log-trigger,
-    .my-meals .journal-log-trigger::before {
-        transition: none;
-    }
-
     .my-meals .my-meals-row-exiting {
         animation: none;
-    }
-    .my-meals .journal-log-trigger {
-        transition: none;
     }
 }

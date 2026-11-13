@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    saveUserIngredient,
     updateUserIngredient,
     type UserIngredientRow,
 } from './ingredientService';
 import type { UserIngredient } from '../../shared/types/types';
 
 const db = vi.hoisted(() => ({
+    insert: vi.fn(),
     update: vi.fn(),
     eq: vi.fn(),
     select: vi.fn(),
@@ -38,12 +40,43 @@ const row: UserIngredientRow = {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    db.insert.mockReturnValue(db);
     db.update.mockReturnValue(db);
     db.eq.mockReturnValue(db);
     db.select.mockReturnValue(db);
 });
 
 describe('saved ingredient micronutrients', () => {
+    it('persists the matched food source for thumbnail rendering', async () => {
+        const nutritionSource = {
+            fdcId: 170379,
+            description: 'Broccoli, raw',
+        };
+        db.single.mockResolvedValue({
+            data: { ...row, nutrition_source: nutritionSource },
+            error: null,
+        });
+
+        const saved = await saveUserIngredient({
+            ...ingredient,
+            nutritionSource,
+        });
+
+        expect(db.insert).toHaveBeenCalledWith(
+            expect.objectContaining({ nutrition_source: nutritionSource }),
+        );
+        expect(saved.nutritionSource).toEqual(nutritionSource);
+
+        const edited = await updateUserIngredient('tofu', {
+            ...ingredient,
+            nutritionSource,
+        });
+        expect(db.update).toHaveBeenCalledWith(
+            expect.objectContaining({ nutrition_source: nutritionSource }),
+        );
+        expect(edited.nutritionSource).toEqual(nutritionSource);
+    });
+
     it('writes edited values and reads them back, including genuine zeros', async () => {
         const micronutrients = { ironPer100g: 9, vitaminB12Per100g: 0 };
         db.single.mockResolvedValue({

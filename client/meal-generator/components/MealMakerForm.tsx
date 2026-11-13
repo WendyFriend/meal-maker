@@ -1,5 +1,6 @@
 import { useState, type Ref } from 'react';
 import type {
+    IngredientInfo,
     MealPreference,
     UserIngredient,
 } from '../../../shared/types/types';
@@ -15,6 +16,10 @@ type MealMakerFormProps = {
     ingredients: string[];
     savedIngredients: UserIngredient[];
     onIngredientsChange: (ingredients: string[]) => void;
+    onIngredientNutritionSelected: (
+        name: string,
+        nutrition: IngredientInfo,
+    ) => void;
     onRemoveIngredient: (ingredient: string) => void;
     onIngredientClick: (index: number) => void;
     calories: number | undefined;
@@ -32,6 +37,7 @@ export default function MealMakerForm({
     ingredients,
     savedIngredients,
     onIngredientsChange,
+    onIngredientNutritionSelected,
     onRemoveIngredient,
     onIngredientClick,
     calories,
@@ -65,6 +71,9 @@ export default function MealMakerForm({
                         ingredients={ingredients}
                         savedIngredients={savedIngredients}
                         onChange={onIngredientsChange}
+                        onIngredientNutritionSelected={
+                            onIngredientNutritionSelected
+                        }
                     />
                     {ingredients.length > 0 ? (
                         <SelectedIngredients

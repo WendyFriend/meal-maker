@@ -19,12 +19,18 @@ import {
     findCommonQuickAddIngredient,
 } from './meal-generator/components/commonQuickAddIngredients';
 import { normalizeIngredientName } from './utils/Ingredient';
-import { totalNutrition } from './utils/nutrition';
+import { totalFiber, totalNutrition } from './utils/nutrition';
 import NutritionOverview from './meal-generator/components/NutritionOverview';
 import MealMicronutrients from './meal-generator/components/MealMicronutrients';
 import MealInstructions from './meal-generator/components/MealInstructions';
 import IngredientThumbnail from './meal-generator/components/IngredientThumbnail';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
+import SwipeableIngredientRow from './meal-generator/components/SwipeableIngredientRow';
+import MealNutritionHighlights from './meal-generator/components/MealNutritionHighlights';
+import IngredientCalorieContribution from './meal-generator/components/IngredientCalorieContribution';
+import LoadingSpinner from './components/LoadingSpinner';
+import { useNutritionLabFoodSearch } from './hooks/useNutritionLabFoodSearch';
+import { ingredientDraftFromFoodSearch } from './services/foodSearchService';
 import { IngredientCollectionContext } from './ingredients/IngredientCollectionContext';
 import './CreateRecipe.css';
 
@@ -40,7 +46,9 @@ type IngredientRow = {
     name: string;
     weight: string;
     nutrition: NutritionDraft;
-    source?: IngredientInfo;
+    source?: IngredientInfo & {
+        thumbnailSource?: MealIngredient['thumbnailSource'];
+    };
     committed?: boolean;
     lookingUp?: boolean;
     lookupFailed?: boolean;
@@ -83,11 +91,26 @@ function validAmount(value: string) {
     );
 }
 
-function toIngredient(row: IngredientRow): MealIngredient | undefined {
+function ingredientCalories(row: IngredientRow): number | undefined {
+    if (!validAmount(row.weight) || !validAmount(row.nutrition.caloriesPer100g))
+        return undefined;
+
+    return (Number(row.weight) * Number(row.nutrition.caloriesPer100g)) / 100;
+}
+
+function ingredientCalorieLabel(row: IngredientRow): string {
+    const calories = ingredientCalories(row);
+    return calories === undefined ? '—' : `${Math.round(calories)} kcal`;
+}
+
+function toIngredient(
+    row: IngredientRow,
+    allowZeroWeight = false,
+): MealIngredient | undefined {
     if (
         !row.name.trim() ||
         !validAmount(row.weight) ||
-        Number(row.weight) <= 0 ||
+        (!allowZeroWeight && Number(row.weight) <= 0) ||
         nutritionFields
             .slice(0, 4)
             .some((key) => !validAmount(row.nutrition[key])) ||
@@ -136,8 +159,14 @@ function RecipeImagePlaceholder() {
 }
 
 const commonSuggestions = Object.values(commonQuickAddIngredients).flat();
+type RecipeSearchOption = {
+    key: string;
+    name: string;
+    label: string;
+    source?: IngredientInfo;
+};
 
-function RecipeIngredientNameInput({
+export function RecipeIngredientNameInput({
     value,
     index,
     committed,
@@ -157,13 +186,17 @@ function RecipeIngredientNameInput({
     lookingUp?: boolean;
     lookupFailed?: boolean;
     onChange: (value: string) => void;
-    onCommit: (value: string) => void;
+    onCommit: (value: string, source?: IngredientInfo) => void;
     onOpenSheet: () => void;
 }) {
     const listboxId = useId();
     const [open, setOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const query = normalizeIngredientName(value);
+    const { foods, loading, error } = useNutritionLabFoodSearch(
+        value,
+        open && !committed,
+    );
     const seen = new Set<string>();
     const suggestions = [...savedIngredients, ...commonSuggestions]
         .filter((item) => {
@@ -173,29 +206,57 @@ function RecipeIngredientNameInput({
             return true;
         })
         .slice(0, 6);
-    const exactMatch = suggestions.some(
-        (item) => normalizeIngredientName(item.name) === query,
-    );
-    const options = [
-        ...suggestions.map((item) => ({
-            name: item.name,
-            label: item.name,
-        })),
-        ...(!exactMatch && query
+    const remoteSuggestions = foods
+        .filter((food) => {
+            const key = normalizeIngredientName(food.name);
+            if (
+                !normalizeIngredientName(
+                    `${food.name} ${food.description}`,
+                ).includes(query) ||
+                seen.has(key)
+            )
+                return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 6);
+    const manualOption: RecipeSearchOption[] =
+        query && !seen.has(query)
             ? [
                   {
+                      key: 'manual',
                       name: value.trim(),
                       label: `+ ${value.trim()}`,
                   },
               ]
-            : []),
+            : [];
+    const options: RecipeSearchOption[] = [
+        ...manualOption,
+        ...suggestions.map((item) => ({
+            key: `local:${normalizeIngredientName(item.name)}`,
+            name: item.name,
+            label: item.name,
+            source: item as IngredientInfo,
+        })),
+        ...remoteSuggestions.map((food) => ({
+            key: `food:${food.fdcId}`,
+            name: food.name,
+            label: food.name,
+            source: ingredientDraftFromFoodSearch(food),
+        })),
     ];
     const visible = open && query.length > 0 && options.length > 0;
     const activeIndex =
-        highlightedIndex < options.length ? highlightedIndex : -1;
+        highlightedIndex >= 0 && highlightedIndex < options.length
+            ? highlightedIndex
+            : manualOption.length
+              ? 0
+              : options.findIndex(
+                    (option) => normalizeIngredientName(option.name) === query,
+                );
 
-    function choose(name: string) {
-        onCommit(name);
+    function choose(name: string, source?: IngredientInfo) {
+        onCommit(name, source);
         setOpen(false);
         setHighlightedIndex(-1);
     }
@@ -262,11 +323,11 @@ function RecipeIngredientNameInput({
                         setHighlightedIndex(Math.max(activeIndex - 1, -1));
                     } else if (event.key === 'Enter') {
                         event.preventDefault();
-                        choose(
+                        const option =
                             visible && activeIndex >= 0
-                                ? options[activeIndex].name
-                                : value.trim(),
-                        );
+                                ? options[activeIndex]
+                                : undefined;
+                        choose(option?.name ?? value.trim(), option?.source);
                     }
                 }}
             />
@@ -279,19 +340,53 @@ function RecipeIngredientNameInput({
                 >
                     {options.map((option, optionIndex) => (
                         <button
-                            key={option.name}
+                            key={option.key}
                             id={`${listboxId}-${optionIndex}`}
                             type="button"
                             role="option"
-                            aria-label={option.name}
+                            aria-label={
+                                option.key === 'manual'
+                                    ? `Enter ${option.name} manually`
+                                    : option.label
+                            }
                             aria-selected={activeIndex === optionIndex}
-                            className="ingredient-suggestion create-recipe-suggestion"
+                            className={`ingredient-suggestion create-recipe-suggestion${
+                                option.key === 'manual'
+                                    ? ' create-recipe-suggestion-manual'
+                                    : ''
+                            }`}
                             onPointerDown={(event) => event.preventDefault()}
-                            onClick={() => choose(option.name)}
+                            onClick={() => choose(option.name, option.source)}
                         >
                             <span>{option.label}</span>
+                            {option.key === 'manual' && (
+                                <span
+                                    className="create-recipe-enter-hint"
+                                    aria-hidden="true"
+                                >
+                                    ↵
+                                </span>
+                            )}
                         </button>
                     ))}
+                    {loading && (
+                        <div
+                            className="create-recipe-search-status"
+                            role="status"
+                            aria-label="Searching ingredients"
+                        >
+                            <LoadingSpinner size="small" />
+                        </div>
+                    )}
+                    {error && (
+                        <div
+                            className="create-recipe-search-status create-recipe-search-error"
+                            role="status"
+                        >
+                            Nutrition Lab is unavailable. You can enter this
+                            ingredient manually.
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -302,12 +397,14 @@ export default function CreateRecipe({
     savedIngredients,
     onSave,
     initialRecipe,
+    editMode = false,
     formId = 'create-recipe-form',
     onCancel,
 }: {
     savedIngredients: UserIngredient[];
     onSave: (recipe: RecipeInput) => Promise<void>;
     initialRecipe?: RecipeInput;
+    editMode?: boolean;
     formId?: string;
     onCancel?: () => void;
 }) {
@@ -331,6 +428,7 @@ export default function CreateRecipe({
     const [error, setError] = useState<string>();
     const [saving, setSaving] = useState(false);
     const [sheetRowId, setSheetRowId] = useState<number | null>(null);
+    const [openSwipeRowId, setOpenSwipeRowId] = useState<number | null>(null);
     const ingredientCollection = useContext(IngredientCollectionContext);
     const nextId = useRef(initialRecipe?.ingredients.length ?? 0);
     const focusRow = useRef<number | null>(null);
@@ -347,7 +445,34 @@ export default function CreateRecipe({
             }),
         [rows],
     );
-    const nutrition = useMemo(() => totalNutrition(ingredients), [ingredients]);
+    const previewIngredients = useMemo(
+        () =>
+            editMode
+                ? rows.flatMap((row) => {
+                      const ingredient = toIngredient(row, true);
+                      return ingredient ? [ingredient] : [];
+                  })
+                : ingredients,
+        [editMode, ingredients, rows],
+    );
+    const nutrition = useMemo(
+        () => totalNutrition(previewIngredients),
+        [previewIngredients],
+    );
+    const fiber = useMemo(
+        () => totalFiber(previewIngredients),
+        [previewIngredients],
+    );
+    const [ingredientCalorieScale] = useState(() => {
+        const initialCalories = (initialRecipe?.ingredients ?? [])
+            .map(
+                (ingredient) =>
+                    (ingredient.caloriesPer100g * ingredient.weight) / 100,
+            )
+            .filter(Number.isFinite);
+        const largest = Math.max(0, ...initialCalories);
+        return Math.max(500, Math.ceil((largest * 2) / 100) * 100);
+    });
     const macroCalories = {
         carbohydrate: nutrition.carbohydrate * 4,
         protein: nutrition.protein * 4,
@@ -393,15 +518,17 @@ export default function CreateRecipe({
         }));
     }
 
-    function commitName(id: number, value: string) {
+    function commitName(id: number, value: string, selected?: IngredientInfo) {
         const name = value.trim();
         if (!name) return;
         const match =
+            selected ??
             savedIngredients.find(
                 (item) =>
                     normalizeIngredientName(item.name) ===
                     normalizeIngredientName(name),
-            ) ?? findCommonQuickAddIngredient(name);
+            ) ??
+            findCommonQuickAddIngredient(name);
         updateRow(id, (row) => ({
             ...row,
             name: match?.name ?? name,
@@ -420,7 +547,9 @@ export default function CreateRecipe({
             const lookedUp = nutritionFrom(source);
             setRows((current) =>
                 current.map((item) =>
-                    item.id === id && item.name.trim() === requestedName
+                    item.id === id &&
+                    item.lookingUp &&
+                    item.name.trim() === requestedName
                         ? {
                               ...item,
                               source,
@@ -438,7 +567,9 @@ export default function CreateRecipe({
         } catch {
             setRows((current) =>
                 current.map((item) =>
-                    item.id === id && item.name.trim() === requestedName
+                    item.id === id &&
+                    item.lookingUp &&
+                    item.name.trim() === requestedName
                         ? { ...item, lookingUp: false, lookupFailed: true }
                         : item,
                 ),
@@ -500,7 +631,7 @@ export default function CreateRecipe({
     return (
         <form
             id={formId}
-            className="create-recipe"
+            className={`create-recipe${editMode ? ' create-recipe-edit' : ''}`}
             onSubmit={save}
             onReset={(event) => {
                 event.preventDefault();
@@ -525,6 +656,22 @@ export default function CreateRecipe({
                         />
                     </label>
                 </div>
+
+                {editMode && (
+                    <MealNutritionHighlights
+                        calories={
+                            previewIngredients.length
+                                ? nutrition.calories
+                                : undefined
+                        }
+                        protein={
+                            previewIngredients.length
+                                ? nutrition.protein
+                                : undefined
+                        }
+                        fiber={fiber}
+                    />
+                )}
 
                 <div
                     className="create-recipe-tabs"
@@ -556,7 +703,7 @@ export default function CreateRecipe({
                         tabIndex={activeTab === 'nutrition' ? 0 : -1}
                         onClick={() => setActiveTab('nutrition')}
                     >
-                        Ingredients &amp; nutrition
+                        Ingredients &amp; Nutrition
                     </button>
                     <button
                         ref={stepsTab}
@@ -568,10 +715,7 @@ export default function CreateRecipe({
                         tabIndex={activeTab === 'steps' ? 0 : -1}
                         onClick={() => setActiveTab('steps')}
                     >
-                        Steps{' '}
-                        <span className="create-recipe-tab-optional">
-                            (optional)
-                        </span>
+                        Steps
                     </button>
                 </div>
 
@@ -588,129 +732,188 @@ export default function CreateRecipe({
                     hidden={activeTab !== 'nutrition'}
                 >
                     <section
-                        className="create-recipe-ingredients"
+                        className={`create-recipe-ingredients${editMode ? ' meal-ingredients' : ''}`}
                         aria-labelledby="create-recipe-ingredients-heading"
                     >
-                        <h2 id="create-recipe-ingredients-heading">
-                            Ingredients
-                        </h2>
-                        <div className="create-recipe-rows">
+                        {editMode ? (
+                            <div className="meal-section-header">
+                                <h2 id="create-recipe-ingredients-heading">
+                                    Ingredients
+                                </h2>
+                            </div>
+                        ) : (
+                            <h2 id="create-recipe-ingredients-heading">
+                                Ingredients
+                            </h2>
+                        )}
+                        <div
+                            className={`create-recipe-rows${editMode ? ' ingredient-list' : ''}`}
+                        >
                             {rows.map((row, index) => (
-                                <div className="create-recipe-row" key={row.id}>
-                                    <IngredientThumbnail
-                                        name={row.name || 'Ingredient'}
-                                        fdcId={
-                                            row.source?.nutritionSource?.fdcId
-                                        }
-                                    />
-                                    <RecipeIngredientNameInput
-                                        index={index}
-                                        value={row.name}
-                                        committed={row.committed}
-                                        savedIngredients={savedIngredients}
-                                        lookingUp={row.lookingUp}
-                                        lookupFailed={row.lookupFailed}
-                                        focusInput={(node) => {
-                                            if (
-                                                node &&
-                                                focusRow.current === row.id
-                                            ) {
-                                                focusRow.current = null;
-                                                node.focus({
-                                                    preventScroll: true,
-                                                });
+                                <SwipeableIngredientRow
+                                    key={row.id}
+                                    name={row.name || `Ingredient ${index + 1}`}
+                                    enabled
+                                    open={openSwipeRowId === row.id}
+                                    onOpen={() => setOpenSwipeRowId(row.id)}
+                                    onClose={() => setOpenSwipeRowId(null)}
+                                    onRemove={() => {
+                                        setRows((current) =>
+                                            current.filter(
+                                                (item) => item.id !== row.id,
+                                            ),
+                                        );
+                                        setOpenSwipeRowId(null);
+                                        setError(undefined);
+                                    }}
+                                >
+                                    <div
+                                        className={`create-recipe-row${editMode ? ' meal-ingredient' : ''}`}
+                                    >
+                                        <IngredientThumbnail
+                                            name={row.name || 'Ingredient'}
+                                            fdcId={
+                                                row.source?.nutritionSource
+                                                    ?.fdcId
                                             }
-                                        }}
-                                        onChange={(value) =>
-                                            selectName(row.id, value)
-                                        }
-                                        onCommit={(value) =>
-                                            commitName(row.id, value)
-                                        }
-                                        onOpenSheet={() =>
-                                            setSheetRowId(row.id)
-                                        }
-                                    />
-                                    <div className="create-recipe-weight">
-                                        <button
-                                            type="button"
-                                            aria-label={`Decrease ingredient ${index + 1} weight`}
-                                            onClick={() =>
-                                                updateRow(
-                                                    row.id,
-                                                    (current) => ({
-                                                        ...current,
-                                                        weight: String(
-                                                            Math.max(
-                                                                0,
-                                                                (Number(
-                                                                    current.weight,
-                                                                ) || 0) - 5,
-                                                            ),
-                                                        ),
-                                                    }),
-                                                )
-                                            }
+                                            source={row.source?.thumbnailSource}
+                                        />
+                                        <div
+                                            className={`create-recipe-ingredient-info${editMode ? ' ingredient-info' : ''}`}
                                         >
-                                            −
-                                        </button>
-                                        <label className="create-recipe-weight-value">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="any"
-                                                inputMode="decimal"
-                                                aria-label={`Ingredient ${index + 1} weight in grams`}
-                                                value={row.weight}
-                                                onChange={(event) =>
-                                                    updateRow(
+                                            <RecipeIngredientNameInput
+                                                index={index}
+                                                value={row.name}
+                                                committed={row.committed}
+                                                savedIngredients={
+                                                    savedIngredients
+                                                }
+                                                lookingUp={row.lookingUp}
+                                                lookupFailed={row.lookupFailed}
+                                                focusInput={(node) => {
+                                                    if (
+                                                        node &&
+                                                        focusRow.current ===
+                                                            row.id
+                                                    ) {
+                                                        focusRow.current = null;
+                                                        node.focus({
+                                                            preventScroll: true,
+                                                        });
+                                                    }
+                                                }}
+                                                onChange={(value) =>
+                                                    selectName(row.id, value)
+                                                }
+                                                onCommit={(value, source) =>
+                                                    commitName(
                                                         row.id,
-                                                        (current) => ({
-                                                            ...current,
-                                                            weight: event.target
-                                                                .value,
-                                                        }),
+                                                        value,
+                                                        source,
                                                     )
                                                 }
+                                                onOpenSheet={() =>
+                                                    setSheetRowId(row.id)
+                                                }
                                             />
-                                            <span aria-hidden="true">g</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            aria-label={`Increase ingredient ${index + 1} weight`}
-                                            onClick={() =>
-                                                updateRow(
-                                                    row.id,
-                                                    (current) => ({
-                                                        ...current,
-                                                        weight: String(
-                                                            (Number(
-                                                                current.weight,
-                                                            ) || 0) + 5,
-                                                        ),
-                                                    }),
-                                                )
+                                            {editMode && row.name.trim() && (
+                                                <IngredientCalorieContribution
+                                                    name={row.name}
+                                                    calories={ingredientCalories(
+                                                        row,
+                                                    )}
+                                                    scale={
+                                                        ingredientCalorieScale
+                                                    }
+                                                />
+                                            )}
+                                        </div>
+                                        <div
+                                            className={
+                                                editMode
+                                                    ? 'ingredient-portion-summary'
+                                                    : undefined
                                             }
                                         >
-                                            +
-                                        </button>
+                                            <div className="create-recipe-weight">
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Decrease ingredient ${index + 1} weight`}
+                                                    onClick={() =>
+                                                        updateRow(
+                                                            row.id,
+                                                            (current) => ({
+                                                                ...current,
+                                                                weight: String(
+                                                                    Math.max(
+                                                                        0,
+                                                                        (Number(
+                                                                            current.weight,
+                                                                        ) ||
+                                                                            0) -
+                                                                            5,
+                                                                    ),
+                                                                ),
+                                                            }),
+                                                        )
+                                                    }
+                                                >
+                                                    −
+                                                </button>
+                                                <label className="create-recipe-weight-value">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="any"
+                                                        inputMode="decimal"
+                                                        aria-label={`Ingredient ${index + 1} weight in grams`}
+                                                        value={row.weight}
+                                                        onChange={(event) =>
+                                                            updateRow(
+                                                                row.id,
+                                                                (current) => ({
+                                                                    ...current,
+                                                                    weight: event
+                                                                        .target
+                                                                        .value,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                    <span aria-hidden="true">
+                                                        g
+                                                    </span>
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Increase ingredient ${index + 1} weight`}
+                                                    onClick={() =>
+                                                        updateRow(
+                                                            row.id,
+                                                            (current) => ({
+                                                                ...current,
+                                                                weight: String(
+                                                                    (Number(
+                                                                        current.weight,
+                                                                    ) || 0) + 5,
+                                                                ),
+                                                            }),
+                                                        )
+                                                    }
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                            {editMode && (
+                                                <span className="ingredient-calorie-value">
+                                                    {ingredientCalorieLabel(
+                                                        row,
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="create-recipe-remove"
-                                        aria-label={`Remove ingredient ${index + 1}`}
-                                        onClick={() =>
-                                            setRows((current) =>
-                                                current.filter(
-                                                    (item) =>
-                                                        item.id !== row.id,
-                                                ),
-                                            )
-                                        }
-                                    >
-                                        ×
-                                    </button>
-                                </div>
+                                </SwipeableIngredientRow>
                             ))}
                         </div>
                         <button
@@ -733,6 +936,7 @@ export default function CreateRecipe({
                             <>
                                 <NutritionOverview
                                     nutrition={nutrition}
+                                    fiber={fiber}
                                     percentages={percentages}
                                 />
                                 <MealMicronutrients ingredients={ingredients} />

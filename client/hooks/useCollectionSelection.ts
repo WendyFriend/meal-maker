@@ -9,6 +9,7 @@ export function useCollectionSelection<T>({
     noun,
     search,
     isActive,
+    onSelectionStart,
 }: {
     items: T[];
     visibleItems: T[];
@@ -18,6 +19,7 @@ export function useCollectionSelection<T>({
     noun: string;
     search: string;
     isActive: boolean;
+    onSelectionStart?: () => void;
 }) {
     const [selection, setSelection] = useState<Set<string> | null>(null);
     const [deleting, setDeleting] = useState(false);
@@ -61,6 +63,7 @@ export function useCollectionSelection<T>({
         timer.current = window.setTimeout(() => {
             suppressClick.current = true;
             setError(undefined);
+            onSelectionStart?.();
             setSelection(new Set([getId(item)]));
             endPress();
         }, 500);
@@ -104,6 +107,7 @@ export function useCollectionSelection<T>({
         if (selecting) cancelSelection();
         else {
             setError(undefined);
+            onSelectionStart?.();
             setSelection(new Set());
         }
     }

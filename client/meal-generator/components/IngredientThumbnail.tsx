@@ -30,10 +30,12 @@ export default function IngredientThumbnail({
     name,
     fdcId,
     source,
+    size = 128,
 }: {
     name: string;
     fdcId?: number;
     source?: 'nutrition-lab' | 'local';
+    size?: 64 | 128;
 }) {
     const [failedFdcId, setFailedFdcId] = useState<number>();
     const words = ` ${normalizeIngredientName(name).replace(/[^a-z0-9]+/g, ' ')} `;
@@ -46,17 +48,18 @@ export default function IngredientThumbnail({
 
     // Many foods have no picture yet; those 404 and use the local thumbnail.
     if (
-        (source === 'nutrition-lab' ||
-            (loadMealGenerator() === 'nutrition-lab' && source !== 'local')) &&
+        loadMealGenerator() === 'nutrition-lab' &&
+        source !== 'local' &&
         fdcId !== undefined &&
         failedFdcId !== fdcId
     ) {
         return (
             <img
                 className="meal-ingredient-thumbnail meal-ingredient-thumbnail-photo"
-                src={getFoodThumbnailUrl(fdcId)}
+                src={getFoodThumbnailUrl(fdcId, size)}
                 alt=""
                 loading="lazy"
+                decoding="async"
                 onError={() => setFailedFdcId(fdcId)}
             />
         );

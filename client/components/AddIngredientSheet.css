@@ -236,14 +236,14 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 64px;
+    min-height: 72px;
     border-bottom: 1px solid var(--border-hairline);
 }
 
 .add-ingredient-database-row .meal-ingredient-thumbnail {
     flex: none;
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
     background-size: 400% 400%;
 }
 
@@ -307,8 +307,7 @@
     );
 }
 
-.add-ingredient-database-added svg,
-.add-ingredient-database-toast svg {
+.add-ingredient-database-added svg {
     width: 19px;
     height: 19px;
     stroke: currentColor;
@@ -392,32 +391,6 @@
 .add-ingredient-sheet .loading-spinner {
     border-color: var(--sheet-orange-soft);
     border-top-color: var(--sheet-orange-ink);
-}
-
-.add-ingredient-database-toast {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 10px;
-    min-height: 40px;
-    margin: 10px 0 0;
-    padding: 0 14px;
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--sheet-orange-soft) 66%, white);
-    color: var(--sheet-ink);
-    font-size: 14px;
-    font-weight: 650;
-    box-shadow: 0 4px 14px rgb(105 59 21 / 10%);
-}
-
-.add-ingredient-database-toast span {
-    display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--sheet-orange);
-    color: var(--sheet-ink);
 }
 
 .add-ingredient-database-error {

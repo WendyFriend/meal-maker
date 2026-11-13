@@ -1,11 +1,9 @@
 .page-content-saved-collection {
-    --deep-green: #0b4652;
-    --text: #6e8798;
-    --text-muted: #78909f;
+    --collection-page-background: var(--page-canvas);
     max-width: none;
     min-height: 100%;
     padding-inline: 24px;
-    background: radial-gradient(ellipse at 50% 35%, #fffdf8, #fcf8f0);
+    background: var(--collection-page-background);
 }
 .saved-collection {
     box-sizing: border-box;
@@ -116,6 +114,17 @@
 }
 .saved-collection-row-wrapper + .saved-collection-row-wrapper {
     border-top: 1px solid var(--border-hairline);
+}
+.saved-collection-list > .saved-collection-swipe + .saved-collection-swipe {
+    border-top: 1px solid var(--border-hairline);
+}
+.saved-collection-swipe-error {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: 13px;
 }
 .saved-collection-row {
     display: flex;

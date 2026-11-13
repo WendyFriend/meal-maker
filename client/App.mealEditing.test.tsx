@@ -36,7 +36,7 @@ vi.mock('./hooks/useMicronutrientLookup', () => ({
 }));
 afterEach(() => vi.unstubAllGlobals());
 
-it('saves with the actual header tick and updates the retained My Meals list', async () => {
+it('edits a saved recipe by section and updates the retained My Meals list', async () => {
     mockPickerEnvironment();
     const recipe: Recipe = {
         id: 'meal-1',
@@ -74,64 +74,32 @@ it('saves with the actual header tick and updates the retained My Meals list', a
     await user.click(await screen.findByRole('button', { name: /Tofu bowl/ }));
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
     expect(
-        screen.queryByRole('button', { name: 'Save meal' }),
+        screen.queryByRole('button', { name: 'Edit meal' }),
     ).not.toBeInTheDocument();
     expect(
-        screen.queryByRole('button', { name: 'Reset ingredient weights' }),
+        screen.queryByRole('button', { name: 'Log out' }),
     ).not.toBeInTheDocument();
-    const editMeal = screen.getByRole('button', { name: 'Edit meal' });
-    const editClick = new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-    });
-    fireEvent(editMeal, editClick);
-    expect(editClick.defaultPrevented).toBe(true);
-    expect(editMeal).not.toBeInTheDocument();
-    expect(screen.getByText('Edit Recipe')).toBeInTheDocument();
-    expect(
-        screen.getByRole('img', { name: 'Default recipe image' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save meal' })).not.toBe(
-        editMeal,
-    );
+
+    await user.click(screen.getByRole('button', { name: 'Edit ingredients' }));
     const weight = screen.getByRole('spinbutton', {
-        name: 'Ingredient 1 weight in grams',
+        name: 'Tofu weight in grams',
     });
     await user.clear(weight);
     await user.type(weight, '150');
-    await user.click(screen.getByRole('tab', { name: 'Steps (optional)' }));
-    await user.clear(screen.getByRole('textbox', { name: 'Instructions' }));
-    await user.type(
-        screen.getByRole('textbox', { name: 'Instructions' }),
-        'Changed cooking step.',
-    );
-    expect(
-        screen.queryByRole('button', { name: 'Back' }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Cancel editing' }));
-    expect(
-        screen.queryByRole('spinbutton', {
-            name: 'Ingredient 1 weight in grams',
-        }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('100 g')).toBeInTheDocument();
-    expect(screen.getByText('Stir for 2 minutes.')).toBeInTheDocument();
-    expect(
-        screen.queryByRole('textbox', { name: 'Instructions' }),
-    ).not.toBeInTheDocument();
-    expect(
-        screen.queryByRole('button', { name: 'Reset ingredient weights' }),
-    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
-    expect(updateRecipe).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Edit meal' }));
     await user.click(
-        screen.getByRole('button', { name: 'Increase ingredient 1 weight' }),
+        screen.getByRole('button', { name: 'Cancel ingredients changes' }),
     );
-    expect(
-        screen.getByRole('button', { name: 'Add ingredient' }),
-    ).toBeEnabled();
-    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+    expect(screen.getByText('100 g')).toBeInTheDocument();
+    expect(updateRecipe).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Edit ingredients' }));
+    await user.click(
+        screen.getByRole('button', { name: 'Increase Tofu by 5 grams' }),
+    );
+    await user.click(
+        screen.getByRole('button', { name: 'Save ingredients changes' }),
+    );
     await waitFor(() =>
         expect(updateRecipe).toHaveBeenCalledWith(
             'meal-1',
@@ -140,17 +108,12 @@ it('saves with the actual header tick and updates the retained My Meals list', a
             }),
         ),
     );
-    await waitFor(() =>
-        expect(
-            screen.queryByRole('button', { name: 'Save meal' }),
-        ).not.toBeInTheDocument(),
-    );
+
     await user.click(screen.getByRole('button', { name: 'Back' }));
     expect(
         await screen.findByRole('heading', { name: 'My Recipes' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Tofu bowl')).toBeInTheDocument();
-    expect(getRecipes).toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: /Tofu bowl/ }));
     expect(await screen.findByText('105 g')).toBeInTheDocument();
 });
@@ -191,8 +154,47 @@ it('opens ingredient editing from the right side of the app header', async () =>
     expect(
         screen.getByRole('button', { name: 'Cancel editing' }),
     ).toBeInTheDocument();
+    const cancel = screen.getByRole('button', { name: 'Cancel editing' });
+    const save = screen.getByRole('button', { name: 'Save ingredient' });
+    expect(cancel.querySelector('svg')).toHaveAttribute('viewBox', '0 0 24 24');
+    expect(save.querySelector('svg')).toHaveAttribute('viewBox', '0 0 24 24');
     await user.click(screen.getByRole('button', { name: 'Cancel editing' }));
     expect(
         screen.getByRole('button', { name: 'Edit ingredient' }),
+    ).toBeInTheDocument();
+});
+
+it('opens ingredient editing directly from the My Ingredients context menu', async () => {
+    mockPickerEnvironment();
+    vi.mocked(getUserIngredients).mockResolvedValueOnce([
+        {
+            ingredientId: 'tofu',
+            name: 'Tofu',
+            caloriesPer100g: 130,
+            proteinPer100g: 15,
+            fatPer100g: 4,
+            carbohydratePer100g: 5.6,
+        },
+    ]);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(
+        screen.getByRole('button', { name: 'Open navigation menu' }),
+    );
+    await user.click(
+        within(screen.getByRole('navigation', { name: 'Primary' })).getByRole(
+            'button',
+            { name: 'My Ingredients' },
+        ),
+    );
+    const row = await screen.findByRole('button', { name: 'Tofu' });
+    fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
+    await user.click(screen.getByRole('menuitem', { name: 'Edit' }));
+
+    expect(
+        screen.getByRole('textbox', { name: 'Ingredient name' }),
+    ).toHaveValue('Tofu');
+    expect(
+        screen.getByRole('button', { name: 'Save ingredient' }),
     ).toBeInTheDocument();
 });

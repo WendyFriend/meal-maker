@@ -1,11 +1,16 @@
 import { useState } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { UserIngredient } from '../../../shared/types/types';
 import { mockPickerEnvironment } from '../../test/pickerEnvironment';
 import FavouriteIngredientsSheet from './FavouriteIngredientsSheet';
 import IngredientInput from './IngredientInput';
+import { getIngredientNutrition } from '../../services/micronutrientService';
+
+vi.mock('../../services/micronutrientService', () => ({
+    getIngredientNutrition: vi.fn(),
+}));
 
 const savedIngredients: UserIngredient[] = [
     {
@@ -18,7 +23,11 @@ const savedIngredients: UserIngredient[] = [
     },
 ];
 
-beforeEach(() => mockPickerEnvironment());
+beforeEach(() => {
+    mockPickerEnvironment();
+    vi.mocked(getIngredientNutrition).mockReset();
+    vi.mocked(getIngredientNutrition).mockRejectedValue(new Error('No match'));
+});
 afterEach(() => vi.unstubAllGlobals());
 
 function Example() {
@@ -38,6 +47,50 @@ function Example() {
         </>
     );
 }
+
+it('uses saved food IDs and resolves older saved ingredients for Nutrition Lab thumbnails', async () => {
+    vi.mocked(getIngredientNutrition).mockResolvedValue({
+        name: 'Cauliflower, raw',
+        nutritionSource: {
+            fdcId: 169986,
+            description: 'Cauliflower, raw',
+        },
+    });
+    render(
+        <FavouriteIngredientsSheet
+            ingredients={[]}
+            savedIngredients={[
+                {
+                    ...savedIngredients[0],
+                    nutritionSource: {
+                        fdcId: 168462,
+                        description: 'Spinach, raw',
+                    },
+                },
+                {
+                    ...savedIngredients[0],
+                    ingredientId: 'saved-cauliflower',
+                    name: 'Cauliflower, raw',
+                    nutritionSource: undefined,
+                },
+            ]}
+            onChange={vi.fn()}
+            onClose={vi.fn()}
+        />,
+    );
+
+    expect(
+        screen.getByRole('button', { name: 'Spinach' }).querySelector('img'),
+    ).toHaveAttribute('src', expect.stringContaining('/168462.webp'));
+    await waitFor(() =>
+        expect(
+            screen
+                .getByRole('button', { name: 'Cauliflower, raw' })
+                .querySelector('img'),
+        ).toHaveAttribute('src', expect.stringContaining('/169986.webp')),
+    );
+    expect(getIngredientNutrition).toHaveBeenCalledOnce();
+});
 
 it('opens on saved favourites and keeps the sheet open while adding ingredients', async () => {
     const user = userEvent.setup();

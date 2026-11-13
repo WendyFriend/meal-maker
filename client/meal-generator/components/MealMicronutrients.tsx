@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { MealIngredient } from '../../../shared/types/types';
 import {
@@ -14,10 +15,20 @@ import {
     hasMicronutrientValue,
     micronutrientLookupKey,
 } from '../../services/micronutrientService';
+import {
+    recipeNutritionEnrichments,
+    type RecipeNutritionEnrichment,
+} from '../../utils/recipeNutrition';
 
 const FIBER_DAILY_VALUE_GRAMS = 28;
 
-function MealFiber({ ingredients }: { ingredients: MealIngredient[] }) {
+function MealFiber({
+    ingredients,
+    scope,
+}: {
+    ingredients: MealIngredient[];
+    scope: 'meal' | 'day';
+}) {
     let total = 0;
     let hasKnownValue = false;
     const missing: string[] = [];
@@ -60,12 +71,13 @@ function MealFiber({ ingredients }: { ingredients: MealIngredient[] }) {
     const percentage = (total / FIBER_DAILY_VALUE_GRAMS) * 100;
     const percentageText =
         percentage > 0 && percentage < 1 ? '<1%' : `${Math.round(percentage)}%`;
+    const label = scope === 'day' ? 'Fibre' : 'Fiber';
     const track = (
         <>
             <progress
                 max={100}
                 value={Math.min(100, percentage)}
-                aria-label="Fiber daily value in this meal"
+                aria-label={`${label} daily value ${scope === 'day' ? 'for this day' : 'in this meal'}`}
                 aria-valuetext={`${percentageText} of Daily Value${missing.length ? ' from ingredients with available data' : ''}`}
             />
             <span aria-hidden="true">{percentageText} DV</span>
@@ -76,7 +88,7 @@ function MealFiber({ ingredients }: { ingredients: MealIngredient[] }) {
         <li>
             <div className="ingredient-micronutrient-label">
                 <span className="ingredient-micronutrient-trigger meal-fiber-label">
-                    Fiber
+                    {label}
                 </span>
                 <span className="ingredient-micronutrient-value">
                     <span>
@@ -91,9 +103,10 @@ function MealFiber({ ingredients }: { ingredients: MealIngredient[] }) {
             </div>
             {hasKnownValue || missing.length > 0 ? (
                 <MicronutrientContributors
-                    label="Fiber"
+                    label={label}
                     unit="g"
                     contribution={contribution}
+                    scopeLabel={scope === 'day' ? 'this day' : 'this meal'}
                     percentageText={hasKnownValue ? percentageText : 'N/A'}
                     trigger={
                         hasKnownValue ? (
@@ -113,13 +126,28 @@ function MealFiber({ ingredients }: { ingredients: MealIngredient[] }) {
 export default function MealMicronutrients({
     ingredients,
     scope = 'meal',
+    onNutritionFound,
 }: {
     ingredients: MealIngredient[];
     scope?: 'meal' | 'day';
+    onNutritionFound?: (enrichments: RecipeNutritionEnrichment[]) => void;
 }) {
     const { data, loading, failed, retry } = useMicronutrientLookup(
         ingredients.filter(({ weight }) => weight > 0),
     );
+    const lastReported = useRef('');
+    useEffect(() => {
+        if (!onNutritionFound) return;
+        const enrichments = recipeNutritionEnrichments(ingredients, data);
+        const fingerprint = JSON.stringify(enrichments);
+        if (!enrichments.length) {
+            lastReported.current = '';
+            return;
+        }
+        if (fingerprint === lastReported.current) return;
+        lastReported.current = fingerprint;
+        onNutritionFound(enrichments);
+    }, [ingredients, data, onNutritionFound]);
     const contributions: MicronutrientContributions = {};
     const totals: MicronutrientValues = Object.fromEntries(
         MICRONUTRIENTS.map(({ key }) => {
@@ -141,7 +169,9 @@ export default function MealMicronutrients({
                 if (ingredient.weight === 0) continue;
                 const value = hasMicronutrientValue(ingredient[key])
                     ? ingredient[key]
-                    : data[micronutrientLookupKey(ingredient.name)]?.[key];
+                    : ingredient.unavailableMicronutrients?.includes(key)
+                      ? undefined
+                      : data[micronutrientLookupKey(ingredient.name)]?.[key];
                 if (
                     typeof value !== 'number' ||
                     !Number.isFinite(value) ||
@@ -187,26 +217,14 @@ export default function MealMicronutrients({
         <section
             className="ingredient-nutrition-details meal-micronutrients"
             aria-label={
-                scope === 'day'
-                    ? 'Daily vitamins and minerals'
-                    : 'Meal key nutrients'
+                scope === 'day' ? 'Daily key nutrients' : 'Meal key nutrients'
             }
             aria-busy={loading}
         >
             <div className="ingredient-details-heading">
                 <div className="ingredient-details-title">
-                    <h3>
-                        {scope === 'day'
-                            ? 'Vitamins & minerals'
-                            : 'Key nutrients'}
-                    </h3>
-                    <NutritionInfo
-                        label={
-                            scope === 'day'
-                                ? 'About vitamins and minerals'
-                                : 'About key nutrients'
-                        }
-                    >
+                    <h3>Key nutrients</h3>
+                    <NutritionInfo label="About key nutrients">
                         {' '}
                         <p className="ingredient-details-note">
                             Based on{' '}
@@ -231,44 +249,36 @@ export default function MealMicronutrients({
                         </p>{' '}
                     </NutritionInfo>
                 </div>
-                <span>{scope === 'day' ? 'This day' : 'This meal'} · % DV</span>
+                <span className="meal-micronutrients-heading-status">
+                    {scope === 'day' ? 'This day' : 'This meal'} · % DV
+                    <span
+                        className="meal-micronutrients-loading-indicator"
+                        role={loading ? 'status' : undefined}
+                        aria-label={
+                            loading ? 'Updating key nutrients' : undefined
+                        }
+                    >
+                        {loading && <LoadingSpinner size="small" />}
+                    </span>
+                </span>
             </div>
-            {loading ? (
-                <p
-                    className="ingredient-details-note loading-label"
-                    role="status"
-                >
-                    <LoadingSpinner size="small" />
-                    Loading{' '}
-                    {scope === 'day' ? 'vitamins & minerals' : 'key nutrients'}…
+            {failed.length > 0 && (
+                <p className="ingredient-details-note" role="status">
+                    Some ingredient data could not be loaded.{' '}
+                    <button type="button" onClick={retry}>
+                        Try again
+                    </button>
                 </p>
-            ) : (
-                <>
-                    {failed.length > 0 && (
-                        <p className="ingredient-details-note" role="status">
-                            Some ingredient data could not be loaded.{' '}
-                            <button type="button" onClick={retry}>
-                                Try again
-                            </button>
-                        </p>
-                    )}
-                    <MicronutrientList
-                        leadingItem={
-                            scope === 'meal' ? (
-                                <MealFiber ingredients={ingredients} />
-                            ) : undefined
-                        }
-                        amounts={totals}
-                        basis={
-                            scope === 'day' ? 'for this day' : 'in this meal'
-                        }
-                        contributions={contributions}
-                        contributionScope={
-                            scope === 'day' ? 'this day' : 'this meal'
-                        }
-                    />
-                </>
             )}
+            <MicronutrientList
+                leadingItem={
+                    <MealFiber ingredients={ingredients} scope={scope} />
+                }
+                amounts={totals}
+                basis={scope === 'day' ? 'for this day' : 'in this meal'}
+                contributions={contributions}
+                contributionScope={scope === 'day' ? 'this day' : 'this meal'}
+            />
         </section>
     );
 }

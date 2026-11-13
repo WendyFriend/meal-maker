@@ -36,3 +36,5 @@ See [AGENTS.md](AGENTS.md) for the component map and shared styling conventions.
 Apply SQL files from `supabase/migrations/` in the Supabase SQL editor before using features that need new columns. In particular, [ingredient preparation tips](supabase/migrations/202610280001_ingredient_preparation_tips.sql) adds the optional `user_ingredients.preparation_tips` column for custom tips. [Ingredient micronutrients](supabase/migrations/202610280002_ingredient_micronutrients.sql) adds `user_ingredients.micronutrients` to preserve edited vitamin and mineral values.
 
 Food journal entries require [the journal migration](supabase/migrations/202610290001_food_journal.sql). It creates private, per-user food snapshots with the time eaten and a date-range index. Apply it in the Supabase SQL editor before logging meals.
+
+Reordering meals in My Plan requires [the plan order migration](supabase/migrations/202611110001_journal_plan_order.sql). Apply it in the Supabase SQL editor before saving a new meal order; it adds a display position without changing the logged meal time.

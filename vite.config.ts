@@ -20,7 +20,28 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
-            workbox: { navigateFallback: '/index.html' },
+            workbox: {
+                navigateFallback: '/index.html',
+                runtimeCaching: [
+                    {
+                        // Food IDs produce stable WebP URLs. Cache thumbnails
+                        // across visits, including the common foods shown
+                        // whenever database search opens.
+                        urlPattern: ({ request, url }) =>
+                            request.destination === 'image' &&
+                            /\/thumbnails\/\d+\.webp$/.test(url.pathname),
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'nutrition-lab-thumbnails',
+                            cacheableResponse: { statuses: [0, 200] },
+                            expiration: {
+                                maxEntries: 120,
+                                maxAgeSeconds: 30 * 24 * 60 * 60,
+                            },
+                        },
+                    },
+                ],
+            },
             manifest: {
                 name: 'MealMaker',
                 short_name: 'MealMaker',

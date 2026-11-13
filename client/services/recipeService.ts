@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Recipe } from '../../shared/types/recipe';
 import type { MealIngredient } from '../../shared/types/types';
+import type { RecipeNutritionEnrichment } from '../utils/recipeNutrition';
 
 export type RecipeRow = {
     id: string;
@@ -48,7 +49,10 @@ export async function getRecipes() {
     return (data as RecipeRow[]).map(toRecipe);
 }
 
-export async function updateRecipe(id: string, recipe: Recipe) {
+export async function updateRecipe(
+    id: string,
+    recipe: Recipe,
+): Promise<Recipe> {
     const { data, error } = await supabase
         .from('recipes')
         .update({
@@ -58,14 +62,27 @@ export async function updateRecipe(id: string, recipe: Recipe) {
             updated_at: new Date().toISOString(),
         })
         .eq('id', id)
-        .select()
+        .select('id')
         .single();
 
     if (error) {
         throw error;
     }
 
-    return toRecipe(data as RecipeRow);
+    return { ...recipe, id: data.id as string };
+}
+
+/** Persist only missing reference nutrients; the database preserves saved values. */
+export async function fillRecipeNutrition(
+    id: string,
+    enrichments: RecipeNutritionEnrichment[],
+): Promise<void> {
+    if (!enrichments.length) return;
+    const { error } = await supabase.rpc('fill_recipe_nutrition', {
+        p_recipe_id: id,
+        p_enrichments: enrichments,
+    });
+    if (error) throw error;
 }
 
 export async function deleteRecipe(id: string) {

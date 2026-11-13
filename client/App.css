@@ -11,7 +11,7 @@
 
     box-sizing: border-box;
 
-    background: color-mix(in srgb, var(--bg) 92%, #ffffff);
+    background: var(--app-chrome-bg);
     border-bottom: 1px solid var(--border);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -31,7 +31,6 @@
 }
 
 .page-header-create-recipe {
-    background: var(--bg);
     border-bottom: 0;
 }
 .page-header-create-recipe .page-header-inner {
@@ -324,7 +323,7 @@
     height: 100svh;
     min-height: 0;
     overflow: hidden;
-    background-color: var(--app-chrome-bg);
+    background: var(--page-canvas);
 }
 
 .app > .page-header {
@@ -454,6 +453,7 @@ body:has(.pull-refresh-active:not([hidden])) {
 
 .page-transition {
     position: relative;
+    background: var(--page-canvas);
     animation-duration: 280ms;
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     animation-fill-mode: both;
@@ -503,10 +503,6 @@ body:has(.pull-refresh-active:not([hidden])) {
     --meal-result-inset: var(--space-8);
     margin-top: var(--space-10);
     padding: var(--space-8);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    background: var(--surface);
-    box-shadow: var(--shadow-sm);
 }
 
 @media (max-width: 768px) {
@@ -529,10 +525,9 @@ body:has(.pull-refresh-active:not([hidden])) {
    ========================= */
 
 @media (max-width: 640px) {
-    /* A focused text-entry control is the reliable cross-browser signal that
-       the mobile software keyboard is active. Reclaim the header space until
-       editing finishes; taps on non-keyboard controls leave it untouched. */
-    .app:has(
+    /* Only the Meal Maker form reclaims header space while typing. Detail
+       pages keep their back and save controls visible above the keyboard. */
+    .app:has(> .page-transition > .page-content-meal-maker):has(
             :is(
                 input:not(
                         [type='checkbox'],
@@ -549,7 +544,7 @@ body:has(.pull-refresh-active:not([hidden])) {
         display: none;
     }
 
-    .app:has(
+    .app:has(> .page-transition > .page-content-meal-maker):has(
             :is(
                 input:not(
                         [type='checkbox'],
@@ -611,7 +606,7 @@ body:has(.pull-refresh-active:not([hidden])) {
     cursor: default;
 }
 
-.page-header-save:not(.edit-icon-button) svg {
+.page-header-edit-action svg {
     width: 24px;
     height: 24px;
     fill: none;

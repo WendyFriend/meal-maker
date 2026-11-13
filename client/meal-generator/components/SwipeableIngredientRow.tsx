@@ -5,6 +5,8 @@ import {
     type PointerEvent,
     type ReactNode,
 } from 'react';
+import CollectionContextMenu from '../../components/CollectionContextMenu';
+import { contextMenuPosition } from '../../components/contextMenuPosition';
 import './SwipeableIngredientRow.css';
 
 const REVEAL_WIDTH = 84;
@@ -26,6 +28,7 @@ export default function SwipeableIngredientRow({
     onOpen,
     onClose,
     onRemove,
+    menuDelete = false,
 }: {
     children: ReactNode;
     name: string;
@@ -34,6 +37,7 @@ export default function SwipeableIngredientRow({
     onOpen: () => void;
     onClose: () => void;
     onRemove: () => void;
+    menuDelete?: boolean;
 }) {
     const gesture = useRef<Gesture | null>(null);
     const suppressClick = useRef(false);
@@ -42,6 +46,12 @@ export default function SwipeableIngredientRow({
     const removeTimer = useRef<number | null>(null);
     const onRemoveRef = useRef(onRemove);
     const [removing, setRemoving] = useState(false);
+    const [deleteMenu, setDeleteMenu] = useState<{
+        x: number;
+        y: number;
+        trigger: HTMLDivElement;
+    } | null>(null);
+    const lastPointerType = useRef<string | null>(null);
 
     useEffect(() => {
         onRemoveRef.current = onRemove;
@@ -57,6 +67,7 @@ export default function SwipeableIngredientRow({
 
     function requestRemoval() {
         if (removing) return;
+        setDeleteMenu(null);
         if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
             onRemove();
             return;
@@ -109,6 +120,12 @@ export default function SwipeableIngredientRow({
 
     if (!enabled) return <>{children}</>;
 
+    function openDeleteMenu(trigger: HTMLDivElement, x: number, y: number) {
+        if (!menuDelete || removing) return;
+        onClose();
+        setDeleteMenu({ trigger, ...contextMenuPosition(x, y) });
+    }
+
     return (
         <div
             ref={row}
@@ -118,8 +135,42 @@ export default function SwipeableIngredientRow({
             aria-busy={removing}
             tabIndex={0}
             aria-label={`${name}, swipe left or press Left Arrow to reveal Remove`}
+            onPointerDownCapture={(event) => {
+                lastPointerType.current = event.pointerType;
+            }}
+            onContextMenu={(event) => {
+                if (
+                    !menuDelete ||
+                    (event.target as HTMLElement).closest(
+                        'input, textarea, [contenteditable="true"]',
+                    )
+                )
+                    return;
+                event.preventDefault();
+                if (lastPointerType.current !== 'touch')
+                    openDeleteMenu(
+                        event.currentTarget,
+                        event.clientX,
+                        event.clientY,
+                    );
+            }}
             onKeyDown={(event) => {
                 if (removing) return;
+                if (
+                    event.target === event.currentTarget &&
+                    menuDelete &&
+                    (event.key === 'ContextMenu' ||
+                        (event.shiftKey && event.key === 'F10'))
+                ) {
+                    event.preventDefault();
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    openDeleteMenu(
+                        event.currentTarget,
+                        rect.left + 20,
+                        rect.bottom - 8,
+                    );
+                    return;
+                }
                 if (event.key === 'Escape' || event.key === 'ArrowRight') {
                     onClose();
                     return;
@@ -212,6 +263,16 @@ export default function SwipeableIngredientRow({
             >
                 {children}
             </div>
+            {deleteMenu && (
+                <CollectionContextMenu
+                    name={name}
+                    x={deleteMenu.x}
+                    y={deleteMenu.y}
+                    trigger={deleteMenu.trigger}
+                    onClose={() => setDeleteMenu(null)}
+                    onDelete={requestRemoval}
+                />
+            )}
         </div>
     );
 }

@@ -1,17 +1,36 @@
 .nutrition-overview {
+    position: relative;
     margin-bottom: var(--space-6);
     padding-bottom: var(--space-5);
     border-bottom: 1px solid var(--border-hairline);
 }
 
+.nutrition-overview-unavailable p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.nutrition-overview-info {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 2;
+}
+
+.nutrition-overview[data-has-info='true'] .nutrition-overview-macros {
+    padding-top: 24px;
+}
+
 .nutrition-overview-chart {
     position: relative;
-    margin-top: var(--space-4);
+    grid-column: 1 / -1;
+    margin-top: 8px;
 }
 
 .nutrition-overview-bar {
     display: flex;
-    height: 26px;
+    height: 18px;
     overflow: visible;
     border-radius: 999px;
     background: var(--surface-muted);
@@ -30,6 +49,11 @@
 .nutrition-overview-fat {
     --macro-color: #d4a85f;
     --macro-tint: #fcf6e9;
+}
+
+.nutrition-overview-macro.nutrition-overview-fiber {
+    --macro-color: #70a94c;
+    --macro-tint: #edf5e4;
 }
 
 .nutrition-overview-segment {
@@ -112,17 +136,30 @@
 
 .nutrition-overview-macros {
     display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 3.75fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.nutrition-overview-detail {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.nutrition-overview-nutrients {
+    display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-2);
+    gap: 1px;
 }
 
 .nutrition-overview-macro {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     min-width: 0;
-    padding: 16px 8px;
+    padding: 10px 4px;
     border: 0;
     border-radius: 16px;
     background: transparent;
@@ -137,25 +174,40 @@
 }
 
 .nutrition-overview-calories {
+    justify-content: center;
+    border-right: 1px solid var(--border-hairline);
+    border-radius: 0;
     cursor: default;
 }
 
+.nutrition-overview-calories .nutrition-overview-amount {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+
 .nutrition-overview-calories .nutrition-overview-amount > span {
-    font-size: 12px;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.nutrition-overview-calories .nutrition-overview-amount strong {
+    font-size: clamp(44px, 4.5vw, 58px);
+    line-height: 1;
 }
 
 .nutrition-overview-macro-label {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-size: 14px;
+    gap: 6px;
+    font-size: 13px;
 }
 
 .nutrition-overview-dot {
-    flex: 0 0 15px;
-    width: 15px;
-    height: 15px;
+    flex: 0 0 11px;
+    width: 11px;
+    height: 11px;
     border-radius: 50%;
     background: var(--macro-color);
 }
@@ -172,7 +224,7 @@
 
 .nutrition-overview-amount strong {
     color: var(--text-h-strong);
-    font-size: 27px;
+    font-size: 26px;
     font-weight: var(--font-weight-bold);
     letter-spacing: -0.5px;
 }
@@ -187,30 +239,49 @@
     outline-offset: -3px;
 }
 
-@media (max-width: 440px) {
-    .nutrition-overview-bar {
-        height: 23px;
-    }
+@media (max-width: 600px) {
     .nutrition-overview-macros {
-        gap: 4px;
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 3.6fr);
+        gap: 6px;
+    }
+    .nutrition-overview-nutrients {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
     .nutrition-overview-macro {
-        padding: 14px 4px;
+        gap: 6px;
+        padding: 8px 1px;
     }
     .nutrition-overview-macro-label {
-        gap: 4px;
-        font-size: 11px;
+        gap: 3px;
+        font-size: 10px;
     }
     .nutrition-overview-dot {
-        flex-basis: 9px;
-        width: 9px;
-        height: 9px;
+        flex-basis: 7px;
+        width: 7px;
+        height: 7px;
     }
     .nutrition-overview-amount {
-        font-size: 17px;
+        flex-wrap: nowrap;
+        gap: 2px;
+        font-size: 12px;
     }
     .nutrition-overview-amount strong {
-        font-size: 22px;
+        font-size: clamp(14px, 4.2vw, 18px);
+    }
+    .nutrition-overview-calories .nutrition-overview-amount strong {
+        font-size: clamp(30px, 8vw, 38px);
+    }
+    .nutrition-overview-calories .nutrition-overview-amount > span {
+        font-size: 13px;
+    }
+    .nutrition-overview-bar {
+        height: 12px;
+    }
+}
+
+@media (max-width: 440px) {
+    .nutrition-overview-macro-label {
+        white-space: nowrap;
     }
 }
 

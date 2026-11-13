@@ -26,7 +26,7 @@ export const pageConfig = {
         type: 'main',
         title: 'My Ingredients',
     },
-    'my-journal': { type: 'main', title: 'My Day' },
+    'my-journal': { type: 'main', title: 'My Plan' },
     settings: { type: 'main', title: 'Settings' },
     'my-recipes': {
         type: 'main',
@@ -66,7 +66,7 @@ export const navigationItems: {
         id: 'my-recipes',
         label: 'My Meals',
     },
-    { id: 'my-journal', label: 'My Day' },
+    { id: 'my-journal', label: 'My Plan' },
 ];
 
 /*

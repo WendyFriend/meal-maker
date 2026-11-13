@@ -18,6 +18,7 @@ export type UserIngredientRow = {
     fiber_per_100g: number | null;
     preparation_tips?: string[] | null;
     micronutrients?: MicronutrientValues | null;
+    nutrition_source?: MicronutrientValues['nutritionSource'] | null;
     created_at: string;
     updated_at: string;
 };
@@ -47,6 +48,7 @@ export async function saveUserIngredient(ingredient: IngredientInfo) {
         .insert({
             name: ingredient.name,
             ...micronutrientPayload(ingredient),
+            nutrition_source: ingredient.nutritionSource ?? null,
             calories_per_100g: ingredient.caloriesPer100g,
             protein_per_100g: ingredient.proteinPer100g,
             carbohydrate_per_100g: ingredient.carbohydratePer100g,
@@ -90,6 +92,7 @@ export async function updateUserIngredient(
         .update({
             name: ingredient.name,
             ...micronutrientPayload(ingredient),
+            nutrition_source: ingredient.nutritionSource ?? null,
             calories_per_100g: ingredient.caloriesPer100g,
             protein_per_100g: ingredient.proteinPer100g,
             carbohydrate_per_100g: ingredient.carbohydratePer100g,
@@ -152,6 +155,7 @@ export function toUserIngredient(row: UserIngredientRow): UserIngredient {
         saturatedFatPer100g: row.saturated_fat_per_100g ?? undefined,
         fiberPer100g: row.fiber_per_100g ?? undefined,
         preparationTips: row.preparation_tips ?? undefined,
+        nutritionSource: row.nutrition_source ?? undefined,
         ...Object.fromEntries(
             MICRONUTRIENTS.flatMap(({ key }) => {
                 const value = row.micronutrients?.[key];

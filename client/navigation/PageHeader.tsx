@@ -2,6 +2,8 @@ import type { Ref } from 'react';
 import Brand from '../components/Brand';
 import EditIcon from '../components/EditIcon';
 import CheckIcon from '../components/CheckIcon';
+import CloseIcon from '../components/CloseIcon';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { pageConfig, type Page } from './pages';
 
 type PageHeaderProps = {
@@ -60,10 +62,14 @@ export default function PageHeader({
                         form={editor.formId}
                         className="page-header-create-save"
                         disabled={editor.saving}
-                        aria-label="Save meal"
-                        title="Save meal"
+                        aria-label={editor.saving ? 'Saving meal' : 'Save meal'}
+                        title={editor.saving ? 'Saving meal' : 'Save meal'}
                     >
-                        <CheckIcon />
+                        {editor.saving ? (
+                            <LoadingSpinner size="small" tone="inherit" />
+                        ) : (
+                            <CheckIcon />
+                        )}
                     </button>
                 </div>
             </header>
@@ -114,7 +120,7 @@ export default function PageHeader({
                         aria-label="Cancel editing"
                         title="Cancel editing"
                     >
-                        ✕
+                        <CloseIcon />
                     </button>
                 ) : (
                     config.type !== 'main' && (
@@ -146,9 +152,7 @@ export default function PageHeader({
                         }
                         title={`Save ${editor.subject}`}
                     >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="m5 12 4 4L19 6" />
-                        </svg>
+                        <CheckIcon />
                     </button>
                 ) : onEdit ? (
                     <button
@@ -180,7 +184,8 @@ export default function PageHeader({
                             <span />
                         </span>
                     </button>
-                ) : config.type !== 'main' ? (
+                ) : config.type !== 'main' &&
+                  currentPage !== 'recipe-detail' ? (
                     <div className="page-header-actions">
                         <button
                             type="button"
