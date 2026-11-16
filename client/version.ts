@@ -1,3 +1,3 @@
 // version.ts
 
-export const APP_VERSION = '0.5.43';
+export const APP_VERSION = '0.5.55';

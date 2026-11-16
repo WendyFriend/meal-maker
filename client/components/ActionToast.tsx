@@ -1,4 +1,5 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import CheckIcon from './CheckIcon';
 import './ActionToast.css';
 
@@ -16,6 +17,8 @@ type ActionToastProps = {
     colors?: ActionToastColors;
     onClose?: () => void;
     durationMs?: number;
+    /** Optional trailing action, such as Undo. Makes the toast tappable. */
+    action?: { label: string; onClick: () => void };
 };
 
 /** Passive confirmation that can sit in a sheet or above app navigation. */
@@ -26,6 +29,7 @@ export default function ActionToast({
     colors,
     onClose,
     durationMs = 2400,
+    action,
 }: ActionToastProps) {
     const onCloseRef = useRef(onClose);
 
@@ -49,18 +53,32 @@ export default function ActionToast({
         '--action-toast-icon': colors?.icon,
     } as CSSProperties;
 
-    return (
+    const toast = (
         <div
-            className={`action-toast action-toast--${placement}`}
+            className={`action-toast action-toast--${placement}${action ? ' action-toast--actionable' : ''}`}
             role="status"
             aria-live="polite"
             aria-atomic="true"
             style={style}
         >
-            <span className="action-toast-symbol" aria-hidden="true">
-                {icon}
-            </span>
+            {icon && (
+                <span className="action-toast-symbol" aria-hidden="true">
+                    {icon}
+                </span>
+            )}
             <span>{message}</span>
+            {action && (
+                <button
+                    type="button"
+                    className="action-toast-action"
+                    onClick={action.onClick}
+                >
+                    {action.label}
+                </button>
+            )}
         </div>
     );
+    return placement === 'floating'
+        ? createPortal(toast, document.body)
+        : toast;
 }

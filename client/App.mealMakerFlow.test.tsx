@@ -1,3 +1,4 @@
+import { fixMenuOption } from './test/fixMenu';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -7,7 +8,6 @@ import {
     updateUserIngredient,
 } from './services/ingredientService';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
-import { saveMealGenerator } from './settings/mealGenerator';
 
 vi.mock('./auth/useAuth', () => ({
     useAuth: () => ({ user: { id: 'user' }, loading: false, signOut: vi.fn() }),
@@ -108,9 +108,10 @@ it('uses saved nutrition from Favourites, keeps nutrition edits and search/manua
     ).not.toBeInTheDocument();
     await user.click(
         within(nutrition).getByRole('button', {
-            name: 'Edit ingredient nutrition',
+            name: 'Doesn’t look right?',
         }),
     );
+    await user.click(fixMenuOption('Correct the numbers'));
     const calories = within(nutrition).getByRole('spinbutton', {
         name: /Calories/,
     });
@@ -318,7 +319,6 @@ it('reveals the cooking animation while waiting, then scrolls to the completed m
 });
 
 it('reuses looked-up nutrition for an unknown ingredient during generation', async () => {
-    saveMealGenerator('nutrition-lab');
     let finishLookup!: (response: Response) => void;
     const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
         (url) => {
@@ -348,6 +348,16 @@ it('reuses looked-up nutrition for an unknown ingredient during generation', asy
             expect.anything(),
         ),
     );
+    await user.click(
+        screen.getByRole('button', { name: 'Edit nutrition for Pumpkin' }),
+    );
+    const sheet = screen.getByRole('dialog', {
+        name: 'Ingredient nutrition',
+    });
+    expect(within(sheet).getByRole('status')).toHaveTextContent(
+        'Looking up Pumpkin…',
+    );
+    expect(sheet.querySelector('.loading-spinner')).toBeInTheDocument();
     finishLookup(
         new Response(
             JSON.stringify({
@@ -364,9 +374,6 @@ it('reuses looked-up nutrition for an unknown ingredient during generation', asy
                 },
             }),
         ),
-    );
-    await user.click(
-        screen.getByRole('button', { name: 'Edit nutrition for Pumpkin' }),
     );
     expect(
         await screen.findByRole('row', { name: /Calories/ }),

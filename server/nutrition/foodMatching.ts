@@ -1,7 +1,8 @@
-import type { USDAFood } from './types.js';
-import { MICRONUTRIENTS } from '../../../shared/micronutrients.js';
+// Food identity checks for database matches: a match must name the same food
+// in the same form ("rice" is not "rice flour") and preparation.
 
-export function getUSDAQuery(name: string): string {
+/** Normalises an ingredient name into a food database search term. */
+export function foodSearchQuery(name: string): string {
     return name
         .replace(/\blinseeds?\b/gi, 'flaxseed')
         .replace(/\bflax seeds?\b/gi, 'flaxseed');
@@ -9,7 +10,7 @@ export function getUSDAQuery(name: string): string {
 
 function tokens(name: string): string[] {
     return (
-        getUSDAQuery(name)
+        foodSearchQuery(name)
             .toLowerCase()
             .replace(/\bsoy beans?\b/g, 'soybean')
             .replace(/\bedamame\b/g, 'green soybean')
@@ -87,47 +88,4 @@ export function matchesFoodDescription(
             !group.some((word) => query.includes(word)) ||
             group.some((word) => candidate.includes(word)),
     );
-}
-
-export function selectUSDAFood(
-    name: string,
-    foods: USDAFood[],
-): USDAFood | undefined {
-    const query = tokens(name);
-    const candidates = foods.filter((food) =>
-        matchesFoodDescription(name, food.description),
-    );
-    const score = (food: USDAFood) => {
-        const words = tokens(food.description);
-        const head = tokens(food.description.split(',')[0]);
-        let value = head.some((word) => query.includes(word)) ? 10 : 0;
-        // Prefer a complete reference record over a sparse branded record
-        // when both describe the requested food and preparation.
-        value += MICRONUTRIENTS.filter(({ usda }) =>
-            food.foodNutrients.some(
-                (nutrient) =>
-                    nutrient.nutrientNumber === String(usda) &&
-                    Number.isFinite(nutrient.value) &&
-                    nutrient.value >= 0,
-            ),
-        ).length;
-        // Prefer the plain food over an unrequested cooking/processing variant.
-        for (const group of preparations) {
-            if (
-                !group.some((word) => query.includes(word)) &&
-                group.some((word) => words.includes(word))
-            ) {
-                value -=
-                    group.includes('raw') || group.includes('dry') ? 0 : 15;
-            }
-        }
-        if (
-            query.includes('soybean') &&
-            !query.includes('green') &&
-            words.includes('green')
-        )
-            value -= 20;
-        return value - words.length / 100;
-    };
-    return candidates.sort((a, b) => score(b) - score(a))[0];
 }

@@ -25,9 +25,10 @@ export default function useMealBookmark(
         if (onAuthRequired?.()) return;
 
         setBookmarkError(null);
-        setBookmarkFeedback(false);
         setIsSavingMeal(true);
         setOptimisticSaved(savedRecipeId === null);
+        // Confirm a save as soon as it is tapped; take it back if it fails.
+        setBookmarkFeedback(savedRecipeId === null);
 
         try {
             if (savedRecipeId) {
@@ -47,9 +48,9 @@ export default function useMealBookmark(
                 setSavedRecipeId(savedRecipe.id);
             }
             onSavedRecipesChange?.();
-            if (!savedRecipeId) setBookmarkFeedback(true);
         } catch (error) {
             console.error('Failed to toggle saved meal:', error);
+            setBookmarkFeedback(false);
             setBookmarkError(
                 savedRecipeId
                     ? 'Could not remove this meal. Please try again.'

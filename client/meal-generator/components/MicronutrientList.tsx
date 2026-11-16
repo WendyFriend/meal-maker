@@ -14,6 +14,8 @@ export type MicronutrientEditor = {
     values: Partial<Record<MicronutrientKey, string>>;
     onChange: (key: MicronutrientKey, value: string) => void;
     disabled?: boolean;
+    /** Skip the "Enter amounts per 100 g" note, e.g. in the sheet. */
+    hideHint?: boolean;
 };
 
 function isAmount(value: unknown): value is number {

@@ -240,12 +240,12 @@ export default function MealMicronutrients({
                                 FDA Daily Values
                             </a>{' '}
                             for adults and children 4+. Missing ingredient data
-                            for vitamins and minerals is looked up from USDA
-                            reference foods. Fiber uses available ingredient
-                            data. Totals include every ingredient with an
-                            available value; tap the nutrient bar to see which
-                            ingredients are excluded. N/A means no ingredient
-                            has an available value for that nutrient.
+                            for vitamins and minerals is looked up from
+                            Nutrition Lab reference foods. Fiber uses available
+                            ingredient data. Totals include every ingredient
+                            with an available value; tap the nutrient bar to see
+                            which ingredients are excluded. N/A means no
+                            ingredient has an available value for that nutrient.
                         </p>{' '}
                     </NutritionInfo>
                 </div>

@@ -1,6 +1,5 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { saveMealGenerator } from '../settings/mealGenerator';
 import { getIngredientNutrition } from '../services/micronutrientService';
 import { useMicronutrientLookup } from './useMicronutrientLookup';
 
@@ -17,7 +16,6 @@ it('shows cached nutrients immediately without starting another lookup', async (
             ),
     );
     vi.stubGlobal('fetch', fetchMock);
-    saveMealGenerator('nutrition-lab');
     await getIngredientNutrition('hook-cached-spinach');
 
     const { result } = renderHook(() =>

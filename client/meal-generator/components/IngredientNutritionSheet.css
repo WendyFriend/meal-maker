@@ -40,22 +40,17 @@
 }
 
 .ingredient-nutrition-sheet .sliding-sheet-header {
+    /* Stays in view so ✕ / ✓ are reachable when editing from the bottom. */
+    position: sticky;
+    top: 0;
+    z-index: 2;
     align-items: center;
     box-sizing: border-box;
     height: 40px;
     min-height: 0;
     padding-top: 0;
     margin-bottom: 0;
-}
-
-.sliding-sheet-header .ingredient-sheet-save {
-    color: var(--accent);
-}
-
-.sliding-sheet-header .ingredient-sheet-save svg {
-    width: 24px;
-    height: 24px;
-    stroke-width: 2;
+    background: var(--surface-tint);
 }
 
 .sliding-sheet-header .ingredient-nutrition-close:disabled {
@@ -66,7 +61,7 @@
 /* Edit actions occupy the top bar without changing its read-mode height. */
 .sliding-sheet-header :is(.ingredient-sheet-cancel, .ingredient-sheet-save) {
     position: absolute;
-    top: 0;
+    top: -2px;
 }
 
 .sliding-sheet-header .ingredient-sheet-cancel {
@@ -75,4 +70,10 @@
 
 .sliding-sheet-header .ingredient-sheet-save {
     right: 0;
+}
+
+/* Food search opens at full height, so loading and results never resize it.
+   The sheet's max-height (per breakpoint) caps this. */
+.ingredient-nutrition-sheet.ingredient-nutrition-sheet-full {
+    height: 100dvh;
 }

@@ -1,3 +1,4 @@
+import { fixMenuOption } from './test/fixMenu';
 import {
     fireEvent,
     render,
@@ -9,9 +10,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import CreateRecipe from './CreateRecipe';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
+import * as micronutrientService from './services/micronutrientService';
 
 beforeEach(() => mockPickerEnvironment(true));
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+});
 
 vi.mock('./hooks/useMicronutrientLookup', () => ({
     useMicronutrientLookup: () => ({
@@ -45,9 +50,21 @@ it('adds editable ingredient rows, previews nutrition, and saves from the two-ta
     expect(
         screen.getByRole('img', { name: 'Default recipe image' }),
     ).toBeInTheDocument();
+    // Same layout as Recipe Detail: overview above the section tabs.
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'Ingredients',
+        'Key Nutrients',
+        'Steps',
+    ]);
+    expect(screen.getByRole('tab', { name: 'Ingredients' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+    );
+    const overview = screen.getByRole('region', { name: 'Nutrition overview' });
     expect(
-        screen.getByRole('tab', { name: 'Ingredients & Nutrition' }),
-    ).toHaveAttribute('aria-selected', 'true');
+        overview.compareDocumentPosition(screen.getByRole('tablist')) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
         screen.queryByRole('group', { name: 'Meal nutrition summary' }),
     ).not.toBeInTheDocument();
@@ -264,11 +281,12 @@ it('lets a recipe use an ingredient that is absent from Nutrition Lab', async ()
         screen.getByRole('button', { name: /View Moonbean nutrition/ }),
     );
     expect(
-        screen.getByRole('button', { name: 'Edit ingredient nutrition' }),
+        screen.getByRole('button', { name: 'Doesn’t look right?' }),
     ).toBeInTheDocument();
     await user.click(
-        screen.getByRole('button', { name: 'Edit ingredient nutrition' }),
+        screen.getByRole('button', { name: 'Doesn’t look right?' }),
     );
+    await user.click(fixMenuOption('Correct the numbers'));
     for (const [label, value] of [
         ['Calories', '95'],
         ['Protein', '5'],
@@ -320,6 +338,34 @@ it('commits an ingredient with Return without submitting the recipe', async () =
         screen.getByRole('button', { name: 'View Spinach nutrition' }),
     ).toBeInTheDocument();
     expect(save).not.toHaveBeenCalled();
+});
+
+it('uses cached nutrition on Enter without waiting for another lookup', async () => {
+    vi.spyOn(
+        micronutrientService,
+        'getCachedIngredientNutrition',
+    ).mockReturnValue({
+        name: 'Rice, dry',
+        caloriesPer100g: 360,
+        proteinPer100g: 7,
+        carbohydratePer100g: 79,
+        fatPer100g: 1,
+    });
+    const lookup = vi.spyOn(micronutrientService, 'getIngredientNutrition');
+    const user = userEvent.setup();
+    render(<CreateRecipe savedIngredients={[]} onSave={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    await user.type(
+        screen.getByRole('combobox', { name: 'Ingredient 1' }),
+        'cached rice{Enter}',
+    );
+
+    expect(
+        within(
+            screen.getByRole('region', { name: 'Nutrition overview' }),
+        ).getByText('360'),
+    ).toBeInTheDocument();
+    expect(lookup).not.toHaveBeenCalled();
 });
 
 it.each(['create', 'edit'])(
@@ -417,8 +463,9 @@ it('updates the recipe nutrition preview from the ingredient sheet', async () =>
         screen.getByRole('button', { name: 'View Tofu nutrition' }),
     );
     await user.click(
-        screen.getByRole('button', { name: 'Edit ingredient nutrition' }),
+        screen.getByRole('button', { name: 'Doesn’t look right?' }),
     );
+    await user.click(fixMenuOption('Correct the numbers'));
     const calories = screen.getByRole('spinbutton', {
         name: 'Calories per 100 grams',
     });
@@ -438,4 +485,86 @@ it('updates the recipe nutrition preview from the ingredient sheet', async () =>
             screen.getByRole('region', { name: 'Nutrition overview' }),
         ).getByText('200'),
     ).toBeInTheDocument();
+});
+
+it('works as Add Meal with an optional name filled in from the ingredients', async () => {
+    const user = userEvent.setup();
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(
+        <CreateRecipe
+            subject="meal"
+            formId="add-meal-form"
+            fallbackName={(ingredients) => `Sunday ${ingredients[0].name}`}
+            savedIngredients={[
+                {
+                    ingredientId: 'lentils-1',
+                    name: 'lentils',
+                    caloriesPer100g: 116,
+                    proteinPer100g: 9,
+                    carbohydratePer100g: 20,
+                    fatPer100g: 0.4,
+                },
+            ]}
+            onSave={save}
+        />,
+    );
+
+    expect(screen.getByText('Meal name')).toBeInTheDocument();
+    expect(screen.getByText('(optional)')).toBeInTheDocument();
+    expect(
+        screen.queryByRole('textbox', { name: 'Recipe name' }),
+    ).not.toBeInTheDocument();
+    // Plan meals keep ingredients only, so there is no Steps tab.
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'Ingredients',
+        'Key Nutrients',
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    await user.type(
+        screen.getByRole('combobox', { name: 'Ingredient 1' }),
+        'lentils{Enter}',
+    );
+    fireEvent.submit(document.getElementById('add-meal-form')!);
+
+    expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({
+            recipeName: 'Sunday lentils',
+            instructions: [],
+        }),
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('keeps a typed meal name', async () => {
+    const user = userEvent.setup();
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(
+        <CreateRecipe
+            subject="meal"
+            formId="add-meal-form"
+            fallbackName={() => 'Sunday lentils'}
+            savedIngredients={[
+                {
+                    ingredientId: 'lentils-1',
+                    name: 'lentils',
+                    caloriesPer100g: 116,
+                    proteinPer100g: 9,
+                    carbohydratePer100g: 20,
+                    fatPer100g: 0.4,
+                },
+            ]}
+            onSave={save}
+        />,
+    );
+    await user.type(screen.getByRole('textbox', { name: 'Meal name' }), 'Dal');
+    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    await user.type(
+        screen.getByRole('combobox', { name: 'Ingredient 1' }),
+        'lentils{Enter}',
+    );
+    fireEvent.submit(document.getElementById('add-meal-form')!);
+    expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ recipeName: 'Dal' }),
+    );
 });

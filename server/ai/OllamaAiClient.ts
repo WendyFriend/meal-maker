@@ -1,5 +1,3 @@
-import type { AiClient } from './AiClient.js';
-
 type OllamaChatResponse = {
     choices: {
         message: {
@@ -8,7 +6,18 @@ type OllamaChatResponse = {
     }[];
 };
 
-export class OllamaAiClient implements AiClient {
+type ChatMessage = {
+    role: 'system' | 'user';
+    content:
+        | string
+        | (
+              | { type: 'text'; text: string }
+              | { type: 'image_url'; image_url: { url: string } }
+          )[];
+};
+
+/** Ollama's OpenAI-compatible chat API, used for photo reading. */
+export class OllamaAiClient {
     private readonly apiKey: string;
     private readonly model: string;
 
@@ -17,9 +26,30 @@ export class OllamaAiClient implements AiClient {
         this.model = model;
     }
 
-    async generate(
+    /** Asks a vision model about one image, given as a base64 data URL. */
+    generateFromImage(
         systemPrompt: string,
         userPrompt: string,
+        imageDataUrl: string,
+        responseFormat?: 'json',
+    ): Promise<string> {
+        return this.chat(
+            [
+                { role: 'system', content: systemPrompt },
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: userPrompt },
+                        { type: 'image_url', image_url: { url: imageDataUrl } },
+                    ],
+                },
+            ],
+            responseFormat,
+        );
+    }
+
+    private async chat(
+        messages: ChatMessage[],
         responseFormat?: 'json',
     ): Promise<string> {
         const response = await fetch('https://ollama.com/v1/chat/completions', {
@@ -30,16 +60,7 @@ export class OllamaAiClient implements AiClient {
             },
             body: JSON.stringify({
                 model: this.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt,
-                    },
-                    {
-                        role: 'user',
-                        content: userPrompt,
-                    },
-                ],
+                messages,
                 ...(responseFormat && {
                     response_format: {
                         type: responseFormat,

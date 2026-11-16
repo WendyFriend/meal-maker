@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react';
 import SlidingSheet from '../../components/SlidingSheet';
 import type { MealPreference } from '../../../shared/types/types';
 import MealGoalWheel from './MealGoalWheel';
+import { ConfirmButton } from '../../components/ConfirmCancelButtons';
 import './MealMakerPreferencesSheet.css';
 
 const mealPreferences = [
@@ -90,9 +91,7 @@ export default function MealMakerPreferencesSheet({
             header={
                 <div className="meal-maker-preferences-sheet-heading">
                     <h2 id="meal-maker-preferences-title">More preferences</h2>
-                    <button type="button" onClick={finish}>
-                        Done
-                    </button>
+                    <ConfirmButton label="Done" onClick={finish} />
                 </div>
             }
         >

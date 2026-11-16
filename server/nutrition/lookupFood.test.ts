@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { lookupFoodNutrition } from './lookupFood.js';
+import { clearFoodLookupCache, lookupFoodNutrition } from './lookupFood.js';
 
 const rice = {
     fdcId: 169756,
@@ -23,6 +23,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 describe('lookupFoodNutrition with the MealMaker API', () => {
     beforeEach(() => {
+        clearFoodLookupCache();
         vi.stubEnv('MEALMAKER_API_KEY', 'mm_test_key');
         vi.stubEnv('MEALMAKER_API_URL', 'https://example.test/api/v1');
     });
@@ -47,7 +48,7 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
         );
         vi.stubGlobal('fetch', fetchMock);
 
-        const result = await lookupFoodNutrition('rice', 'nutrition-lab');
+        const result = await lookupFoodNutrition('rice');
 
         expect(result).toMatchObject({
             caloriesPer100g: 365,
@@ -66,36 +67,13 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
         });
     });
 
-    it('uses USDA by default even when the Nutrition Lab key is configured', async () => {
-        vi.stubEnv('USDA_API_KEY', 'usda_test_key');
-        const fetchMock = vi.fn<typeof fetch>(async () =>
-            jsonResponse({
-                foods: [
-                    {
-                        fdcId: rice.fdcId,
-                        description: rice.description,
-                        foodNutrients: [],
-                    },
-                ],
-            }),
-        );
-        vi.stubGlobal('fetch', fetchMock);
-
-        await lookupFoodNutrition('rice');
-
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(String(fetchMock.mock.calls[0][0])).toContain(
-            'https://api.nal.usda.gov/',
-        );
-    });
-
-    it('does not silently fall back to USDA when Nutrition Lab is selected without a key', async () => {
+    it('requires the Nutrition Lab key', async () => {
         vi.stubEnv('MEALMAKER_API_KEY', '');
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
-        await expect(
-            lookupFoodNutrition('rice', 'nutrition-lab'),
-        ).rejects.toThrow('MEALMAKER_API_KEY');
+        await expect(lookupFoodNutrition('rice')).rejects.toThrow(
+            'MEALMAKER_API_KEY',
+        );
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -113,7 +91,7 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
         );
         vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-        const result = await lookupFoodNutrition('rice', 'nutrition-lab');
+        const result = await lookupFoodNutrition('rice');
 
         expect(result.caloriesPer100g).toBe(365);
         expect(result.ironPer100g).toBeUndefined();
@@ -127,9 +105,9 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
             ),
         );
 
-        await expect(
-            lookupFoodNutrition('zzz', 'nutrition-lab'),
-        ).rejects.toThrow('No matching food');
+        await expect(lookupFoodNutrition('zzz')).rejects.toThrow(
+            'No matching food',
+        );
     });
 
     it('rejects a weak match that does not describe the ingredient', async () => {
@@ -147,9 +125,9 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
             ),
         );
 
-        await expect(
-            lookupFoodNutrition('tofu', 'nutrition-lab'),
-        ).rejects.toThrow('No matching food');
+        await expect(lookupFoodNutrition('tofu')).rejects.toThrow(
+            'No matching food',
+        );
     });
 
     it('accepts a weak match when the normalized food name describes the ingredient', async () => {
@@ -177,10 +155,7 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
             ),
         );
 
-        const result = await lookupFoodNutrition(
-            'red split lentils',
-            'nutrition-lab',
-        );
+        const result = await lookupFoodNutrition('red split lentils');
 
         expect(result).toMatchObject({
             caloriesPer100g: 365,
@@ -210,8 +185,61 @@ describe('lookupFoodNutrition with the MealMaker API', () => {
             ),
         );
 
-        const result = await lookupFoodNutrition('capsicum', 'nutrition-lab');
+        const result = await lookupFoodNutrition('capsicum');
 
         expect(result.nutritionSource?.fdcId).toBe(170108);
+    });
+});
+
+describe('lookupFoodNutrition cache', () => {
+    beforeEach(() => {
+        clearFoodLookupCache();
+        vi.stubEnv('MEALMAKER_API_KEY', 'mm_test_key');
+        vi.stubEnv('MEALMAKER_API_URL', 'https://example.test/api/v1');
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.unstubAllGlobals();
+    });
+
+    function stubResolve() {
+        const fetchMock = vi.fn(async (url: string | URL | Request) =>
+            String(url).endsWith('/foods/resolve')
+                ? jsonResponse({ results: [{ term: 'rice', food: rice }] })
+                : jsonResponse({ error: { code: 'not_found' } }, 404),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+        return fetchMock;
+    }
+
+    it('reuses a recent match and shares requests in flight', async () => {
+        const fetchMock = stubResolve();
+        const [first, second] = await Promise.all([
+            lookupFoodNutrition('Rice'),
+            lookupFoodNutrition(' rice '),
+        ]);
+        await lookupFoodNutrition('rice');
+        expect(second).toBe(first);
+        const resolves = fetchMock.mock.calls.filter(([url]) =>
+            String(url).endsWith('/foods/resolve'),
+        );
+        expect(resolves).toHaveLength(1);
+    });
+
+    it('never caches failures', async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(jsonResponse({}, 503))
+            .mockImplementation(async (url: string | URL | Request) =>
+                String(url).endsWith('/foods/resolve')
+                    ? jsonResponse({ results: [{ term: 'rice', food: rice }] })
+                    : jsonResponse({ error: { code: 'not_found' } }, 404),
+            );
+        vi.stubGlobal('fetch', fetchMock);
+        await expect(lookupFoodNutrition('rice')).rejects.toThrow();
+        await expect(lookupFoodNutrition('rice')).resolves.toMatchObject({
+            caloriesPer100g: 365,
+        });
     });
 });

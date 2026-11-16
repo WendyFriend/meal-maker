@@ -1,25 +1,29 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import IngredientThumbnail from './IngredientThumbnail';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import IngredientNutritionDetails from './IngredientNutritionDetails';
 import './IngredientNutritionContent.css';
 import type { MicronutrientEditor } from './MicronutrientList';
 import './NutritionOverview.css';
-import type { IngredientInfo } from '../../../shared/types/types';
+import type {
+    IngredientInfo,
+    MealIngredient,
+} from '../../../shared/types/types';
 import type { NutritionFieldId } from './NutritionField';
 import { useMicronutrientLookup } from '../../hooks/useMicronutrientLookup';
 import { micronutrientLookupKey } from '../../services/micronutrientService';
-import { loadMealGenerator } from '../../settings/mealGenerator';
 import {
     mergeIngredientNutrition,
     needsMacroNutrition,
 } from '../../utils/Ingredient';
 
 export type IngredientNutritionEditor = {
-    name: string;
+    /** With onNameChange, the name is editable; otherwise it stays a title. */
+    name?: string;
+    onNameChange?: (name: string) => void;
     showRequiredMarkers?: boolean;
     micronutrients?: MicronutrientEditor;
     values: Record<NutritionFieldId, string>;
-    onNameChange: (name: string) => void;
     onValueChange: (field: NutritionFieldId, value: string) => void;
     disabled?: boolean;
 };
@@ -27,7 +31,7 @@ export type IngredientNutritionEditor = {
 type IngredientNutritionContentProps = {
     ingredient: IngredientInfo & {
         weight?: number;
-        thumbnailSource?: 'nutrition-lab' | 'local';
+        thumbnailSource?: MealIngredient['thumbnailSource'];
     };
     onClose?: () => void;
     titleId?: string;
@@ -36,6 +40,14 @@ type IngredientNutritionContentProps = {
     variant?: 'page' | 'sheet';
     editor?: IngredientNutritionEditor;
     onNutritionResolved?: (ingredient: IngredientInfo) => void;
+    /** Shown beside the title, e.g. a small "Doesn't look right?" icon. */
+    titleAccessory?: ReactNode;
+    /** Shown under the title. */
+    titleFooter?: ReactNode;
+    /** Full-width content between the header and the nutrition facts. */
+    afterHeader?: ReactNode;
+    /** Shown at the end of the vitamins and minerals section. */
+    detailsFooter?: ReactNode;
 };
 
 const nutrients = [
@@ -84,11 +96,13 @@ export default function IngredientNutritionContent({
     variant = 'page',
     editor,
     onNutritionResolved,
+    titleAccessory,
+    titleFooter,
+    afterHeader,
+    detailsFooter,
 }: IngredientNutritionContentProps) {
     const lookupState = useMicronutrientLookup([ingredient], {
-        includeFoodSource:
-            loadMealGenerator() === 'nutrition-lab' &&
-            ingredient.thumbnailSource === undefined,
+        includeFoodSource: ingredient.thumbnailSource === undefined,
     });
     const lookup = lookupState.data[micronutrientLookupKey(ingredient.name)];
     const resolvedIngredient = lookup
@@ -224,6 +238,37 @@ export default function IngredientNutritionContent({
         );
     }
 
+    // Without onNameChange (the sheet), the matched food's name stays a title.
+    const titleHeading = editor?.onNameChange ? (
+        <>
+            {editor.showRequiredMarkers && (
+                <label className="ingredient-name-label" htmlFor={nameId}>
+                    Ingredient name{' '}
+                    <span
+                        className="ingredient-required-marker"
+                        aria-hidden="true"
+                    >
+                        *
+                    </span>
+                </label>
+            )}
+            <input
+                id={nameId}
+                className="ingredient-nutrition-name ingredient-inline-name"
+                aria-label="Ingredient name"
+                placeholder="e.g. chickpeas"
+                value={editor.name ?? ''}
+                onChange={(event) => editor.onNameChange?.(event.target.value)}
+                required
+                disabled={editor.disabled}
+            />
+        </>
+    ) : (
+        <Heading className="ingredient-nutrition-name" id={nameId}>
+            {nutritionName}
+        </Heading>
+    );
+
     return (
         <div
             className={`ingredient-nutrition-content${variant === 'sheet' ? ' ingredient-nutrition-content-sheet' : ''}`}
@@ -232,73 +277,20 @@ export default function IngredientNutritionContent({
                 <IngredientThumbnail
                     name={ingredient.name}
                     fdcId={source?.fdcId}
-                    source={ingredient.thumbnailSource}
                 />
                 <div className="ingredient-nutrition-title">
-                    {editor && variant === 'sheet' ? (
-                        <div className="ingredient-sheet-name-field">
-                            <Heading
-                                className="ingredient-nutrition-name ingredient-sheet-name-measure"
-                                aria-hidden="true"
-                            >
-                                {editor.name || '\u00a0'}
-                            </Heading>
-                            <textarea
-                                id={nameId}
-                                className="ingredient-nutrition-name ingredient-inline-name ingredient-sheet-name-editor"
-                                aria-label="Ingredient name"
-                                rows={1}
-                                value={editor.name}
-                                required
-                                disabled={editor.disabled}
-                                onChange={(event) =>
-                                    editor.onNameChange(
-                                        event.target.value.replace(/\n/g, ' '),
-                                    )
-                                }
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter')
-                                        event.preventDefault();
-                                }}
-                            />
+                    {titleAccessory ? (
+                        <div className="ingredient-nutrition-name-row">
+                            {titleHeading}
+                            {/* A word joiner keeps the action on the
+                                title's last line. */}
+                            {'\u2060'}
+                            {titleAccessory}
                         </div>
-                    ) : editor ? (
-                        <>
-                            {editor.showRequiredMarkers && (
-                                <label
-                                    className="ingredient-name-label"
-                                    htmlFor={nameId}
-                                >
-                                    Ingredient name{' '}
-                                    <span
-                                        className="ingredient-required-marker"
-                                        aria-hidden="true"
-                                    >
-                                        *
-                                    </span>
-                                </label>
-                            )}
-                            <input
-                                id={nameId}
-                                className="ingredient-nutrition-name ingredient-inline-name"
-                                aria-label="Ingredient name"
-                                placeholder="e.g. chickpeas"
-                                value={editor.name}
-                                onChange={(event) =>
-                                    editor.onNameChange(event.target.value)
-                                }
-                                required
-                                disabled={editor.disabled}
-                            />
-                        </>
                     ) : (
-                        <Heading
-                            className="ingredient-nutrition-name"
-                            id={nameId}
-                        >
-                            {nutritionName}
-                        </Heading>
+                        titleHeading
                     )}
+                    {titleFooter}
                 </div>
                 {headerAction}
                 {onClose && (
@@ -314,9 +306,15 @@ export default function IngredientNutritionContent({
                     </button>
                 )}
             </header>
+            {afterHeader}
 
             {lookupState.loading && needsNutritionLookup ? (
-                <div className="ingredient-nutrition-lookup" role="status">
+                <div
+                    className="ingredient-nutrition-lookup"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <LoadingSpinner size="small" />
                     <span>Looking up {ingredient.name}…</span>
                 </div>
             ) : (
@@ -554,6 +552,7 @@ export default function IngredientNutritionContent({
                         ingredient={resolvedIngredient}
                         lookupState={lookupState}
                         micronutrientEditor={editor?.micronutrients}
+                        footer={detailsFooter}
                     />
                 </>
             )}

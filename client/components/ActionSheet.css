@@ -1,0 +1,139 @@
+/* Shared bottom action sheet (Add Ingredient, Add Meal): warm theme, title
+   with a close ✕, and a list of options with an icon and chevron. */
+.action-sheet.sliding-sheet {
+    --text-muted: #806c60;
+    --sheet-orange: #f5a623;
+    --sheet-orange-soft: #ffe3a3;
+    --sheet-orange-pressed: #ffc58f;
+    --sheet-orange-ink: #7a3e00;
+    --sheet-ink: #35271d;
+    --sheet-line: #efddcf;
+    --sheet-error-bg: #fff0e8;
+    --sheet-error-ink: #a1432e;
+
+    max-width: 440px;
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+    background: var(--warm-cream);
+    color: var(--sheet-ink);
+}
+
+.action-sheet .sliding-sheet-header {
+    padding-top: 4px;
+    margin-bottom: 16px;
+}
+
+.action-sheet .sliding-sheet-handle {
+    display: none;
+}
+
+.action-sheet-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 46px;
+}
+
+.action-sheet-heading h2 {
+    margin: 0;
+    color: var(--sheet-ink);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.action-sheet-heading > button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--sheet-ink);
+    font: inherit;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.action-sheet-options {
+    overflow: hidden;
+    padding: 0 14px;
+    border: 1px solid var(--sheet-line);
+    border-radius: 20px;
+    background: var(--surface);
+}
+
+.action-sheet-options > button {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 82px;
+    padding: 10px 0;
+    border: 0;
+    border-bottom: 1px solid var(--sheet-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--sheet-ink);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        transform 140ms ease,
+        background-color 140ms ease,
+        color 140ms ease;
+}
+
+.action-sheet-options > button:last-child {
+    border-bottom: 0;
+}
+
+@media (hover: hover) {
+    .action-sheet-options > button:hover {
+        background: color-mix(
+            in srgb,
+            var(--sheet-orange-soft) 70%,
+            var(--surface)
+        );
+    }
+}
+
+.action-sheet-options > button:active {
+    transform: scale(0.99);
+    background: color-mix(in srgb, var(--sheet-orange-pressed) 28%, white);
+}
+
+.action-sheet-options > button:focus-visible {
+    background: var(--sheet-orange-soft);
+}
+
+.action-sheet-option-icon {
+    display: grid;
+    flex: 0 0 46px;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--sheet-orange-soft) 56%, white);
+    color: var(--sheet-orange-ink);
+}
+
+.action-sheet-option-icon svg {
+    width: 26px;
+    height: 26px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.action-sheet-option-chevron {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 24px;
+    font-weight: 400;
+}

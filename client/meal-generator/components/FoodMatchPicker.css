@@ -1,0 +1,145 @@
+.food-match-picker {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.food-match-picker-title {
+    margin: 0;
+    color: var(--text-h);
+    font: 700 22px/1.25 var(--heading);
+    letter-spacing: inherit;
+}
+
+.food-match-picker-hint {
+    margin: calc(-1 * var(--space-2)) 0 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.food-match-picker-search {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 16px;
+}
+
+.food-match-picker-search:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.food-match-picker-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.food-match-picker-retry {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.food-match-picker-results {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.food-match-picker-results li + li {
+    border-top: 1px solid var(--border-hairline);
+}
+
+.food-match-picker-results button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.food-match-picker-results button:disabled {
+    cursor: default;
+}
+
+.food-match-picker-results button:disabled .food-match-picker-text {
+    opacity: 0.5;
+}
+
+.food-match-picker-results button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+}
+
+.food-match-picker-results .meal-ingredient-thumbnail {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+}
+
+.food-match-picker-text {
+    display: grid;
+    flex: 1;
+    gap: 2px;
+    min-width: 0;
+}
+
+.food-match-picker-name {
+    font-size: 16px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.food-match-picker-meta {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.food-match-picker-current {
+    display: inline-grid;
+    flex: 0 0 auto;
+    color: var(--accent);
+}
+
+.food-match-picker-current svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.food-match-picker-notice {
+    margin: 0;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.food-match-picker-notice-error {
+    color: var(--danger);
+}

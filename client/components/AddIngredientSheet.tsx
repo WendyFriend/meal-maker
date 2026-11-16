@@ -11,6 +11,12 @@ import IngredientThumbnail from '../meal-generator/components/IngredientThumbnai
 import { commonQuickAddIngredients } from '../meal-generator/components/commonQuickAddIngredients';
 import { normalizeIngredientName } from '../utils/Ingredient';
 import SlidingSheet from './SlidingSheet';
+import {
+    ActionSheetHeading,
+    ActionSheetIcon,
+    ActionSheetOptions,
+    type ActionSheetSymbol,
+} from './ActionSheet';
 import CheckIcon from './CheckIcon';
 import ActionToast from './ActionToast';
 import LoadingSpinner from './LoadingSpinner';
@@ -22,7 +28,7 @@ import './AddIngredientSheet.css';
 
 type Option = 'search' | 'photo' | 'scan' | 'manual';
 
-const options: { id: Option; label: string; symbol: string }[] = [
+const options: { id: Option; label: string; symbol: ActionSheetSymbol }[] = [
     { id: 'search', label: 'Search from database', symbol: 'search' },
     { id: 'photo', label: 'Take a photo', symbol: 'camera' },
     { id: 'scan', label: 'Scan nutrition label', symbol: 'scan' },
@@ -43,39 +49,6 @@ const commonFoods: SearchOption[] = Object.values(commonQuickAddIngredients)
         name: ingredient.name,
         ingredient,
     }));
-
-function OptionIcon({ symbol }: { symbol: string }) {
-    const path = {
-        search: (
-            <>
-                <circle cx="10.5" cy="10.5" r="6.5" />
-                <path d="m15.5 15.5 5 5" />
-            </>
-        ),
-        camera: (
-            <>
-                <path d="M3 8h4l2-3h6l2 3h4v11H3z" />
-                <circle cx="12" cy="13.5" r="3.2" />
-            </>
-        ),
-        scan: (
-            <>
-                <path d="M4 8V5h4m8 0h4v3M4 16v3h4m8 0h4v-3M8 10h8m-8 4h8" />
-            </>
-        ),
-        edit: (
-            <>
-                <path d="m4 20 4.4-1 11-11a2 2 0 0 0-2.8-2.8l-11 11L4 20Z" />
-                <path d="m14.7 7.3 2.8 2.8" />
-            </>
-        ),
-    }[symbol];
-    return (
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            {path}
-        </svg>
-    );
-}
 
 export default function AddIngredientSheet({
     onClose,
@@ -275,7 +248,7 @@ export default function AddIngredientSheet({
             });
             setToast({
                 id: ++nextToastId.current,
-                message: `${name} added`,
+                message: `${name} added.`,
                 operation: 'add',
             });
         } catch (cause) {
@@ -308,7 +281,7 @@ export default function AddIngredientSheet({
             });
             setToast({
                 id: ++nextToastId.current,
-                message: `${name} removed`,
+                message: `${name} removed.`,
                 operation: 'remove',
             });
         } catch (cause) {
@@ -346,26 +319,20 @@ export default function AddIngredientSheet({
 
     return (
         <SlidingSheet
-            className={`add-ingredient-sheet${searching ? ' add-ingredient-sheet-search' : ''}`}
+            className={`action-sheet add-ingredient-sheet${searching ? ' add-ingredient-sheet-search' : ''}`}
             labelledBy="add-ingredient-sheet-title"
             onClose={onClose}
             header={
-                <div className="add-ingredient-sheet-heading">
-                    <h2 id="add-ingredient-sheet-title">
-                        {searching ? 'Search ingredients' : 'Add Ingredient'}
-                    </h2>
-                    <button
-                        type="button"
-                        aria-label={
-                            searching
-                                ? 'Close ingredient search'
-                                : 'Close add ingredient'
-                        }
-                        onClick={onClose}
-                    >
-                        ×
-                    </button>
-                </div>
+                <ActionSheetHeading
+                    id="add-ingredient-sheet-title"
+                    title={searching ? 'Search ingredients' : 'Add Ingredient'}
+                    closeLabel={
+                        searching
+                            ? 'Close ingredient search'
+                            : 'Close add ingredient'
+                    }
+                    onClose={onClose}
+                />
             }
         >
             {searching ? (
@@ -376,7 +343,7 @@ export default function AddIngredientSheet({
                                 className="add-ingredient-database-search-icon"
                                 aria-hidden="true"
                             >
-                                <OptionIcon symbol="search" />
+                                <ActionSheetIcon symbol="search" />
                             </span>
                             <input
                                 ref={inputRef}
@@ -436,7 +403,6 @@ export default function AddIngredientSheet({
                                             option.ingredient?.nutritionSource
                                                 ?.fdcId
                                         }
-                                        source="nutrition-lab"
                                     />
                                     <span className="add-ingredient-database-name">
                                         {name}
@@ -577,26 +543,7 @@ export default function AddIngredientSheet({
                     )}
                 </div>
             ) : (
-                <div className="add-ingredient-options">
-                    {options.map(({ id, label, symbol }) => (
-                        <button
-                            key={id}
-                            type="button"
-                            onClick={() => choose(id)}
-                        >
-                            <span className="add-ingredient-option-icon">
-                                <OptionIcon symbol={symbol} />
-                            </span>
-                            <span>{label}</span>
-                            <span
-                                className="add-ingredient-option-chevron"
-                                aria-hidden="true"
-                            >
-                                ›
-                            </span>
-                        </button>
-                    ))}
-                </div>
+                <ActionSheetOptions options={options} onChoose={choose} />
             )}
         </SlidingSheet>
     );

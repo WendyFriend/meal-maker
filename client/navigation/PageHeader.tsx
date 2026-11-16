@@ -1,9 +1,10 @@
 import type { Ref } from 'react';
 import Brand from '../components/Brand';
 import EditIcon from '../components/EditIcon';
-import CheckIcon from '../components/CheckIcon';
-import CloseIcon from '../components/CloseIcon';
-import LoadingSpinner from '../components/LoadingSpinner';
+import {
+    CancelButton,
+    ConfirmButton,
+} from '../components/ConfirmCancelButtons';
 import { pageConfig, type Page } from './pages';
 
 type PageHeaderProps = {
@@ -36,72 +37,73 @@ export default function PageHeader({
     showMenu = true,
 }: PageHeaderProps) {
     const config = pageConfig[currentPage];
-    if (currentPage === 'recipe-detail' && editor) {
+    // Renaming a recipe or plan meal confirms from the header, like an iOS navigation bar,
+    // so the name field keeps the heading's width.
+    if (
+        (currentPage === 'recipe-detail' ||
+            currentPage === 'plan-meal-detail') &&
+        editor
+    ) {
         return (
-            <header className="page-header page-header-create-recipe">
+            <header className="page-header page-header-create-recipe page-header-name-edit">
                 <div className="page-header-inner">
-                    <button
-                        key="cancel-recipe-edit"
+                    <CancelButton
+                        key="cancel-name-edit"
                         type="reset"
                         form={editor.formId}
-                        className="page-header-create-cancel"
                         disabled={editor.saving}
-                        aria-label="Cancel editing"
-                        title="Cancel editing"
-                    >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 5 19 19M19 5 5 19" />
-                        </svg>
-                    </button>
-                    <span className="page-header-create-title">
-                        Edit Recipe
-                    </span>
-                    <button
-                        key="save-recipe-edit"
+                        label="Cancel name changes"
+                        title="Cancel changes"
+                    />
+                    <span className="page-header-create-title">Edit Name</span>
+                    <ConfirmButton
+                        key="save-name-edit"
                         type="submit"
                         form={editor.formId}
-                        className="page-header-create-save"
                         disabled={editor.saving}
-                        aria-label={editor.saving ? 'Saving meal' : 'Save meal'}
-                        title={editor.saving ? 'Saving meal' : 'Save meal'}
-                    >
-                        {editor.saving ? (
-                            <LoadingSpinner size="small" tone="inherit" />
-                        ) : (
-                            <CheckIcon />
-                        )}
-                    </button>
+                        busy={editor.saving}
+                        label={
+                            editor.saving
+                                ? 'Saving name changes'
+                                : 'Save name changes'
+                        }
+                        title="Save changes"
+                    />
                 </div>
             </header>
         );
     }
-    if (currentPage === 'create-recipe') {
+    // Create Recipe and Add Meal share the same form page and header.
+    const createForm =
+        currentPage === 'create-recipe'
+            ? {
+                  formId: 'create-recipe-form',
+                  cancelLabel: 'Cancel creating recipe',
+                  saveLabel: 'Save recipe',
+              }
+            : currentPage === 'add-meal'
+              ? {
+                    formId: 'add-meal-form',
+                    cancelLabel: 'Cancel adding meal',
+                    saveLabel: 'Save meal',
+                }
+              : undefined;
+    if (createForm) {
         return (
             <header className="page-header page-header-create-recipe">
                 <div className="page-header-inner">
-                    <button
-                        type="button"
-                        className="page-header-create-cancel"
+                    <CancelButton
                         onClick={onBack}
-                        aria-label="Cancel creating recipe"
-                        title="Cancel creating recipe"
-                    >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 5 19 19M19 5 5 19" />
-                        </svg>
-                    </button>
+                        label={createForm.cancelLabel}
+                    />
                     <span className="page-header-create-title">
-                        Create Recipe
+                        {config.title}
                     </span>
-                    <button
+                    <ConfirmButton
                         type="submit"
-                        form="create-recipe-form"
-                        className="page-header-create-save"
-                        aria-label="Save recipe"
-                        title="Save recipe"
-                    >
-                        <CheckIcon />
-                    </button>
+                        form={createForm.formId}
+                        label={createForm.saveLabel}
+                    />
                 </div>
             </header>
         );
@@ -112,16 +114,13 @@ export default function PageHeader({
         >
             <div className="page-header-inner">
                 {editor ? (
-                    <button
+                    <CancelButton
                         type="reset"
                         form={editor.formId}
-                        className="page-header-back page-header-edit-action"
+                        className="page-header-cancel"
                         disabled={editor.saving}
-                        aria-label="Cancel editing"
-                        title="Cancel editing"
-                    >
-                        <CloseIcon />
-                    </button>
+                        label="Cancel editing"
+                    />
                 ) : (
                     config.type !== 'main' && (
                         <button
@@ -139,21 +138,20 @@ export default function PageHeader({
                 <Brand className="page-header-brand" />
 
                 {editor ? (
-                    <button
+                    <ConfirmButton
                         key="save-detail"
                         type="submit"
                         form={editor.formId}
-                        className="page-header-back page-header-edit-action page-header-save"
+                        className="page-header-confirm"
                         disabled={editor.saving}
-                        aria-label={
+                        busy={editor.saving}
+                        label={
                             editor.saving
                                 ? 'Saving changes'
                                 : `Save ${editor.subject}`
                         }
                         title={`Save ${editor.subject}`}
-                    >
-                        <CheckIcon />
-                    </button>
+                    />
                 ) : onEdit ? (
                     <button
                         key="edit-detail"
@@ -185,7 +183,8 @@ export default function PageHeader({
                         </span>
                     </button>
                 ) : config.type !== 'main' &&
-                  currentPage !== 'recipe-detail' ? (
+                  currentPage !== 'recipe-detail' &&
+                  currentPage !== 'plan-meal-detail' ? (
                     <div className="page-header-actions">
                         <button
                             type="button"

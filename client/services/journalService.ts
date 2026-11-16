@@ -57,6 +57,7 @@ export async function reorderJournalEntries(
 }
 export async function saveJournalEntry(
     entry: JournalEntryInput,
+    source?: symbol,
 ): Promise<JournalEntry> {
     const timestamp = new Date(entry.eatenAt);
     const ingredients = entry.ingredients.filter(
@@ -90,13 +91,14 @@ export async function saveJournalEntry(
         .select()
         .single();
     if (error) throw error;
-    notifyJournalChanged();
+    notifyJournalChanged(source);
     return toEntry(data as JournalRow);
 }
 
 export async function updateJournalEntryIngredients(
     id: string,
     ingredients: JournalEntry['ingredients'],
+    source?: symbol,
 ): Promise<JournalEntry> {
     if (
         !id ||
@@ -121,11 +123,33 @@ export async function updateJournalEntryIngredients(
         .select()
         .single();
     if (error) throw error;
-    notifyJournalChanged();
+    notifyJournalChanged(source);
     return toEntry(data as JournalRow);
 }
 
-export async function deleteJournalEntry(id: string): Promise<void> {
+/** Renames a plan meal; its ingredients are unchanged. */
+export async function updateJournalEntryName(
+    id: string,
+    mealName: string,
+    source?: symbol,
+): Promise<JournalEntry> {
+    const name = mealName.trim();
+    if (!id || !name) throw new Error('Enter a meal name.');
+    const { data, error } = await supabase
+        .from('journal_entries')
+        .update({ meal_name: name })
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    notifyJournalChanged(source);
+    return toEntry(data as JournalRow);
+}
+
+export async function deleteJournalEntry(
+    id: string,
+    source?: symbol,
+): Promise<void> {
     const { error } = await supabase
         .from('journal_entries')
         .delete()
@@ -133,5 +157,5 @@ export async function deleteJournalEntry(id: string): Promise<void> {
         .select('id')
         .single();
     if (error) throw error;
-    notifyJournalChanged();
+    notifyJournalChanged(source);
 }

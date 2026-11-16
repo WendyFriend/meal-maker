@@ -1,21 +1,9 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    handleGenerateMealRequest,
-    parseMealGenerator,
-} from './handleGenerateMealRequest.js';
+import { handleGenerateMealRequest } from './handleGenerateMealRequest.js';
 import { MICRONUTRIENTS } from '../../shared/micronutrients.js';
 import type { UserIngredient } from '../../shared/types/types.js';
 import { generateMealWithNutritionLab } from './algorithms/generateMealNutritionLab.js';
-
-describe('parseMealGenerator', () => {
-    it('defaults to Nutrition Lab, accepts known values and rejects others', () => {
-        expect(parseMealGenerator(undefined)).toBe('nutrition-lab');
-        expect(parseMealGenerator('nutrition-lab')).toBe('nutrition-lab');
-        expect(parseMealGenerator(['ollama'])).toBe('ollama');
-        expect(parseMealGenerator('gpt')).toBeUndefined();
-    });
-});
 
 describe('generateMealWithNutritionLab', () => {
     beforeEach(() => {
@@ -90,10 +78,10 @@ describe('generateMealWithNutritionLab', () => {
             );
         });
         vi.stubGlobal('fetch', fetchMock);
-        const result = await handleGenerateMealRequest(
-            { ingredients: [{ name: 'rice' }], requirements: {} },
-            'nutrition-lab',
-        );
+        const result = await handleGenerateMealRequest({
+            ingredients: [{ name: 'rice' }],
+            requirements: {},
+        });
         expect(result.status).toBe(200);
         expect(result.body).toMatchObject({
             ingredients: [{ thumbnailSource: 'nutrition-lab' }],
@@ -115,72 +103,6 @@ describe('generateMealWithNutritionLab', () => {
                 String(url).startsWith('https://example.test/api/v1/'),
             ),
         ).toBe(true);
-    });
-
-    it('keeps Ollama on USDA when both providers are configured', async () => {
-        vi.stubEnv('USDA_API_KEY', 'usda_test');
-        vi.stubEnv('OLLAMA_API_KEY', 'ollama_test');
-        vi.stubEnv('OLLAMA_MODEL', 'test-model');
-        const meal = {
-            mealName: 'Rice bowl',
-            instructions: ['Serve.'],
-            ingredients: [
-                {
-                    name: 'rice',
-                    weight: 100,
-                    caloriesPer100g: 365,
-                    proteinPer100g: 7,
-                    carbohydratePer100g: 80,
-                    fatPer100g: 1,
-                },
-            ],
-        };
-        const fetchMock = vi.fn<typeof fetch>(
-            async (url) =>
-                new Response(
-                    JSON.stringify(
-                        String(url).startsWith('https://api.nal.usda.gov/')
-                            ? {
-                                  foods: [
-                                      {
-                                          fdcId: 169756,
-                                          description: 'Rice, raw',
-                                          foodNutrients: [],
-                                      },
-                                  ],
-                              }
-                            : {
-                                  choices: [
-                                      {
-                                          message: {
-                                              content: JSON.stringify(meal),
-                                          },
-                                      },
-                                  ],
-                              },
-                    ),
-                ),
-        );
-        vi.stubGlobal('fetch', fetchMock);
-        vi.spyOn(console, 'log').mockImplementation(() => {});
-        const result = await handleGenerateMealRequest(
-            { ingredients: [{ name: 'rice' }], requirements: {} },
-            'ollama',
-        );
-        expect(result.status).toBe(200);
-        expect(result.serverTiming).toMatch(/usda;dur=\d+\.\d/);
-        expect(result.body).toMatchObject({
-            ingredients: [{ thumbnailSource: 'local' }],
-        });
-        expect(result.serverTiming).toMatch(/ollama;dur=\d+\.\d/);
-        expect(result.serverTiming).toMatch(/generation;dur=\d+\.\d/);
-        expect(fetchMock).toHaveBeenCalledTimes(2);
-        expect(String(fetchMock.mock.calls[0][0])).toContain(
-            'https://api.nal.usda.gov/',
-        );
-        expect(fetchMock.mock.calls[1][0]).toBe(
-            'https://ollama.com/v1/chat/completions',
-        );
     });
 
     it('sends saved macros directly without a food id and maps the returned nutrition', async () => {
@@ -493,13 +415,10 @@ describe('generateMealWithNutritionLab', () => {
             carbohydratePer100g: 66,
             fatPer100g: 7,
         };
-        await handleGenerateMealRequest(
-            {
-                ingredients: [{ name: 'chicken and rice' }, savedOats],
-                requirements: {},
-            },
-            'nutrition-lab',
-        );
+        await handleGenerateMealRequest({
+            ingredients: [{ name: 'chicken and rice' }, savedOats],
+            requirements: {},
+        });
 
         expect(calls.filter((path) => path === '/parse')).toHaveLength(1);
         expect(
@@ -575,22 +494,19 @@ describe('generateMealWithNutritionLab', () => {
             }),
         );
 
-        await handleGenerateMealRequest(
-            {
-                ingredients: [
-                    {
-                        name: 'tomato',
-                        caloriesPer100g: 18,
-                        proteinPer100g: 1,
-                        carbohydratePer100g: 4,
-                        fatPer100g: 0.2,
-                    },
-                    { name: 'kale' },
-                ],
-                requirements: {},
-            },
-            'nutrition-lab',
-        );
+        await handleGenerateMealRequest({
+            ingredients: [
+                {
+                    name: 'tomato',
+                    caloriesPer100g: 18,
+                    proteinPer100g: 1,
+                    carbohydratePer100g: 4,
+                    fatPer100g: 0.2,
+                },
+                { name: 'kale' },
+            ],
+            requirements: {},
+        });
 
         // Only the ingredient without nutrition is parsed and looked up.
         expect(paths.filter((path) => path === '/parse')).toHaveLength(1);

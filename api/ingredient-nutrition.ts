@@ -7,10 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
     try {
-        const result = await handleIngredientNutrition(
-            req.body,
-            req.headers['x-meal-generator'],
-        );
+        const result = await handleIngredientNutrition(req.body);
         res.status(result.status).json(result.body);
     } catch (error) {
         console.error('Ingredient nutrition lookup failed:', error);

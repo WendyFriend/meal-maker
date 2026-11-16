@@ -119,11 +119,13 @@ describe('meal result detail layout', () => {
         await waitFor(() =>
             expect(onSavedRecipesChange).toHaveBeenCalledOnce(),
         );
-        const feedback = await screen.findByRole('dialog', {
-            name: 'Saved to My Recipes',
+        const feedback = await screen.findByRole('status');
+        expect(feedback).toHaveTextContent('Saved to My Recipes.');
+        expect(feedback).toHaveClass('action-toast--floating');
+        expect(feedback).toHaveStyle({
+            '--action-toast-background': '#fff',
+            '--action-toast-icon': '#27813a',
         });
-        expect(feedback).toHaveTextContent('Saved to My Recipes');
-        fireEvent.click(feedback);
         fireEvent.click(
             screen.getByRole('button', { name: 'Remove this meal from saved' }),
         );

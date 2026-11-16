@@ -37,23 +37,6 @@
     fill: currentColor;
     stroke: none;
 }
-.nutrition-info-popover {
-    visibility: hidden;
-    position: fixed;
-    inset: auto;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 14px 16px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    border: 1px solid var(--border-hairline);
-    border-radius: 12px;
-    background: var(--surface-tint);
-    color: var(--text);
-    font: inherit;
-    text-align: left;
-    box-shadow: var(--shadow-md);
-}
 .nutrition-info-popover .ingredient-details-note {
     font-size: 13px;
     line-height: 1.6;

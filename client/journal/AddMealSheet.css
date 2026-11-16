@@ -1,0 +1,137 @@
+.add-meal-sheet-recipes.sliding-sheet {
+    display: flex;
+    max-height: min(85dvh, 760px);
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.add-meal-sheet-recipes .sliding-sheet-header {
+    flex: none;
+}
+
+.add-meal-recipes {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    padding: 0 14px;
+    overflow-y: auto;
+    border: 1px solid var(--sheet-line);
+    border-radius: 20px;
+    background: var(--surface);
+    list-style: none;
+    overscroll-behavior: contain;
+}
+
+.add-meal-recipes li + li {
+    border-top: 1px solid var(--sheet-line);
+}
+
+.add-meal-recipes button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 0;
+    border: 0;
+    background: transparent;
+    color: var(--sheet-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.add-meal-recipes button:disabled {
+    cursor: default;
+}
+
+.add-meal-recipes button:disabled:not([aria-busy]) {
+    opacity: 0.55;
+}
+
+.add-meal-recipes button:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -2px;
+}
+
+.add-meal-recipes img {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.add-meal-recipe-info {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+}
+
+.add-meal-recipe-info strong {
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.add-meal-recipe-info small {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.add-meal-recipe-plus {
+    display: grid;
+    flex: 0 0 32px;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--sheet-orange-soft) 56%, white);
+    color: var(--sheet-orange-ink);
+    font-size: 22px;
+    line-height: 1;
+}
+
+@media (hover: hover) {
+    .add-meal-recipes button:not(:disabled):hover .add-meal-recipe-plus {
+        background: var(--sheet-orange-soft);
+    }
+}
+
+.add-meal-recipes-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 28px 12px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.add-meal-recipes-message p {
+    margin: 0;
+}
+
+.add-meal-recipes-message button {
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--sheet-orange-soft);
+    color: var(--sheet-orange-ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.add-meal-recipes-error {
+    margin: 0 0 10px;
+    color: var(--sheet-error-ink);
+    font-size: 13px;
+}

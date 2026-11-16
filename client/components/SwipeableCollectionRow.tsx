@@ -1,11 +1,4 @@
-import {
-    useEffect,
-    useRef,
-    useState,
-    type PointerEvent,
-    type ReactNode,
-} from 'react';
-import LoadingSpinner from './LoadingSpinner';
+import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
 import './SwipeableCollectionRow.css';
 
 const REVEAL_WIDTH = 80;
@@ -33,13 +26,13 @@ export default function SwipeableCollectionRow({
     open: boolean;
     onOpen: () => void;
     onClose: () => void;
-    onDelete: () => Promise<boolean>;
+    /** Removes the row at once (see useUndoableDelete); it animates out. */
+    onDelete: () => void;
 }) {
     const gesture = useRef<Gesture | null>(null);
     const rowRef = useRef<HTMLDivElement>(null);
     const suppressClick = useRef(false);
     const removeButton = useRef<HTMLButtonElement>(null);
-    const [pending, setPending] = useState(false);
 
     useEffect(() => {
         if (!enabled || !open) return;
@@ -69,7 +62,7 @@ export default function SwipeableCollectionRow({
         if (!current || event.pointerId !== current.pointerId) return;
         gesture.current = null;
         event.currentTarget.removeAttribute('data-dragging');
-        event.currentTarget.style.removeProperty('--swipe-offset');
+        rowRef.current?.style.removeProperty('--swipe-offset');
         if (!current.dragging) return;
         if (event.currentTarget.hasPointerCapture?.(event.pointerId))
             event.currentTarget.releasePointerCapture(event.pointerId);
@@ -82,24 +75,12 @@ export default function SwipeableCollectionRow({
         }, 0);
     }
 
-    async function remove() {
-        if (pending) return;
-        setPending(true);
-        try {
-            const removed = await onDelete();
-            if (removed) onClose();
-        } finally {
-            setPending(false);
-        }
-    }
-
     return (
         <div
             ref={rowRef}
             className="saved-collection-swipe"
             data-open={enabled && open}
             data-enabled={enabled}
-            aria-busy={pending}
             tabIndex={enabled ? 0 : -1}
             aria-label={
                 enabled
@@ -107,7 +88,7 @@ export default function SwipeableCollectionRow({
                     : undefined
             }
             onKeyDown={(event) => {
-                if (!enabled || pending) return;
+                if (!enabled) return;
                 if (event.key === 'Escape' || event.key === 'ArrowRight') {
                     onClose();
                     return;
@@ -130,21 +111,17 @@ export default function SwipeableCollectionRow({
                 title={`Delete ${name}`}
                 aria-hidden={!enabled || !open}
                 tabIndex={enabled && open ? 0 : -1}
-                disabled={!enabled || pending}
-                onClick={() => void remove()}
+                disabled={!enabled}
+                onClick={onDelete}
             >
-                {pending ? (
-                    <LoadingSpinner size="small" tone="inherit" />
-                ) : (
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="m6 6 12 12M18 6 6 18" />
-                    </svg>
-                )}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v6m4-6v6" />
+                </svg>
             </button>
             <div
                 className="saved-collection-swipe-content"
                 onPointerDown={(event) => {
-                    if (!enabled || pending) return;
+                    if (!enabled) return;
                     if (event.pointerType === 'mouse' && event.button !== 0)
                         return;
                     gesture.current = {
@@ -159,6 +136,10 @@ export default function SwipeableCollectionRow({
                     const current = gesture.current;
                     if (!current || event.pointerId !== current.pointerId)
                         return;
+                    if (!enabled) {
+                        gesture.current = null;
+                        return;
+                    }
                     const dx = event.clientX - current.startX;
                     const dy = event.clientY - current.startY;
                     if (!current.dragging) {
@@ -177,7 +158,8 @@ export default function SwipeableCollectionRow({
                         );
                     }
                     event.preventDefault();
-                    event.currentTarget.style.setProperty(
+                    // Set on the row so the Delete button can match the reveal.
+                    rowRef.current?.style.setProperty(
                         '--swipe-offset',
                         `${offset(event, current)}px`,
                     );

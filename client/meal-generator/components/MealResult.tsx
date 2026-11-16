@@ -16,13 +16,15 @@ import './MealResult.css';
 import LogMealButton, {
     type JournalControl,
 } from '../../journal/LogMealButton';
-import ActionFeedback from '../../components/ActionFeedback';
+import ActionToast from '../../components/ActionToast';
+import { successToastColors } from '../../components/actionToastColors';
 import ResetIcon from '../../components/ResetIcon';
 import type {
     GenerateMealResponse,
     IngredientInfo,
 } from '../../../shared/types/types';
 import NutritionOverview from './NutritionOverview';
+import { DetailTabPanel, DetailTabs } from '../../components/DetailTabs';
 import MealMicronutrients from './MealMicronutrients';
 import MealInstructions, { type InstructionEditor } from './MealInstructions';
 import SwipeableIngredientRow from './SwipeableIngredientRow';
@@ -44,19 +46,20 @@ type MealResultProps = {
     instructionEditor?: InstructionEditor;
     journalControl?: JournalControl;
     showJournalButton?: boolean;
-    reserveHeaderActionSpace?: boolean;
     onNameChange?: (name: string) => void;
     onNameEdit?: () => void;
+    nameEditDisabled?: boolean;
     onIngredientsEdit?: () => void;
     onStepsEdit?: () => void;
-    nameActions?: ReactNode;
+    /** The form whose header ✕/✓ cancel or save the name. */
+    nameFormId?: string;
     ingredientActions?: ReactNode;
     ingredientEditing?: boolean;
     ingredientFeedback?: IngredientSectionFeedback;
     stepsActions?: ReactNode;
     ingredientComposer?: ReactNode;
     onRemoveIngredient?: (index: number) => void;
-    showIngredientChevron?: boolean;
+    showIngredientChevron?: boolean | 'space';
     nutritionLookingUpIndices?: ReadonlySet<number>;
     onIngredientNutritionResolved?: (
         index: number,
@@ -66,11 +69,17 @@ type MealResultProps = {
     onSavedRecipesChange?: () => void;
     onAuthRequired?: (action: 'save-meal' | 'my-day') => boolean;
     creating?: boolean;
+    /** "card" raises the overview, as on detail and create pages. */
+    summaryVariant?: 'band' | 'card';
     showPartialNutrition?: boolean;
 };
 
-const detailTabs = ['ingredients', 'nutrients', 'steps'] as const;
-type DetailTab = (typeof detailTabs)[number];
+const detailTabs = [
+    { id: 'ingredients', label: 'Ingredients' },
+    { id: 'nutrients', label: 'Key Nutrients' },
+    { id: 'steps', label: 'Steps' },
+] as const;
+type DetailTab = (typeof detailTabs)[number]['id'];
 
 export default function MealResult({
     meal,
@@ -81,12 +90,12 @@ export default function MealResult({
     instructionEditor,
     journalControl,
     showJournalButton = true,
-    reserveHeaderActionSpace = false,
     onNameChange,
     onNameEdit,
+    nameEditDisabled = false,
     onIngredientsEdit,
     onStepsEdit,
-    nameActions,
+    nameFormId,
     ingredientActions,
     ingredientEditing = false,
     ingredientFeedback,
@@ -100,6 +109,7 @@ export default function MealResult({
     onSavedRecipesChange,
     onAuthRequired,
     creating = false,
+    summaryVariant = 'band',
     showPartialNutrition = false,
 }: MealResultProps) {
     const nutritionIngredients = useMemo(
@@ -124,17 +134,47 @@ export default function MealResult({
         nutritionIngredients.length > 0;
     const [activeTab, setActiveTab] = useState<DetailTab>('ingredients');
     const tabBaseId = useId();
-    const ingredientsTabRef = useRef<HTMLButtonElement>(null);
-    const nutrientsTabRef = useRef<HTMLButtonElement>(null);
-    const stepsTabRef = useRef<HTMLButtonElement>(null);
-    const nameInputRef = useRef<HTMLInputElement>(null);
+    const nameInputRef = useRef<HTMLTextAreaElement>(null);
     const showAllSections =
         instructionEditor?.editing === true && !stepsActions;
     const editingName = Boolean(onNameChange);
 
     useLayoutEffect(() => {
-        if (editingName) nameInputRef.current?.focus({ preventScroll: true });
+        const input = nameInputRef.current;
+        if (!editingName || !input) return;
+        input.focus({ preventScroll: true });
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
     }, [editingName]);
+
+    // The name field grows with its text, wrapping exactly like the heading.
+    useLayoutEffect(() => {
+        const input = nameInputRef.current;
+        if (!editingName || !input) return;
+        const fit = () => {
+            input.style.height = 'auto';
+            // scrollHeight is rounded; size by whole lines so the field is
+            // exactly as tall as the heading it replaces.
+            const style = getComputedStyle(input);
+            const lineHeight = parseFloat(style.lineHeight);
+            const padding =
+                parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+            const lines = Math.max(
+                1,
+                Math.round((input.scrollHeight - padding) / lineHeight),
+            );
+            input.style.height = Number.isFinite(lines * lineHeight)
+                ? `${lines * lineHeight + padding}px`
+                : `${input.scrollHeight}px`;
+        };
+        fit();
+        const observer =
+            typeof ResizeObserver === 'undefined'
+                ? undefined
+                : new ResizeObserver(fit);
+        observer?.observe(input.parentElement ?? input);
+        return () => observer?.disconnect();
+    }, [editingName, meal.mealName]);
 
     const macroCalories = useMemo(
         () => ({
@@ -305,16 +345,35 @@ export default function MealResult({
             <div className="meal-result-header">
                 <div className="meal-result-title-block">
                     {onNameChange ? (
-                        <input
+                        <textarea
                             ref={nameInputRef}
                             className="meal-result-name-input"
                             aria-label="Meal name"
                             placeholder="Meal name"
-                            required
+                            rows={1}
+                            form={nameFormId}
+                            enterKeyHint="done"
                             value={meal.mealName}
                             onChange={(event) =>
-                                onNameChange(event.target.value)
+                                // A name is one line; pasted breaks become spaces.
+                                onNameChange(
+                                    event.target.value.replace(
+                                        /\s*\n\s*/g,
+                                        ' ',
+                                    ),
+                                )
                             }
+                            onKeyDown={(event) => {
+                                if (event.nativeEvent.isComposing) return;
+                                const form = event.currentTarget.form;
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    form?.requestSubmit();
+                                } else if (event.key === 'Escape') {
+                                    event.preventDefault();
+                                    form?.reset();
+                                }
+                            }}
                         />
                     ) : onNameEdit ? (
                         <h2>
@@ -322,21 +381,15 @@ export default function MealResult({
                                 type="button"
                                 className="meal-result-name-edit-trigger"
                                 aria-label={`Edit recipe name, ${meal.mealName}`}
+                                disabled={nameEditDisabled}
                                 onClick={onNameEdit}
                             >
                                 {meal.mealName}
                             </button>
                         </h2>
-                    ) : reserveHeaderActionSpace ? (
-                        <h2>
-                            <span className="meal-result-name-edit-trigger meal-result-name-display">
-                                {meal.mealName}
-                            </span>
-                        </h2>
                     ) : (
                         <h2>{meal.mealName}</h2>
                     )}
-                    {nameActions}
                 </div>
 
                 {(showBookmark || showJournalButton) && (
@@ -346,7 +399,7 @@ export default function MealResult({
                                 type="button"
                                 className="meal-bookmark-button"
                                 onClick={toggleBookmark}
-                                disabled={isSavingMeal}
+                                aria-busy={isSavingMeal}
                                 aria-pressed={isBookmarked}
                                 aria-label={
                                     isBookmarked
@@ -375,14 +428,6 @@ export default function MealResult({
                         )}
                     </div>
                 )}
-                {!showBookmark &&
-                    !showJournalButton &&
-                    reserveHeaderActionSpace && (
-                        <div
-                            className="meal-result-actions meal-result-actions-placeholder"
-                            aria-hidden="true"
-                        />
-                    )}
             </div>
 
             {bookmarkError && (
@@ -391,14 +436,16 @@ export default function MealResult({
                 </p>
             )}
             {bookmarkFeedback && (
-                <ActionFeedback
-                    message="Saved to My Recipes"
+                <ActionToast
+                    message="Saved to My Recipes."
+                    placement="floating"
+                    colors={successToastColors}
                     onClose={closeBookmarkFeedback}
                 />
             )}
             <NutritionOverview
                 ariaLabel="Meal nutrition summary"
-                className="meal-result-summary-overview"
+                className={`meal-result-summary-overview${summaryVariant === 'card' ? ' nutrition-overview-card' : ''}`}
                 nutrition={nutrition}
                 fiber={{
                     ...fiber,
@@ -413,89 +460,22 @@ export default function MealResult({
             />
 
             {!showAllSections && (
-                <div
+                <DetailTabs
                     className="meal-result-tabs"
-                    role="tablist"
-                    aria-label="Recipe details"
-                    onKeyDown={(event) => {
-                        const currentIndex = detailTabs.indexOf(activeTab);
-                        const direction =
-                            event.key === 'ArrowRight'
-                                ? 1
-                                : event.key === 'ArrowLeft'
-                                  ? -1
-                                  : 0;
-                        const next = direction
-                            ? detailTabs[
-                                  (currentIndex +
-                                      direction +
-                                      detailTabs.length) %
-                                      detailTabs.length
-                              ]
-                            : event.key === 'Home'
-                              ? detailTabs[0]
-                              : event.key === 'End'
-                                ? detailTabs[detailTabs.length - 1]
-                                : null;
-                        if (!next) return;
-                        event.preventDefault();
-                        setActiveTab(next);
-                        const tabRefs = {
-                            ingredients: ingredientsTabRef,
-                            nutrients: nutrientsTabRef,
-                            steps: stepsTabRef,
-                        };
-                        tabRefs[next].current?.focus();
-                    }}
-                >
-                    <button
-                        ref={ingredientsTabRef}
-                        type="button"
-                        role="tab"
-                        id={`${tabBaseId}-ingredients-tab`}
-                        aria-controls={`${tabBaseId}-ingredients-panel`}
-                        aria-selected={activeTab === 'ingredients'}
-                        tabIndex={activeTab === 'ingredients' ? 0 : -1}
-                        onClick={() => setActiveTab('ingredients')}
-                    >
-                        Ingredients
-                    </button>
-                    <button
-                        ref={nutrientsTabRef}
-                        type="button"
-                        role="tab"
-                        id={`${tabBaseId}-nutrients-tab`}
-                        aria-controls={`${tabBaseId}-nutrients-panel`}
-                        aria-selected={activeTab === 'nutrients'}
-                        tabIndex={activeTab === 'nutrients' ? 0 : -1}
-                        onClick={() => setActiveTab('nutrients')}
-                    >
-                        Key Nutrients
-                    </button>
-                    <button
-                        ref={stepsTabRef}
-                        type="button"
-                        role="tab"
-                        id={`${tabBaseId}-steps-tab`}
-                        aria-controls={`${tabBaseId}-steps-panel`}
-                        aria-selected={activeTab === 'steps'}
-                        tabIndex={activeTab === 'steps' ? 0 : -1}
-                        onClick={() => setActiveTab('steps')}
-                    >
-                        Steps
-                    </button>
-                </div>
+                    tabs={detailTabs}
+                    active={activeTab}
+                    onChange={setActiveTab}
+                    idPrefix={tabBaseId}
+                    ariaLabel="Recipe details"
+                />
             )}
 
-            <div
+            <DetailTabPanel
                 className="meal-result-panel"
-                id={`${tabBaseId}-ingredients-panel`}
-                role={showAllSections ? undefined : 'tabpanel'}
-                tabIndex={showAllSections ? undefined : 0}
-                aria-labelledby={
-                    showAllSections ? undefined : `${tabBaseId}-ingredients-tab`
-                }
-                hidden={!showAllSections && activeTab !== 'ingredients'}
+                id="ingredients"
+                idPrefix={tabBaseId}
+                active={activeTab === 'ingredients'}
+                tabbed={!showAllSections}
             >
                 <IngredientSection
                     className="meal-ingredients"
@@ -603,17 +583,14 @@ export default function MealResult({
                     </div>
                     {ingredientComposer}
                 </IngredientSection>
-            </div>
+            </DetailTabPanel>
 
-            <div
+            <DetailTabPanel
                 className="meal-result-panel"
-                id={`${tabBaseId}-nutrients-panel`}
-                role={showAllSections ? undefined : 'tabpanel'}
-                tabIndex={showAllSections ? undefined : 0}
-                aria-labelledby={
-                    showAllSections ? undefined : `${tabBaseId}-nutrients-tab`
-                }
-                hidden={!showAllSections && activeTab !== 'nutrients'}
+                id="nutrients"
+                idPrefix={tabBaseId}
+                active={activeTab === 'nutrients'}
+                tabbed={!showAllSections}
             >
                 {(!creating || meal.ingredients.length > 0) && (
                     <div className="meal-nutrition-section">
@@ -623,17 +600,14 @@ export default function MealResult({
                         />
                     </div>
                 )}
-            </div>
+            </DetailTabPanel>
 
-            <div
+            <DetailTabPanel
                 className="meal-result-panel"
-                id={`${tabBaseId}-steps-panel`}
-                role={showAllSections ? undefined : 'tabpanel'}
-                tabIndex={showAllSections ? undefined : 0}
-                aria-labelledby={
-                    showAllSections ? undefined : `${tabBaseId}-steps-tab`
-                }
-                hidden={!showAllSections && activeTab !== 'steps'}
+                id="steps"
+                idPrefix={tabBaseId}
+                active={activeTab === 'steps'}
+                tabbed={!showAllSections}
             >
                 <MealInstructions
                     instructions={meal.instructions}
@@ -653,7 +627,7 @@ export default function MealResult({
                         ))
                     }
                 />
-            </div>
+            </DetailTabPanel>
         </section>
     );
 }

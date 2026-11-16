@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { IngredientInfo } from '../../shared/types/types';
-import { loadMealGenerator } from '../settings/mealGenerator';
 import {
     getCachedIngredientNutrition,
     getIngredientNutrition,
@@ -12,7 +11,6 @@ export function useMicronutrientLookup(
     ingredients: IngredientInfo[],
     options: { includeFoodSource?: boolean } = {},
 ) {
-    const generator = loadMealGenerator();
     const names = JSON.stringify(
         [
             ...new Set(
@@ -29,7 +27,7 @@ export function useMicronutrientLookup(
         ].sort(),
     );
     const [attempt, setAttempt] = useState(0);
-    const requestKey = `${generator}:${attempt}:${names}`;
+    const requestKey = `${attempt}:${names}`;
     const requested: string[] = JSON.parse(names);
     const cachedData: Record<string, IngredientInfo> = {};
     for (const name of requested) {

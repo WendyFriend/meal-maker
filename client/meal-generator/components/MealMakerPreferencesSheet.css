@@ -26,18 +26,8 @@
     letter-spacing: -0.5px;
 }
 
-.meal-maker-preferences-sheet-heading button {
-    min-width: 52px;
-    min-height: 44px;
-    padding: 0 4px;
-    border: 0;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--accent-strong);
-    font: inherit;
-    font-size: 15px;
-    font-weight: var(--font-weight-bold);
-    cursor: pointer;
+.meal-maker-preferences-sheet-heading .action-icon-button {
+    margin-right: -6px;
 }
 
 .meal-maker-goal-section h3,

@@ -5,14 +5,36 @@ import {
     getIngredientNutrition,
     needsMicronutrients,
 } from './micronutrientService';
-import { saveMealGenerator } from '../settings/mealGenerator';
 
 afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     window.localStorage.clear();
 });
 
-it('sends the selected provider and keeps lookup caches separate when switching providers', async () => {
+it('parses the persisted lookup cache once while checking many missing foods', () => {
+    window.localStorage.setItem(
+        'meal-maker:ingredient-nutrition:v2',
+        JSON.stringify({
+            'known-rice': {
+                savedAt: Date.now(),
+                ingredient: { name: 'Known rice', caloriesPer100g: 120 },
+            },
+        }),
+    );
+    const parse = vi.spyOn(JSON, 'parse');
+
+    for (let index = 0; index < 20; index += 1)
+        expect(
+            getCachedIngredientNutrition(`missing-${index}`),
+        ).toBeUndefined();
+    expect(getCachedIngredientNutrition('known-rice')).toMatchObject({
+        caloriesPer100g: 120,
+    });
+    expect(parse).toHaveBeenCalledOnce();
+});
+
+it('shares one cached lookup per name', async () => {
     const fetchMock = vi.fn().mockImplementation(
         async () =>
             new Response(
@@ -27,20 +49,12 @@ it('sends the selected provider and keeps lookup caches separate when switching 
             ),
     );
     vi.stubGlobal('fetch', fetchMock);
-    saveMealGenerator('ollama');
-    await getIngredientNutrition('provider-test-rice');
-    saveMealGenerator('nutrition-lab');
-    await getIngredientNutrition('provider-test-rice');
-    await getIngredientNutrition('provider-test-rice');
-    saveMealGenerator('ollama');
-    await getIngredientNutrition('provider-test-rice');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][1].headers['X-Meal-Generator']).toBe(
-        'ollama',
-    );
-    expect(fetchMock.mock.calls[1][1].headers['X-Meal-Generator']).toBe(
-        'nutrition-lab',
-    );
+    await Promise.all([
+        getIngredientNutrition('cache-test-rice'),
+        getIngredientNutrition(' Cache-test-rice '),
+    ]);
+    await getIngredientNutrition('cache-test-rice');
+    expect(fetchMock).toHaveBeenCalledOnce();
 });
 
 it('keeps macro and micronutrient values returned by the lookup', async () => {
@@ -60,7 +74,6 @@ it('keeps macro and micronutrient values returned by the lookup', async () => {
                 ),
         ),
     );
-    saveMealGenerator('nutrition-lab');
 
     await expect(
         getIngredientNutrition('full-lookup-pumpkin'),
@@ -83,7 +96,6 @@ it('reuses successful nutrient lookups after an app reload', async () => {
             ),
     );
     vi.stubGlobal('fetch', fetchMock);
-    saveMealGenerator('nutrition-lab');
     await getIngredientNutrition('persisted-rice');
     expect(getCachedIngredientNutrition('persisted-rice')).toMatchObject({
         ironPer100g: 1.2,

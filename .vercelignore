@@ -1,0 +1,10 @@
+# Never upload local secrets or build output with `vercel` CLI deploys.
+.env*
+*.pem
+certs/
+node_modules/
+dist/
+dist-ssr/
+*.log
+claudeAlgo/
+gptAlgo/

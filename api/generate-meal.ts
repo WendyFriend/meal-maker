@@ -12,10 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const input = req.body as GenerateMealRequest;
 
-        const result = await handleGenerateMealRequest(
-            input,
-            req.headers['x-meal-generator'],
-        );
+        const result = await handleGenerateMealRequest(input);
 
         if (result.serverTiming)
             res.setHeader('Server-Timing', result.serverTiming);

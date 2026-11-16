@@ -2,7 +2,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import MyIngredients from './MyIngredients';
 import { getIngredientNutrition } from './services/micronutrientService';
-import { saveMealGenerator } from './settings/mealGenerator';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
 import type { UserIngredient } from '../shared/types/types';
 
@@ -22,7 +21,6 @@ const saved: UserIngredient = {
 
 beforeEach(() => {
     mockPickerEnvironment();
-    saveMealGenerator('nutrition-lab');
     vi.mocked(getIngredientNutrition).mockReset();
 });
 afterEach(() => {

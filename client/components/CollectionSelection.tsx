@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import CloseIcon from './CloseIcon';
+import { CancelButton, ConfirmButton } from './ConfirmCancelButtons';
 import './CollectionSelection.css';
 
 export function SelectionToggle({
@@ -12,16 +14,17 @@ export function SelectionToggle({
     noun: string;
     onClick: () => void;
 }) {
-    const label = selecting ? 'Done' : 'Select';
+    // "Select" is a text action (no clear symbol); leaving the mode is ✕.
     return (
         <button
             type="button"
-            className="collection-selection-toggle"
+            className={`collection-selection-toggle${selecting ? ' collection-selection-toggle-cancel' : ''}`}
             aria-label={selecting ? 'Cancel selection' : `Select ${noun}s`}
+            title={selecting ? 'Cancel selection' : undefined}
             disabled={disabled}
             onClick={onClick}
         >
-            {label}
+            {selecting ? <CloseIcon /> : 'Select'}
         </button>
     );
 }
@@ -131,34 +134,21 @@ export function BulkDeleteToolbar({
                         {deleteLabel}?
                     </p>
                     <div className="collection-bulk-confirm-actions">
-                        <button
+                        <CancelButton
                             ref={cancelRef}
-                            type="button"
-                            className="collection-bulk-cancel"
-                            aria-label="Cancel delete"
-                            title="Cancel delete"
+                            label="Cancel delete"
                             disabled={deleting}
                             onClick={() => setConfirming(false)}
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M6 6l12 12M18 6 6 18" />
-                            </svg>
-                        </button>
-                        <button
-                            type="button"
-                            className="collection-bulk-confirm"
-                            aria-label={`Confirm ${deleteLabel.toLowerCase()}`}
-                            title={`Confirm ${deleteLabel.toLowerCase()}`}
+                        />
+                        <ConfirmButton
+                            tone="danger"
+                            label={`Confirm ${deleteLabel.toLowerCase()}`}
                             disabled={deleting || count === 0}
                             onClick={() => {
                                 setConfirming(false);
                                 onDelete();
                             }}
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="m4.5 12 5 5 10-10" />
-                            </svg>
-                        </button>
+                        />
                     </div>
                 </div>
             ) : (

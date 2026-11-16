@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { UserIngredient } from '../../shared/types/types';
 import { getIngredientNutrition } from '../services/micronutrientService';
-import { loadMealGenerator } from '../settings/mealGenerator';
 import { normalizeIngredientName } from '../utils/Ingredient';
 
 /** Resolve thumbnail IDs for records saved before nutrition_source existed. */
@@ -14,7 +13,7 @@ export default function useSavedIngredientFoodIds(
     );
 
     useEffect(() => {
-        if (!enabled || loadMealGenerator() !== 'nutrition-lab') return;
+        if (!enabled) return;
         const missing = ingredients.filter(
             (ingredient) => !ingredient.nutritionSource?.fdcId,
         );

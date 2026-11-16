@@ -48,6 +48,15 @@ export const pageConfig = {
         type: 'sub',
         title: 'Create Recipe',
     },
+    // A My Plan meal shown as a recipe; it may not exist in My Recipes.
+    'plan-meal-detail': {
+        type: 'sub',
+        title: 'Recipe',
+    },
+    'add-meal': {
+        type: 'sub',
+        title: 'Add Meal',
+    },
 } as const;
 
 export const navigationItems: {
@@ -80,4 +89,6 @@ export const subPageParent: Partial<Record<Page, Page>> = {
     'ingredient-detail': 'my-ingredients',
     'recipe-detail': 'my-recipes',
     'create-recipe': 'my-recipes',
+    'add-meal': 'my-journal',
+    'plan-meal-detail': 'my-journal',
 };

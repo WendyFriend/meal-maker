@@ -17,12 +17,11 @@ import {
     useState,
 } from 'react';
 import './App.css';
-import type { AppError, ErrorResponse } from './meal-generator/types';
+import type { AppError } from './meal-generator/types';
 import {
     type GenerateMealRequest,
     type GenerateMealResponse,
     type IngredientInfo,
-    type MealGenerator,
     type MealPreference,
     type UserIngredient,
 } from '../shared/types/types';
@@ -32,8 +31,7 @@ import MyMeals from './MyMeals';
 import type { DetailEditorHandle } from './components/DetailEditorHandle';
 import MyJournal from './MyJournal';
 import Settings from './Settings';
-import { loadMealGenerator, saveMealGenerator } from './settings/mealGenerator';
-import RecipeDetail from './RecipeDetail';
+import RecipeDetail, { type RecipeNameEditor } from './RecipeDetail';
 import CreateRecipe from './CreateRecipe';
 import { saveRecipe, updateRecipe } from './services/recipeService';
 import MealMakerForm from './meal-generator/components/MealMakerForm';
@@ -68,6 +66,12 @@ import cookingLoader from './assets/animations/cooking-loader.svg';
 import { IngredientCollectionContext } from './ingredients/IngredientCollectionContext';
 import Brand from './components/Brand';
 import { findCommonQuickAddIngredient } from './meal-generator/components/commonQuickAddIngredients';
+import {
+    saveJournalEntry,
+    updateJournalEntryIngredients,
+    updateJournalEntryName,
+} from './services/journalService';
+import { defaultMealName } from './journal/planMeal';
 
 function findIngredientByName<T extends IngredientInfo>(
     ingredients: T[],
@@ -124,6 +128,8 @@ function App() {
         editing: false,
         saving: false,
     });
+    const [recipeNameEditor, setRecipeNameEditor] =
+        useState<RecipeNameEditor | null>(null);
     const isEditingIngredient =
         currentPage === 'add-ingredient' ||
         (currentPage === 'ingredient-detail' && ingredientEditor.editing);
@@ -160,8 +166,6 @@ function App() {
     const [mealPreferences, setMealPreferences] = useState<MealPreference[]>(
         guestAccess.initialDraft.mealPreferences ?? [],
     );
-    const [mealGenerator, setMealGenerator] =
-        useState<MealGenerator>(loadMealGenerator);
 
     const [meal, setMeal] = useState<GenerateMealResponse | undefined>(
         guestAccess.initialDraft.meal,
@@ -174,6 +178,15 @@ function App() {
 
     // Recipe opened from the My Meals list; shown on the detail page.
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
+    // The plan day (and listed-last time) a manually entered meal goes to.
+    // A My Plan meal opened as a recipe (it may not be in My Recipes).
+    const [planMealRecipe, setPlanMealRecipe] = useState<
+        Recipe & { entryId: string }
+    >();
+    const [planMealTarget, setPlanMealTarget] = useState<{
+        day: string;
+        eatenAt: string;
+    }>();
     const [editRecipeOnOpen, setEditRecipeOnOpen] = useState(false);
 
     // Scroll target for the generated recipe; scrolls smoothly once the
@@ -366,6 +379,8 @@ function App() {
                 detailPage &&
                 subPageParent[detailPage] === mainPage &&
                 (detailPage !== 'recipe-detail' || selectedRecipe) &&
+                (detailPage !== 'add-meal' || planMealTarget) &&
+                (detailPage !== 'plan-meal-detail' || planMealRecipe) &&
                 (detailPage !== 'ingredient-detail' ||
                     selectedSavedIngredientId);
             const nextPage = canRestoreDetail ? detailPage : mainPage;
@@ -383,7 +398,13 @@ function App() {
         return () => {
             window.removeEventListener('popstate', handlePopState);
         };
-    }, [currentPage, selectedRecipe, selectedSavedIngredientId]);
+    }, [
+        currentPage,
+        selectedRecipe,
+        selectedSavedIngredientId,
+        planMealTarget,
+        planMealRecipe,
+    ]);
 
     function navigateToPage(page: Page) {
         const isReturning = subPageParent[currentPage] === page;
@@ -469,6 +490,41 @@ function App() {
         await saveRecipe(recipe);
         setRecipesRefreshKey((current) => current + 1);
         navigateToPage('my-recipes');
+    }
+
+    /** Saves ingredient edits from a plan meal's recipe page to the plan. */
+    async function savePlanMeal(recipe: Recipe): Promise<Recipe> {
+        if (!planMealRecipe) return recipe;
+        // Recipe Detail saves one section at a time: the name or the
+        // ingredients. Either way only the plan entry changes.
+        const entry =
+            recipe.recipeName !== planMealRecipe.recipeName
+                ? await updateJournalEntryName(
+                      planMealRecipe.entryId,
+                      recipe.recipeName,
+                  )
+                : await updateJournalEntryIngredients(
+                      planMealRecipe.entryId,
+                      recipe.ingredients,
+                  );
+        const updated = {
+            ...planMealRecipe,
+            recipeName: entry.mealName,
+            ingredients: entry.ingredients,
+        };
+        setPlanMealRecipe(updated);
+        return updated;
+    }
+
+    /** Saves a hand-entered meal to the plan only, not to My Recipes. */
+    async function addPlanMeal(meal: Parameters<typeof saveRecipe>[0]) {
+        if (!planMealTarget) return;
+        await saveJournalEntry({
+            eatenAt: planMealTarget.eatenAt,
+            mealName: meal.recipeName,
+            ingredients: meal.ingredients,
+        });
+        navigateToPage('my-journal');
     }
 
     async function createUserIngredient(ingredient: IngredientInfo) {
@@ -622,23 +678,9 @@ function App() {
         return () => {
             active = false;
         };
-    }, [ingredients, mealGenerator, getIngredientInfoFromStoredData]);
+    }, [ingredients, getIngredientInfoFromStoredData]);
 
-    async function openMealIngredient(index: number) {
-        const ingredient = getIngredientInfoFromStoredData(ingredients[index]);
-        if (needsMacroNutrition(ingredient)) {
-            try {
-                cacheMealIngredientNutrition(
-                    index,
-                    mergeIngredientNutrition(
-                        ingredient,
-                        await getIngredientNutrition(ingredient.name),
-                    ),
-                );
-            } catch (error) {
-                console.error('Ingredient nutrition lookup failed:', error);
-            }
-        }
+    function openMealIngredient(index: number) {
         setSelectedIngredientIndex(index);
     }
 
@@ -663,7 +705,6 @@ function App() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Meal-Generator': mealGenerator,
                 },
                 body,
             });
@@ -680,27 +721,12 @@ function App() {
             }
 
             console.info('Meal generation timing', {
-                generator: mealGenerator,
                 ingredientCount: input.ingredients.length,
                 status: response.status,
                 requestMs,
-                serverMs: duration(
-                    mealGenerator === 'nutrition-lab'
-                        ? 'nutrition_lab'
-                        : 'generation',
-                ),
-                ...(mealGenerator === 'ollama'
-                    ? {
-                          usdaMs: duration('usda'),
-                          ollamaMs: duration('ollama'),
-                      }
-                    : {}),
+                serverMs: duration('nutrition_lab'),
             });
 
-            if (response.status === 422) {
-                setError((payload as ErrorResponse).error);
-                return;
-            }
             if (!response.ok) throw new Error('Failed to generate meal');
 
             const mealResponse = payload as GenerateMealResponse;
@@ -907,7 +933,9 @@ function App() {
                         isMealMaker ||
                         usesCollectionTheme ||
                         currentPage === 'recipe-detail' ||
-                        currentPage === 'create-recipe'
+                        currentPage === 'plan-meal-detail' ||
+                        currentPage === 'create-recipe' ||
+                        currentPage === 'add-meal'
                     }
                     editor={
                         isEditingIngredient
@@ -916,7 +944,10 @@ function App() {
                                   subject: 'ingredient',
                                   saving: ingredientEditor.saving,
                               }
-                            : undefined
+                            : // Set only while a recipe page is renaming.
+                              recipeNameEditor
+                              ? { ...recipeNameEditor, subject: 'meal' }
+                              : undefined
                     }
                     onBack={() => {
                         const parent = subPageParent[currentPage];
@@ -1012,18 +1043,25 @@ function App() {
                                 key={`journal-${user.id}`}
                                 isActive={currentPage === 'my-journal'}
                                 savedIngredients={userIngredients}
-                            />
-                        )}
-
-                        {currentPage === 'settings' && (
-                            <Settings
-                                mealGenerator={mealGenerator}
-                                onMealGeneratorChange={(generator) => {
-                                    saveMealGenerator(generator);
-                                    setMealGenerator(generator);
+                                onEnterMeal={(target) => {
+                                    setPlanMealTarget(target);
+                                    navigateToPage('add-meal');
+                                }}
+                                onOpenMeal={(entry) => {
+                                    setPlanMealRecipe({
+                                        entryId: entry.id,
+                                        id: undefined,
+                                        userId: user.id,
+                                        recipeName: entry.mealName,
+                                        ingredients: entry.ingredients,
+                                        instructions: [],
+                                    });
+                                    navigateToPage('plan-meal-detail');
                                 }}
                             />
                         )}
+
+                        {currentPage === 'settings' && <Settings />}
 
                         {(isRecipesPage || hasVisitedRecipes) && (
                             <MyMeals
@@ -1057,13 +1095,46 @@ function App() {
                                 startInEditMode={editRecipeOnOpen}
                                 savedIngredients={userIngredients}
                                 onSave={saveMealChanges}
+                                onNameEditingChange={setRecipeNameEditor}
                             />
                         )}
+
+                        {currentPage === 'plan-meal-detail' &&
+                            planMealRecipe && (
+                                <RecipeDetail
+                                    recipe={planMealRecipe}
+                                    variant="plan-meal"
+                                    savedIngredients={userIngredients}
+                                    onSave={savePlanMeal}
+                                    onNameEditingChange={setRecipeNameEditor}
+                                    onSavedRecipesChange={() =>
+                                        setRecipesRefreshKey(
+                                            (current) => current + 1,
+                                        )
+                                    }
+                                />
+                            )}
 
                         {currentPage === 'create-recipe' && (
                             <CreateRecipe
                                 savedIngredients={userIngredients}
                                 onSave={createRecipe}
+                            />
+                        )}
+
+                        {currentPage === 'add-meal' && planMealTarget && (
+                            <CreateRecipe
+                                key={planMealTarget.eatenAt}
+                                subject="meal"
+                                formId="add-meal-form"
+                                savedIngredients={userIngredients}
+                                fallbackName={(ingredients) =>
+                                    defaultMealName(
+                                        planMealTarget.day,
+                                        ingredients,
+                                    )
+                                }
+                                onSave={addPlanMeal}
                             />
                         )}
                     </main>

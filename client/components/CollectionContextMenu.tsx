@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import './CollectionContextMenu.css';
 
@@ -8,6 +8,7 @@ export default function CollectionContextMenu({
     y,
     trigger,
     onEdit,
+    actions = [],
     onDelete,
     onClose,
     canDelete = true,
@@ -17,6 +18,8 @@ export default function CollectionContextMenu({
     y: number;
     trigger: HTMLElement | null;
     onEdit?: () => void;
+    /** Extra items above Delete; `icon` is the inner content of a 24px SVG. */
+    actions?: { label: string; icon: ReactNode; onSelect: () => void }[];
     onDelete: () => void;
     onClose: () => void;
     canDelete?: boolean;
@@ -101,9 +104,25 @@ export default function CollectionContextMenu({
                     </svg>
                 </button>
             )}
+            {actions.map((action) => (
+                <button
+                    key={action.label}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                        onClose();
+                        action.onSelect();
+                    }}
+                >
+                    {action.label}
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        {action.icon}
+                    </svg>
+                </button>
+            ))}
             {canDelete && (
                 <>
-                    {onEdit && (
+                    {(onEdit || actions.length > 0) && (
                         <div
                             className="collection-context-separator"
                             role="separator"

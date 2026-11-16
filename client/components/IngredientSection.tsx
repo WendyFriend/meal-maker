@@ -1,18 +1,11 @@
 import type { ReactNode } from 'react';
 import ActionToast from './ActionToast';
-import CheckIcon from './CheckIcon';
-import CloseIcon from './CloseIcon';
+import { successToastColors } from './actionToastColors';
+import { CancelButton, ConfirmButton } from './ConfirmCancelButtons';
 import EditIcon from './EditIcon';
 import LoadingSpinner from './LoadingSpinner';
 import type { IngredientSectionFeedback } from '../hooks/useIngredientSectionSave';
 import './IngredientSection.css';
-
-const defaultToastColors = {
-    background: '#fff',
-    text: 'var(--text-h-strong)',
-    iconBackground: '#e6f3e5',
-    icon: '#27813a',
-};
 
 export function IngredientSectionActions({
     editing,
@@ -47,33 +40,24 @@ export function IngredientSectionActions({
 
     return (
         <div className="ingredient-section-edit-actions">
-            <button
-                type="button"
-                aria-label="Cancel ingredients changes"
+            <CancelButton
+                label="Cancel ingredients changes"
                 title="Cancel changes"
                 disabled={saving}
                 onClick={onCancel}
-            >
-                <CloseIcon />
-            </button>
-            <button
-                type="button"
+            />
+            <ConfirmButton
                 className="ingredient-section-save"
-                aria-label={
+                label={
                     saving
                         ? 'Saving ingredients changes'
                         : 'Save ingredients changes'
                 }
                 title={saving ? 'Saving changes' : 'Save changes'}
+                busy={saving}
                 disabled={saving}
                 onClick={onSave}
-            >
-                {saving ? (
-                    <LoadingSpinner size="small" tone="inherit" />
-                ) : (
-                    <CheckIcon />
-                )}
-            </button>
+            />
         </div>
     );
 }
@@ -82,16 +66,18 @@ export default function IngredientSection({
     children,
     className = '',
     headerClassName = '',
+    showHeading = true,
     actions,
     editing = false,
     footer,
     error,
     feedback,
-    toastColors = defaultToastColors,
+    toastColors = successToastColors,
 }: {
     children: ReactNode;
     className?: string;
     headerClassName?: string;
+    showHeading?: boolean;
     actions?: ReactNode;
     editing?: boolean;
     footer?: ReactNode;
@@ -110,10 +96,12 @@ export default function IngredientSection({
             aria-label="Ingredients"
             aria-busy={feedback?.saving}
         >
-            <div className={headerClassName}>
-                {!editing && <h3>Ingredients</h3>}
-                {actions}
-            </div>
+            {(actions || (showHeading && !editing)) && (
+                <div className={headerClassName}>
+                    {showHeading && !editing && <h3>Ingredients</h3>}
+                    {actions}
+                </div>
+            )}
             {error && (
                 <p className="ingredient-section-error" role="alert">
                     {error}
@@ -132,7 +120,7 @@ export default function IngredientSection({
             {!feedback?.saving && feedback?.successId != null && (
                 <ActionToast
                     key={feedback.successId}
-                    message="Ingredients updated"
+                    message="Ingredients updated."
                     placement="floating"
                     colors={toastColors}
                     onClose={() => feedback.dismiss(feedback.successId!)}

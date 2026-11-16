@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Recipe } from '../shared/types/recipe';
 import type {
     GenerateMealResponse,
@@ -6,24 +6,28 @@ import type {
     MealIngredient,
     UserIngredient,
 } from '../shared/types/types';
-import CheckIcon from './components/CheckIcon';
 import CloseIcon from './components/CloseIcon';
-import LoadingSpinner from './components/LoadingSpinner';
+import { CancelButton, ConfirmButton } from './components/ConfirmCancelButtons';
 import { IngredientSectionActions } from './components/IngredientSection';
 import { useIngredientSectionSave } from './hooks/useIngredientSectionSave';
+import { useUndoToast } from './hooks/useUndoToast';
 import { RecipeIngredientNameInput } from './CreateRecipe';
 import MealResult from './meal-generator/components/MealResult';
 import IngredientThumbnail from './meal-generator/components/IngredientThumbnail';
 import IngredientCalorieContribution from './meal-generator/components/IngredientCalorieContribution';
 import { findCommonQuickAddIngredient } from './meal-generator/components/commonQuickAddIngredients';
 import { normalizeIngredientName } from './utils/Ingredient';
-import { getIngredientNutrition } from './services/micronutrientService';
+import {
+    getCachedIngredientNutrition,
+    getIngredientNutrition,
+} from './services/micronutrientService';
 import { fillRecipeNutrition } from './services/recipeService';
 import {
     fillMissingRecipeNutrition,
     type RecipeNutritionEnrichment,
 } from './utils/recipeNutrition';
 import './RecipeDetail.css';
+import AddRowButton from './components/AddRowButton';
 
 type EditSection = 'name' | 'ingredients' | 'steps';
 const EMPTY_SAVED_INGREDIENTS: UserIngredient[] = [];
@@ -124,11 +128,19 @@ function findIngredientSource(
     ingredients: MealIngredient[],
     savedIngredientsByName: ReadonlyMap<string, UserIngredient>,
 ): IngredientInfo | undefined {
-    return (
+    const known =
         matchingMealIngredient(name, ingredients) ??
         savedIngredientsByName.get(normalizeIngredientName(name)) ??
-        findCommonQuickAddIngredient(name)
-    );
+        findCommonQuickAddIngredient(name);
+    if (known) return known;
+    const cached = getCachedIngredientNutrition(name);
+    return cached
+        ? {
+              ...cached,
+              name,
+              resolvedName: cached.resolvedName ?? cached.name,
+          }
+        : undefined;
 }
 
 function recipeInput(meal: GenerateMealResponse) {
@@ -168,48 +180,61 @@ function SectionActions({
 }) {
     return (
         <div className="recipe-detail-edit-actions">
-            <button
-                type="button"
-                aria-label={`Cancel ${section} changes`}
+            <CancelButton
+                label={`Cancel ${section} changes`}
                 title="Cancel changes"
                 disabled={saving}
                 onClick={onCancel}
-            >
-                <CloseIcon />
-            </button>
-            <button
-                type="button"
+            />
+            <ConfirmButton
                 className="recipe-detail-save-section"
-                aria-label={
+                label={
                     saving
                         ? `Saving ${section} changes`
                         : `Save ${section} changes`
                 }
                 title={saving ? 'Saving changes' : 'Save changes'}
+                busy={saving}
                 disabled={saving}
                 onClick={onSave}
-            >
-                {saving ? (
-                    <LoadingSpinner size="small" tone="inherit" />
-                ) : (
-                    <CheckIcon />
-                )}
-            </button>
+            />
         </div>
     );
 }
+
+const NAME_FORM_ID = 'recipe-name-form';
+
+/** Name editing state for the app header's ✕ / ✓. */
+export type RecipeNameEditor = { formId: string; saving: boolean };
 
 export default function RecipeDetail({
     recipe,
     savedIngredients = EMPTY_SAVED_INGREDIENTS,
     onSave,
     startInEditMode = false,
+    variant = 'recipe',
+    onSavedRecipesChange,
+    onNameEditingChange,
 }: {
     recipe: Recipe;
     savedIngredients?: UserIngredient[];
-    onSave: (recipe: Recipe) => Promise<Recipe>;
+    onSave?: (recipe: Recipe) => Promise<Recipe>;
     startInEditMode?: boolean;
+    /**
+     * 'plan-meal' shows a My Plan meal as a recipe: its ingredients can be
+     * edited (saved back to the plan through onSave) and it can be starred
+     * into My Recipes, since it may not be saved there yet. Its name and
+     * ingredients save back to the plan; plan meals have no steps.
+     */
+    variant?: 'recipe' | 'plan-meal';
+    onSavedRecipesChange?: () => void;
+    /**
+     * Name edits are confirmed from the app header (✕ / ✓), so the field
+     * keeps the heading's full width and the page never reflows.
+     */
+    onNameEditingChange?: (editor: RecipeNameEditor | null) => void;
 }) {
+    const planMeal = variant === 'plan-meal';
     const [originalMeal, setOriginalMeal] = useState(() => toMeal(recipe));
     const [meal, setMeal] = useState(originalMeal);
     const [section, setSection] = useState<EditSection | null>(
@@ -225,6 +250,8 @@ export default function RecipeDetail({
     const [journalEntryId, setJournalEntryId] = useState<string | null>(null);
     const [resetVersion, setResetVersion] = useState(0);
     const ingredientFeedback = useIngredientSectionSave();
+    // Removing an ingredient only edits the draft, so Undo puts it back.
+    const removalUndo = useUndoToast();
     const pending = useRef(false);
     const mealRef = useRef(meal);
     const addingRef = useRef(false);
@@ -362,11 +389,36 @@ export default function RecipeDetail({
             }
         }
         if (lookupsChanged) publishIngredientLookups();
+        const removed = mealRef.current.ingredients[index];
         updateMeal((current) => ({
             ...current,
             ingredients: current.ingredients.filter(
                 (_, itemIndex) => itemIndex !== index,
             ),
+        }));
+        if (removed)
+            removalUndo.show('Ingredient removed.', () =>
+                restoreIngredient(removed, index),
+            );
+    }
+
+    function restoreIngredient(ingredient: MealIngredient, index: number) {
+        const at = Math.min(index, mealRef.current.ingredients.length);
+        let lookupsChanged = false;
+        for (const lookup of pendingIngredientLookups.current.values()) {
+            if (lookup.index >= at) {
+                lookup.index += 1;
+                lookupsChanged = true;
+            }
+        }
+        if (lookupsChanged) publishIngredientLookups();
+        updateMeal((current) => ({
+            ...current,
+            ingredients: [
+                ...current.ingredients.slice(0, at),
+                ingredient,
+                ...current.ingredients.slice(at),
+            ],
         }));
     }
 
@@ -417,6 +469,7 @@ export default function RecipeDetail({
 
     function startSection(next: EditSection) {
         if (pending.current) return;
+        removalUndo.dismiss();
         discardIngredientLookups();
         resetIngredientComposer();
         updateMeal(originalMeal);
@@ -426,6 +479,7 @@ export default function RecipeDetail({
 
     function cancelSection() {
         if (pending.current) return;
+        removalUndo.dismiss();
         discardIngredientLookups();
         resetIngredientComposer();
         updateMeal(originalMeal);
@@ -437,6 +491,7 @@ export default function RecipeDetail({
 
     async function saveSection() {
         if (pending.current || !section) return;
+        removalUndo.dismiss();
         if (section === 'ingredients' && addingRef.current) {
             if (ingredientName.trim()) commitIngredient(ingredientName);
             else resetIngredientComposer();
@@ -473,10 +528,10 @@ export default function RecipeDetail({
             let updated: Recipe | undefined;
             if (savedSection === 'ingredients') {
                 await ingredientFeedback.save(async () => {
-                    updated = await onSave({ ...recipe, ...input });
+                    updated = await onSave?.({ ...recipe, ...input });
                 });
             } else {
-                updated = await onSave({ ...recipe, ...input });
+                updated = await onSave?.({ ...recipe, ...input });
             }
             if (!updated) return;
             const saved = toMeal(updated);
@@ -507,6 +562,14 @@ export default function RecipeDetail({
         }
     }
 
+    const editingName = section === 'name';
+    // Before paint, so the header and the name field switch together.
+    useLayoutEffect(() => {
+        if (!editingName) return;
+        onNameEditingChange?.({ formId: NAME_FORM_ID, saving });
+        return () => onNameEditingChange?.(null);
+    }, [editingName, saving, onNameEditingChange]);
+
     const actions = section ? (
         <SectionActions
             section={section}
@@ -526,27 +589,48 @@ export default function RecipeDetail({
                     {error}
                 </p>
             )}
+            {editingName && (
+                // The header ✕ / ✓ (and Enter / Esc in the field) reset or
+                // submit this form.
+                <form
+                    id={NAME_FORM_ID}
+                    hidden
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        void saveSection();
+                    }}
+                    onReset={(event) => {
+                        event.preventDefault();
+                        cancelSection();
+                    }}
+                />
+            )}
             <div aria-busy={saving} inert={saving}>
                 <MealResult
                     key={resetVersion}
+                    summaryVariant="card"
                     meal={meal}
                     originalMeal={originalMeal}
                     onChange={updateMeal}
-                    showBookmark={false}
+                    showBookmark={planMeal}
+                    onSavedRecipesChange={onSavedRecipesChange}
                     showPartialNutrition
                     journalControl={{
                         entryId: journalEntryId,
                         onChange: setJournalEntryId,
                     }}
-                    showJournalButton={!section}
-                    reserveHeaderActionSpace={
-                        section === 'ingredients' || section === 'steps'
-                    }
+                    // The + stays while editing (adding the values on screen), so
+                    // the header never changes.
+                    showJournalButton={!planMeal}
                     showWeightControls={section === 'ingredients'}
-                    showIngredientChevron={section !== 'ingredients'}
-                    onNameEdit={
-                        section ? undefined : () => startSection('name')
+                    // Edit mode hides the › but keeps its space, so names
+                    // wrap the same and rows never move.
+                    showIngredientChevron={
+                        section === 'ingredients' ? 'space' : true
                     }
+                    onNameEdit={() => startSection('name')}
+                    nameEditDisabled={Boolean(section)}
+                    nameFormId={NAME_FORM_ID}
                     onNameChange={
                         section === 'name'
                             ? (name) =>
@@ -556,7 +640,6 @@ export default function RecipeDetail({
                                   }))
                             : undefined
                     }
-                    nameActions={section === 'name' ? actions : undefined}
                     ingredientActions={
                         section === 'ingredients' ? (
                             <IngredientSectionActions
@@ -642,22 +725,20 @@ export default function RecipeDetail({
                                         </button>
                                     </div>
                                 )}
-                                <button
-                                    type="button"
-                                    className="recipe-detail-add-ingredient"
-                                    aria-label="Add ingredient"
+                                <AddRowButton
+                                    label="Add ingredient"
                                     onClick={() => {
                                         addingRef.current = true;
                                         setAddingIngredient(true);
                                     }}
-                                >
-                                    + Add ingredient
-                                </button>
+                                />
                             </>
                         ) : undefined
                     }
                     onStepsEdit={
-                        section ? undefined : () => startSection('steps')
+                        section || planMeal
+                            ? undefined
+                            : () => startSection('steps')
                     }
                     stepsActions={section === 'steps' ? actions : undefined}
                     instructionEditor={
@@ -677,6 +758,7 @@ export default function RecipeDetail({
                     }
                 />
             </div>
+            {removalUndo.undoToast}
         </div>
     );
 }

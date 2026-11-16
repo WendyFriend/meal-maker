@@ -20,6 +20,15 @@
     min-width: 0;
 }
 
+.ingredient-section-row .ingredient-nutrition-loading {
+    display: inline-flex;
+    flex: 0 0 24px;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
 .ingredient-section-row .ingredient-nutrition-warning {
     position: relative;
     flex: 0 0 24px;
@@ -164,4 +173,8 @@
         .ingredient-weight-readonly {
         font-size: var(--font-size-md);
     }
+}
+
+.ingredient-name-chevron.ingredient-name-chevron-space {
+    visibility: hidden;
 }

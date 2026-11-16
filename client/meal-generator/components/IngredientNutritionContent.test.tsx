@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { MICRONUTRIENTS } from '../../../shared/micronutrients';
-import { saveMealGenerator } from '../../settings/mealGenerator';
 import IngredientNutritionContent from './IngredientNutritionContent';
 
 const nutrition = {
@@ -12,7 +11,6 @@ const nutrition = {
     ...Object.fromEntries(MICRONUTRIENTS.map(({ key }) => [key, 0])),
 };
 
-beforeEach(() => saveMealGenerator('nutrition-lab'));
 afterEach(() => {
     window.localStorage.clear();
     vi.unstubAllGlobals();
@@ -66,9 +64,6 @@ it('shares the food lookup between the header image and nutrition details when a
     );
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch.mock.calls[0][0]).toBe('/api/ingredient-nutrition');
-    expect(fetch.mock.calls[0][1].headers['X-Meal-Generator']).toBe(
-        'nutrition-lab',
-    );
 });
 
 it('shows lookup progress and fills unknown ingredient nutrition from Nutrition Lab', async () => {
@@ -127,36 +122,6 @@ it('shows lookup progress and fills unknown ingredient nutrition from Nutrition 
             }),
         ),
     );
-});
-
-it('keeps Ollama-generated ingredients on local images even when Nutrition Lab is selected', () => {
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    const { container } = render(
-        <IngredientNutritionContent
-            ingredient={{
-                ...nutrition,
-                name: 'Rolled oats',
-                nutritionSource: { fdcId: 172989, description: 'Oats, dry' },
-                thumbnailSource: 'local',
-            }}
-        />,
-    );
-    expect(container.querySelector('img')).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
-});
-
-it('does not resolve a Nutrition Lab image when Ollama is selected', () => {
-    saveMealGenerator('ollama');
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    const { container } = render(
-        <IngredientNutritionContent
-            ingredient={{ ...nutrition, name: 'Pumpkin' }}
-        />,
-    );
-    expect(container.querySelector('img')).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
 });
 
 it('does not retry a generated ingredient whose micronutrients are explicitly unavailable', () => {

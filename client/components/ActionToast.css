@@ -25,7 +25,7 @@
 .action-toast--floating {
     position: fixed;
     z-index: 100;
-    bottom: calc(var(--mobile-bottom-nav-height, 0px) + 16px);
+    bottom: max(16px, env(safe-area-inset-bottom));
     left: 50%;
     width: max-content;
     max-width: calc(100vw - 32px);
@@ -34,6 +34,45 @@
     box-shadow: var(--shadow-md);
     pointer-events: none;
     animation: action-toast-enter 180ms ease-out both;
+}
+
+/* Floating toasts are portaled to body, outside the app-scoped nav-height token. */
+@media (max-width: 640px) {
+    body:has(.app > .bottom-navigation) .action-toast--floating {
+        bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
+    }
+}
+
+.action-toast--actionable {
+    gap: 24px;
+    padding-block: 0;
+    padding-right: 4px;
+    pointer-events: auto;
+}
+
+.action-toast-action {
+    min-width: 44px;
+    min-height: 44px;
+    margin-left: auto;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--coral);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.action-toast-action:hover,
+.action-toast-action:active {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.action-toast-action:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -2px;
 }
 
 .action-toast-symbol {

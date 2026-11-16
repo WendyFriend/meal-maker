@@ -199,7 +199,6 @@ export async function handleGenerateMealNutritionLab(
     // so resolve what the client did not already look up.
     const { ingredientsWithNutrition } = await getNutritionForIngredients(
         typed.filter((ingredient) => !hasCompleteNutrition(ingredient)),
-        'nutrition-lab',
     );
     const resolved = new Map(
         ingredientsWithNutrition.map((ingredient) => [

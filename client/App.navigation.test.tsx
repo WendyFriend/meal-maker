@@ -10,9 +10,14 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
-import { getRecipes } from './services/recipeService';
+import { getRecipes, saveRecipe } from './services/recipeService';
 import { getUserIngredients } from './services/ingredientService';
-import { getJournalEntries } from './services/journalService';
+import {
+    getJournalEntries,
+    saveJournalEntry,
+    updateJournalEntryIngredients,
+    updateJournalEntryName,
+} from './services/journalService';
 
 vi.mock('./auth/useAuth', () => ({
     useAuth: () => ({ user: { id: 'user' }, loading: false, signOut: vi.fn() }),
@@ -30,6 +35,8 @@ vi.mock('./services/recipeService', () => ({
 vi.mock('./services/journalService', () => ({
     getJournalEntries: vi.fn().mockResolvedValue([]),
     saveJournalEntry: vi.fn(),
+    updateJournalEntryIngredients: vi.fn(),
+    updateJournalEntryName: vi.fn(),
 }));
 beforeEach(() => {
     vi.clearAllMocks();
@@ -338,5 +345,161 @@ it('opens Create Recipe from My Meals and returns to the list', async () => {
     );
     expect(
         await screen.findByRole('heading', { name: 'My Recipes' }),
+    ).toBeInTheDocument();
+});
+
+it('adds a manually entered meal to My Plan without saving a recipe', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getUserIngredients).mockResolvedValue([
+        {
+            ingredientId: 'lentils-1',
+            name: 'Lentils',
+            caloriesPer100g: 116,
+            proteinPer100g: 9,
+            carbohydratePer100g: 20,
+            fatPer100g: 0.4,
+        },
+    ]);
+    vi.mocked(saveJournalEntry).mockImplementation(async (input) => ({
+        ...input,
+        id: 'new',
+    }));
+    render(<App />);
+    await user.click(
+        within(screen.getByRole('navigation', { name: 'Main tabs' })).getByRole(
+            'button',
+            { name: 'My Plan' },
+        ),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Add meal' }));
+    await user.click(screen.getByRole('button', { name: /Create a new one/ }));
+
+    expect(await screen.findByText('Add Meal')).toBeInTheDocument();
+    expect(
+        screen.getByRole('textbox', { name: 'Meal name' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    await user.type(
+        screen.getByRole('combobox', { name: 'Ingredient 1' }),
+        'Lentils{Enter}',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+
+    await waitFor(() => expect(saveJournalEntry).toHaveBeenCalledOnce());
+    const weekday = new Date().toLocaleDateString('en-AU', {
+        weekday: 'long',
+    });
+    expect(vi.mocked(saveJournalEntry).mock.calls[0][0]).toMatchObject({
+        mealName: `${weekday} lentils`,
+    });
+    expect(saveRecipe).not.toHaveBeenCalled();
+    expect(
+        await screen.findByRole('heading', { name: 'My Plan' }),
+    ).toBeInTheDocument();
+});
+
+it('opens a My Plan meal as a recipe page and returns to My Plan', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getJournalEntries).mockResolvedValue([
+        {
+            id: 'plan-1',
+            eatenAt: new Date().toISOString(),
+            mealName: 'Lentil bowl',
+            ingredients: [
+                {
+                    name: 'Lentils',
+                    weight: 150,
+                    caloriesPer100g: 116,
+                    proteinPer100g: 9,
+                    carbohydratePer100g: 20,
+                    fatPer100g: 0.4,
+                },
+            ],
+        },
+    ]);
+    render(<App />);
+    await user.click(
+        within(screen.getByRole('navigation', { name: 'Main tabs' })).getByRole(
+            'button',
+            { name: 'My Plan' },
+        ),
+    );
+    // A collapsed meal expands first; then its name opens the meal page.
+    await user.click(
+        await screen.findByRole('button', { name: 'Meal 1, Lentil bowl' }),
+    );
+    await user.click(
+        screen.getByRole('button', { name: 'Open Lentil bowl recipe' }),
+    );
+
+    expect(
+        await screen.findByRole('heading', { name: 'Lentil bowl' }),
+    ).toBeInTheDocument();
+    expect(
+        within(
+            document.querySelector<HTMLElement>('.recipe-detail')!,
+        ).getAllByText('Lentils').length,
+    ).toBeGreaterThan(0);
+    expect(
+        screen.getByRole('button', { name: 'Save this meal' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add to My Plan' })).toBeNull();
+
+    // Ingredient edits are saved to the plan, not to My Recipes.
+    vi.mocked(updateJournalEntryIngredients).mockImplementation(
+        async (id, ingredients) => ({
+            id,
+            eatenAt: new Date().toISOString(),
+            mealName: 'Lentil bowl',
+            ingredients,
+        }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Edit ingredients' }));
+    const weight = screen.getByRole('spinbutton', {
+        name: 'Lentils weight in grams',
+    });
+    await user.clear(weight);
+    await user.type(weight, '200');
+    await user.click(
+        screen.getByRole('button', { name: 'Save ingredients changes' }),
+    );
+    await waitFor(() =>
+        expect(updateJournalEntryIngredients).toHaveBeenCalledWith('plan-1', [
+            expect.objectContaining({ name: 'Lentils', weight: 200 }),
+        ]),
+    );
+    expect(saveRecipe).not.toHaveBeenCalled();
+
+    // Renaming uses the header ✕ / ✓ and also saves only to the plan.
+    vi.mocked(updateJournalEntryName).mockImplementation(
+        async (id, mealName) => ({
+            id,
+            eatenAt: new Date().toISOString(),
+            mealName,
+            ingredients: [],
+        }),
+    );
+    await user.click(
+        screen.getByRole('button', { name: 'Edit recipe name, Lentil bowl' }),
+    );
+    expect(screen.getByText('Edit Name')).toBeInTheDocument();
+    const name = screen.getByRole('textbox', { name: 'Meal name' });
+    await user.clear(name);
+    await user.type(name, 'Red lentil dal');
+    await user.click(screen.getByRole('button', { name: 'Save name changes' }));
+    await waitFor(() =>
+        expect(updateJournalEntryName).toHaveBeenCalledWith(
+            'plan-1',
+            'Red lentil dal',
+        ),
+    );
+    expect(
+        await screen.findByRole('heading', { name: 'Red lentil dal' }),
+    ).toBeInTheDocument();
+    expect(saveRecipe).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(
+        await screen.findByRole('heading', { name: 'My Plan' }),
     ).toBeInTheDocument();
 });

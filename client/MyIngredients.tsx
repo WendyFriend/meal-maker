@@ -19,6 +19,7 @@ import {
 import SwipeableCollectionRow from './components/SwipeableCollectionRow';
 import CollectionContextMenu from './components/CollectionContextMenu';
 import { contextMenuPosition } from './components/contextMenuPosition';
+import { useUndoableDelete } from './hooks/useUndoableDelete';
 
 type IngredientMenu = {
     ingredient: UserIngredient;
@@ -62,7 +63,36 @@ export default function MyIngredients({
     const [addMode, setAddMode] = useState<
         'choices' | 'search' | 'camera-food' | 'camera-label' | null
     >(null);
-    const filteredIngredients = ingredients.filter(({ name }) =>
+    const {
+        rowRef,
+        exitClass,
+        exitStyle,
+        hiddenIds,
+        remove,
+        removeNow,
+        undoToast,
+    } = useUndoableDelete<HTMLDivElement>({
+        isActive,
+        onHidden: () => setOpenSwipeId(null),
+        commit: async (ids) => {
+            const names = ingredients
+                .filter(({ ingredientId }) => ids.includes(ingredientId))
+                .map(({ name }) => name);
+            try {
+                const deleted = new Set(await onDeleteMany(ids));
+                if (ids.some((id) => !deleted.has(id)))
+                    throw new Error('Ingredient was not removed.');
+            } catch {
+                setSwipeError(
+                    `Could not delete ${names.join(', ') || 'ingredient'}. Please try again.`,
+                );
+            }
+        },
+    });
+    const visibleIngredients = ingredients.filter(
+        ({ ingredientId }) => !hiddenIds.has(ingredientId),
+    );
+    const filteredIngredients = visibleIngredients.filter(({ name }) =>
         name.toLowerCase().includes(search.trim().toLowerCase()),
     );
     const legacyFoodIds = useSavedIngredientFoodIds(ingredients, isActive);
@@ -85,7 +115,7 @@ export default function MyIngredients({
         deleteSelected,
         resetClickSuppression,
     } = useCollectionSelection({
-        items: ingredients,
+        items: visibleIngredients,
         visibleItems: filteredIngredients,
         getId: (ingredient) => ingredient.ingredientId,
         onOpen: (ingredient) => {
@@ -93,7 +123,8 @@ export default function MyIngredients({
             setIngredientMenu(null);
             onOpen(ingredient);
         },
-        onDeleteMany,
+        // Confirmed bulk delete: rows leave at once; failures reappear.
+        onDeleteMany: (ids) => removeNow(ids, () => onDeleteMany(ids)),
         noun: 'ingredient',
         search,
         isActive,
@@ -109,21 +140,10 @@ export default function MyIngredients({
         onRefresh: () => onRefresh?.(),
     });
 
-    async function deleteIngredient(ingredient: UserIngredient) {
+    function deleteIngredient(ingredient: UserIngredient) {
         setIngredientMenu(null);
         setSwipeError(undefined);
-        try {
-            const deleted = await onDeleteMany([ingredient.ingredientId]);
-            if (!deleted.includes(ingredient.ingredientId))
-                throw new Error('Ingredient was not removed.');
-            setOpenSwipeId(null);
-            return true;
-        } catch {
-            setSwipeError(
-                `Could not delete ${ingredient.name}. Please try again.`,
-            );
-            return false;
-        }
+        remove([ingredient.ingredientId], 'Ingredient removed.');
     }
 
     function openMenu(
@@ -242,7 +262,9 @@ export default function MyIngredients({
                                 onDelete={() => deleteIngredient(ingredient)}
                             >
                                 <div
-                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}`}
+                                    ref={rowRef(ingredient.ingredientId)}
+                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${exitClass(ingredient.ingredientId)}`}
+                                    style={exitStyle(ingredient.ingredientId)}
                                     onPointerDownCapture={(event) => {
                                         lastPointerType.current =
                                             event.pointerType;
@@ -407,9 +429,7 @@ export default function MyIngredients({
                         if (onEdit) onEdit(ingredientMenu.ingredient);
                         else onOpen(ingredientMenu.ingredient);
                     }}
-                    onDelete={() =>
-                        void deleteIngredient(ingredientMenu.ingredient)
-                    }
+                    onDelete={() => deleteIngredient(ingredientMenu.ingredient)}
                 />
             )}
             {isActive && (addMode === 'choices' || addMode === 'search') && (
@@ -445,6 +465,7 @@ export default function MyIngredients({
                         }}
                     />
                 )}
+            {undoToast}
         </section>
     );
 }

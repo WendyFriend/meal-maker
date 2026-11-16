@@ -32,6 +32,28 @@
     min-width: 76px;
     color: var(--coral);
 }
+/* In selection mode the toggle becomes the shared bare ✕ (see
+   ConfirmCancelButtons), right-aligned in the same 76px slot. */
+.collection-selection-toggle-cancel {
+    display: inline-grid;
+    place-items: center end;
+    padding: 0 6px;
+    color: var(--text-h);
+}
+.collection-selection-toggle-cancel svg {
+    box-sizing: content-box;
+    width: 18px;
+    height: 18px;
+    padding: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.collection-selection-toggle-cancel:active {
+    background: transparent;
+}
 .collection-selection-controls button {
     color: var(--coral);
 }
@@ -160,41 +182,7 @@
 .collection-bulk-confirm-actions {
     display: flex;
     flex: 0 0 auto;
-    gap: 8px;
-}
-.collection-bulk-cancel,
-.collection-bulk-confirm {
-    display: grid;
-    flex: 0 0 44px;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: 11px;
-    background: var(--surface);
-    color: var(--deep-green);
-    cursor: pointer;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    transition:
-        transform 160ms ease,
-        background-color 160ms ease;
-}
-.collection-bulk-confirm {
-    border-color: var(--danger);
-    background: var(--danger);
-    color: white;
-}
-.collection-bulk-cancel svg,
-.collection-bulk-confirm svg {
-    width: 22px;
-    height: 22px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    gap: 0;
 }
 .collection-bulk-delete {
     display: flex;
@@ -218,9 +206,7 @@
         background-color 160ms ease,
         transform 160ms ease;
 }
-.collection-bulk-delete:active:not(:disabled),
-.collection-bulk-cancel:active:not(:disabled),
-.collection-bulk-confirm:active:not(:disabled) {
+.collection-bulk-delete:active:not(:disabled) {
     transform: scale(0.97);
 }
 .collection-bulk-delete:hover:not(:disabled) {
@@ -236,15 +222,12 @@
     stroke-linejoin: round;
 }
 .saved-collection button:disabled,
-.collection-bulk-delete:disabled,
-.collection-bulk-confirm:disabled {
+.collection-bulk-delete:disabled {
     opacity: 0.5;
     cursor: default;
 }
 .collection-selection-toggle:focus-visible,
 .collection-selection-controls button:focus-visible,
-.collection-bulk-cancel:focus-visible,
-.collection-bulk-confirm:focus-visible,
 .collection-bulk-delete:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
@@ -263,9 +246,7 @@
     .collection-selection-toggle,
     .collection-selection-controls button,
     .collection-selection-check,
-    .collection-bulk-delete,
-    .collection-bulk-cancel,
-    .collection-bulk-confirm {
+    .collection-bulk-delete {
         transition: none;
     }
 

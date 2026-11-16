@@ -1,32 +1,61 @@
+.page-content-saved-collection:has(> .my-journal:not([hidden])) {
+    padding-inline: var(--space-8);
+}
+
 .my-journal.saved-collection {
     max-width: 640px;
-    padding-top: 24px;
+    padding-top: 20px;
 }
 
 .my-journal .journal-day-summary-overview {
-    margin: 0 calc(-1 * var(--space-6)) 16px;
-    padding: 16px var(--space-6);
+    margin: 0 calc(-1 * var(--space-6)) 0;
+    padding: 8px var(--space-6) 24px;
     border: 0;
     border-radius: 0;
 }
 
+.my-journal
+    .journal-day-summary-overview
+    .nutrition-overview-calories
+    .nutrition-overview-amount
+    strong {
+    font-size: clamp(32px, 7vw, 48px);
+}
+
+.my-journal
+    .journal-day-summary-overview
+    .nutrition-overview-nutrients
+    .nutrition-overview-amount
+    strong {
+    font-size: clamp(16px, 3.3vw, 22px);
+}
+
+.my-journal .journal-day-summary-overview .nutrition-overview-macro-label {
+    font-size: clamp(10px, 2vw, 13px);
+}
+
+.my-journal .journal-day-summary-overview .nutrition-overview-macro {
+    padding-block: 4px;
+}
+
 .my-journal .saved-collection-intro {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .journal-title-row {
-    margin-bottom: 12px;
+    margin-bottom: 13px;
 }
 
 .journal-title-row h1 {
     white-space: nowrap;
+    font-size: clamp(28px, 5vw, 34px);
 }
 
 .journal-date-row {
     display: flex;
     align-items: center;
     width: 100%;
-    min-height: 46px;
+    min-height: 48px;
     padding: 2px;
     border: 1px solid var(--border-hairline);
     border-radius: 999px;
@@ -79,7 +108,7 @@
     border-radius: 999px;
     background: transparent;
     color: var(--deep-green);
-    font-size: 13px;
+    font-size: clamp(15px, 2.7vw, 18px);
     font-weight: 650;
     white-space: nowrap;
     cursor: pointer;
@@ -101,22 +130,27 @@
 
 .journal-view-tabs {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-bottom: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 14px;
     border-bottom: 1px solid var(--border-hairline);
 }
 
 .journal-view-tabs button {
     position: relative;
-    min-height: 48px;
+    min-height: 54px;
     border: 0;
     background: transparent;
     color: var(--text-muted);
     font: inherit;
-    font-size: 15px;
+    font-size: clamp(14px, 2.7vw, 18px);
     font-weight: 650;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+}
+
+.journal-view-tabs button:disabled {
+    opacity: 0.45;
+    cursor: default;
 }
 
 .journal-view-tabs button[aria-selected='true'] {
@@ -141,10 +175,14 @@
 .journal-meals,
 .journal-food-list {
     display: grid;
-    gap: 8px;
+    gap: 16px;
     margin: 0 0 14px;
     padding: 0;
     list-style: none;
+}
+
+.journal-meals {
+    gap: 0;
 }
 
 .journal-food-list li,
@@ -159,19 +197,63 @@
 .journal-meal-card {
     position: relative;
     overflow: hidden;
-    border-bottom: 1px solid var(--border-hairline);
 }
 
-.journal-meal-dragging {
-    z-index: 2;
-    transform: scale(1.015);
-    box-shadow: 0 10px 26px rgb(54 44 31 / 15%);
+.journal-meal-card + .journal-meal-card {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-hairline);
+}
+
+/* Removing the first meal: pull the next meal's top spacing (8 + 8 + 1px)
+   up with it, so nothing jumps when its divider disappears. */
+.journal-meal-card.collection-row-exiting:first-child {
+    --exit-collapse: -17px;
+}
+
+.journal-meal-card.collection-row-exiting:first-child + .journal-meal-card {
+    border-top-color: transparent;
+    transition: border-top-color 180ms ease-in;
+}
+
+/* Rows sit on the page canvas; the shared swipe row only reveals Delete in
+   the uncovered strip, so the content can stay transparent. */
+.journal-meal-card .saved-collection-swipe-content {
+    background: transparent;
 }
 
 .journal-meal-row {
+    /* Trailing controls share fixed 44px columns: chevron at the edge, the
+       primary action (edit/save) beside it, cancel one column further in. */
+    --journal-meal-control: 44px;
+    --journal-meal-actions-width: 0px;
     display: flex;
     align-items: center;
     min-width: 0;
+}
+
+.journal-meal-card .journal-meal-row {
+    display: grid;
+    grid-template-areas: 'row';
+    align-items: center;
+}
+
+.journal-meal-row > .journal-meal-toggle,
+.journal-meal-row > .journal-meal-label,
+.journal-meal-row > .journal-meal-ingredient-actions {
+    grid-area: row;
+}
+
+/* The toggle fills the row; the name is layered on top of it. */
+.journal-meal-row > .journal-meal-toggle {
+    align-self: stretch;
+    justify-content: flex-end;
+}
+
+/* Reserve both action columns while the meal is open, so the title wraps
+   the same way in view and edit modes. */
+.journal-meal-row:has(.journal-meal-ingredient-actions > *) {
+    --journal-meal-actions-width: calc(2 * var(--journal-meal-control));
 }
 
 .journal-meal-toggle {
@@ -180,8 +262,8 @@
     align-items: center;
     gap: 12px;
     width: 100%;
-    min-height: 76px;
-    padding: 9px 0;
+    min-height: 74px;
+    padding: 12px 4px;
     border: 0;
     background: transparent;
     color: var(--deep-green);
@@ -193,45 +275,95 @@
     user-select: none;
 }
 
-.journal-meal-toggle > img {
-    flex: 0 0 56px;
-    width: 56px;
-    height: 56px;
-    border-radius: 11px;
-    object-fit: cover;
+.journal-meal-card[data-expanded='false'] .journal-meal-toggle {
+    min-height: 84px;
 }
 
 .journal-meal-label {
+    position: relative;
     display: flex;
-    flex: 1;
     flex-direction: column;
-    gap: 3px;
+    align-self: center;
+    gap: 6px;
     min-width: 0;
+    padding: 12px 0 12px 4px;
+    /* Clear the disclosure chevron column (4px padding + 12px gap + 44px)
+       and any header actions overlaid beside it. */
+    margin-right: calc(60px + var(--journal-meal-actions-width));
+    color: var(--deep-green);
+    /* Taps reach the toggle underneath, except on the open button. */
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* With a recipe page, the name side opens the meal as a recipe and the
+   trailing chevron column expands it. */
+.journal-meal-row-split > .journal-meal-toggle {
+    justify-self: end;
+    width: 60px;
+    padding-left: 0;
+}
+
+.journal-meal-row-split > .journal-meal-open {
+    align-self: stretch;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+.journal-meal-row-split > .journal-meal-open:active,
+.journal-meal-row-split > .journal-meal-toggle:active {
+    background: color-mix(in srgb, var(--warm-cream) 60%, white);
+}
+
+.journal-meal-open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+/* The same chevron as ingredient names, following the meal name. */
+.journal-meal-open-chevron {
+    display: inline-block;
+    margin-left: 8px;
+    vertical-align: 0.1em;
+}
+
+.journal-meal-open:hover .journal-meal-open-chevron {
+    border-color: var(--accent);
+    transform: translateX(2px) rotate(45deg);
 }
 
 .journal-meal-label small {
+    align-self: flex-start;
     color: var(--text-muted);
-    font-size: 13px;
-    font-weight: 600;
+    font-size: clamp(13px, 2.3vw, 15px);
+    font-weight: 500;
     line-height: 1.25;
 }
 
 .journal-meal-label strong {
-    font-size: 18px;
+    font-size: clamp(13.5px, 3.7vw, 20px);
     font-weight: 700;
     line-height: 1.35;
     overflow-wrap: anywhere;
 }
 
 .journal-meal-chevron {
-    flex: 0 0 30px;
-    width: 30px;
-    height: 30px;
-    padding: 6px;
-    border-radius: 50%;
-    background: var(--surface-muted);
+    /* A plain disclosure glyph centred in the trailing 44px column. */
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    margin: 0 12px;
+    color: var(--text-muted);
     stroke: currentColor;
-    stroke-width: 1.8;
+    stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
     transition: transform 180ms ease;
@@ -242,42 +374,7 @@
 }
 
 .journal-meal-toggle:active {
-    background: var(--warm-cream);
-}
-
-.journal-reorder-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    color: var(--deep-green);
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.journal-reorder-toolbar span {
-    flex: 1;
-}
-
-.journal-reorder-toolbar button {
-    min-height: 44px;
-    padding: 8px 12px;
-    border: 0;
-    border-radius: 10px;
-    background: transparent;
-    color: var(--text-muted);
-    font: inherit;
-    cursor: pointer;
-}
-
-.journal-reorder-toolbar button:last-child {
-    background: var(--accent-bg);
-    color: var(--accent-strong);
-}
-
-.journal-reorder-toolbar button:disabled {
-    opacity: 0.6;
-    cursor: default;
+    background: color-mix(in srgb, var(--warm-cream) 60%, white);
 }
 
 .journal-order-error {
@@ -286,51 +383,55 @@
     font-size: 12px;
 }
 
-.journal-meal-arranging {
-    border-color: color-mix(in srgb, var(--coral) 28%, white);
+/* Long press lifts a meal (useLongPressReorder); no edit mode. */
+.journal-meal-toggle {
+    -webkit-touch-callout: none;
 }
 
-.journal-meal-arranging .journal-meal-toggle {
-    min-width: 0;
+.journal-meals-dragging {
+    cursor: grabbing;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
-.journal-meal-move-actions {
-    display: flex;
-    flex: 0 0 auto;
-    gap: 2px;
-    padding-right: 4px;
+/* Lifted card: raised, slightly larger, follows the finger. */
+.journal-meal-card.journal-meal-dragging {
+    z-index: 2;
+    border-top-color: transparent;
+    overflow: visible;
+    border-radius: 14px;
+    background: var(--surface);
+    /* The 12px surface ring pads the lifted card without moving its text. */
+    box-shadow:
+        0 0 0 12px var(--surface),
+        0 4px 10px 12px rgb(54 44 31 / 6%),
+        0 16px 34px 12px rgb(54 44 31 / 12%);
 }
 
-.journal-meal-move-actions button {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    padding: 9px;
-    border: 0;
-    border-radius: 10px;
-    background: var(--surface-muted);
-    color: var(--deep-green);
-    cursor: pointer;
+.journal-meal-dragging + .journal-meal-card {
+    border-top-color: transparent;
 }
 
-.journal-meal-move-actions button:active:not(:disabled) {
-    background: var(--accent-bg);
-    color: var(--accent-strong);
+/* Dropping: the shadow fades as the card glides into its slot. */
+.journal-meal-card.journal-meal-dragging[data-reorder-settling] {
+    background: transparent;
+    box-shadow:
+        0 0 0 12px transparent,
+        0 4px 10px 12px transparent,
+        0 16px 34px 12px transparent;
 }
 
-.journal-meal-move-actions button:disabled {
-    opacity: 0.3;
-    cursor: default;
-}
+@media (prefers-reduced-motion: no-preference) {
+    /* Neighbours glide aside; the lifted card tracks the finger exactly. */
+    .journal-meals-dragging .journal-meal-card {
+        transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
 
-.journal-meal-move-actions svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    stroke-width: 1.9;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    .journal-meals-dragging .journal-meal-card.journal-meal-dragging {
+        transition:
+            box-shadow 200ms ease,
+            background-color 200ms ease;
+    }
 }
 
 .journal-meal-expand {
@@ -353,29 +454,80 @@
 }
 
 .journal-meal-content {
-    padding: 0 0 12px;
+    padding: 0 4px;
 }
 
-.journal-meal-nutrition-overview {
-    margin: 8px 0 16px;
-    padding: 0 4px 12px;
-    border: 0;
-}
-
-.journal-meal-ingredients-heading {
+.journal-meal-ingredient-actions {
+    z-index: 1;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    height: 44px;
-    margin-top: 8px;
+    justify-self: end;
+    margin-right: calc(4px + var(--journal-meal-control));
 }
 
-.journal-meal-ingredients-heading h3 {
+/* Editing: only the name and ✕ / ✓. ✓ takes the collapse chevron's column,
+   ✕ sits a little apart from it, and the row keeps the toggle's height. */
+.journal-meal-row-editing {
+    min-height: 74px;
+}
+
+.journal-meal-row-editing > .journal-meal-ingredient-actions {
+    margin-right: 4px;
+}
+
+.journal-meal-row-editing
+    .journal-meal-ingredient-actions
+    .ingredient-section-edit-actions {
+    gap: 8px;
+}
+
+.journal-meal-ingredient-actions:empty {
+    display: none;
+}
+
+.journal-meal-content > .journal-meal-ingredient-actions {
+    justify-content: flex-end;
     margin: 0;
-    color: var(--deep-green);
-    font-size: var(--font-size-md);
-    font-weight: 700;
+}
+
+.journal-meal-ingredient-actions .ingredient-section-edit-actions {
+    width: auto;
+    gap: 0;
+}
+
+/* The pencil shares the 44px column that ✓ takes in edit mode; ✕ / ✓
+   styling comes from the shared ConfirmCancelButtons. */
+.journal-meal-ingredient-actions .ingredient-section-edit-button {
+    width: var(--journal-meal-control, 44px);
+    height: var(--journal-meal-control, 44px);
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.journal-meal-ingredient-actions .ingredient-section-edit-button {
+    color: var(--text);
+}
+
+.journal-meal-ingredient-actions .ingredient-section-edit-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+.journal-meal-ingredient-actions .ingredient-section-edit-button svg path {
+    fill: currentColor;
+}
+
+@media (min-width: 769px) {
+    .journal-meal-ingredient-actions .ingredient-section-edit-button svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.journal-meal-ingredient-actions
+    .ingredient-section-edit-button:active:not(:disabled) {
+    background: color-mix(in srgb, var(--coral) 10%, transparent);
 }
 
 .journal-meal-ingredients {
@@ -406,10 +558,56 @@
     display: block;
     min-height: 0;
     padding: 0;
+    /* Invisible divider keeps row spacing identical to edit mode. */
+    border-bottom-color: transparent;
 }
 
-.journal-ingredient-read-row.meal-ingredient {
+.journal-meal-ingredients .journal-ingredient-read-row.meal-ingredient {
+    --ingredient-weight-column: 74px;
+
     border-bottom: 0;
+}
+
+/* View and edit rows share height, thumbnail and name type so entering
+   edit mode only reveals controls instead of shifting the list. */
+.journal-meal-ingredients
+    :is(
+        .journal-ingredient-read-row,
+        .journal-ingredient-edit-row
+    ).meal-ingredient {
+    min-height: 72px;
+    padding-block: 8px;
+}
+
+.journal-meal-ingredients
+    :is(.journal-ingredient-read-row, .journal-ingredient-edit-row)
+    .meal-ingredient-thumbnail {
+    flex-basis: 46px;
+    width: 46px;
+    height: 46px;
+}
+
+.journal-meal-ingredients .journal-ingredient-edit-row .ingredient-name {
+    font-size: clamp(15px, 2.7vw, 18px);
+}
+
+.journal-ingredient-read-row .ingredient-info,
+.journal-ingredient-read-row .ingredient-portion-summary {
+    display: flex;
+    align-items: center;
+}
+
+.journal-ingredient-read-row .ingredient-calorie-contribution,
+.journal-ingredient-read-row .ingredient-calorie-value {
+    display: none;
+}
+
+.journal-ingredient-read-row .ingredient-weight-readonly {
+    font-size: clamp(15px, 2.7vw, 18px);
+}
+
+.journal-ingredient-read-row .ingredient-name-button {
+    font-size: clamp(15px, 2.7vw, 18px);
 }
 
 .journal-meal-ingredients li {
@@ -491,18 +689,37 @@
     height: 20px;
 }
 
-.journal-ingredient-add {
-    width: 100%;
-    min-height: 44px;
-    margin-top: 12px;
-    border: 0;
-    border-radius: 12px;
-    background: var(--accent-green);
-    color: var(--deep-green);
-    font: inherit;
-    font-size: 14px;
+.journal-meal-total {
+    container-type: inline-size;
+    margin-top: 8px;
+    padding: 14px 0 16px;
+    border-top: 1px solid var(--border-hairline);
+    color: var(--text-muted);
+    font-size: clamp(14px, 3.6vw, 16px);
+    line-height: 1.5;
+    letter-spacing: -0.1px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.journal-meal-total-line {
+    display: inline-block;
+    /* Scales with the card width only, so editing amounts never resizes it. */
+    font-size: clamp(11px, 3.6cqi, 16px);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.journal-meal-total strong {
+    color: var(--text-h);
     font-weight: 700;
-    cursor: pointer;
+}
+
+.journal-meal-total small {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 13px;
 }
 
 .journal-food-list li {
@@ -579,8 +796,20 @@
 }
 
 @media (max-width: 400px) {
-    .journal-title-row h1 {
-        font-size: 23px;
+    .journal-view-tabs button {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-content-saved-collection:has(> .my-journal:not([hidden])) {
+        padding-inline: var(--space-5);
+    }
+}
+
+@media (max-width: 360px) {
+    .page-content-saved-collection:has(> .my-journal:not([hidden])) {
+        padding-inline: var(--space-4);
     }
 }
 

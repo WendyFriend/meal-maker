@@ -84,18 +84,18 @@ describe('My Day toggle', () => {
         await user.click(
             screen.getByRole('button', { name: 'Add to My Plan' }),
         );
-        expect(
-            await screen.findByRole('dialog', { name: 'Added to My Plan' }),
-        ).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent(
-            'Added to My Plan',
-        );
+        const feedback = await screen.findByRole('status');
+        expect(feedback).toHaveClass('action-toast--floating');
+        expect(feedback).toHaveTextContent('Added to My Plan.');
+        expect(feedback).toHaveStyle({
+            '--action-toast-background': '#fff',
+            '--action-toast-icon': '#27813a',
+        });
         expect(saveJournalEntry).toHaveBeenCalledOnce();
         expect(vi.mocked(saveJournalEntry).mock.calls[0][0]).toMatchObject({
             mealName: meal.mealName,
             ingredients: meal.ingredients,
         });
-        await user.click(screen.getByRole('dialog'));
         const remove = screen.getByRole('button', {
             name: 'Remove from My Plan',
         });
@@ -105,7 +105,7 @@ describe('My Day toggle', () => {
         expect(
             screen.getByRole('button', { name: 'Add to My Plan' }),
         ).toHaveAttribute('aria-pressed', 'false');
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.queryByText('Added to My Plan.')).not.toBeInTheDocument();
         expect(outerSave).not.toHaveBeenCalled();
     });
     it('dismisses the confirmation automatically without forgetting the journal entry', async () => {
@@ -116,9 +116,11 @@ describe('My Day toggle', () => {
                 screen.getByRole('button', { name: 'Add to My Day' }),
             );
         });
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Added to My Day.',
+        );
         act(() => vi.advanceTimersByTime(1800));
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.queryByText('Added to My Day.')).not.toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Remove from My Day' }),
         ).toBeEnabled();
@@ -137,15 +139,18 @@ describe('My Day toggle', () => {
         fireEvent.click(add);
         fireEvent.click(add);
         expect(saveJournalEntry).toHaveBeenCalledOnce();
-        expect(add).toBeDisabled();
+        // Feedback is immediate; the request is still running.
+        expect(screen.getByText('Added to My Day.')).toBeInTheDocument();
+        expect(add).toHaveAttribute('aria-pressed', 'true');
+        expect(add).toHaveAttribute('aria-busy', 'true');
         await act(async () => reject(new Error('offline')));
+        expect(add).toHaveAttribute('aria-pressed', 'false');
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'Could not add',
         );
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.queryByText('Added to My Day.')).not.toBeInTheDocument();
         await user.click(add);
-        await screen.findByRole('dialog');
-        await user.click(screen.getByRole('dialog'));
+        await screen.findByText('Added to My Day.');
         vi.mocked(deleteJournalEntry).mockRejectedValueOnce(
             new Error('offline'),
         );
@@ -158,7 +163,7 @@ describe('My Day toggle', () => {
         expect(
             screen.getByRole('button', { name: 'Remove from My Day' }),
         ).toBeEnabled();
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.queryByText('Added to My Day.')).not.toBeInTheDocument();
     });
     it('disables both add and remove actions when the meal is being edited', async () => {
         const user = userEvent.setup();
@@ -168,9 +173,7 @@ describe('My Day toggle', () => {
         expect(saveJournalEntry).not.toHaveBeenCalled();
         rerender(<LogMealButton meal={meal} />);
         await user.click(screen.getByRole('button', { name: 'Add to My Day' }));
-        await user.click(
-            await screen.findByRole('dialog', { name: 'Added to My Day' }),
-        );
+        await user.click(await screen.findByRole('status'));
         rerender(<LogMealButton meal={meal} disabled />);
         expect(
             screen.getByRole('button', { name: 'Remove from My Day' }),

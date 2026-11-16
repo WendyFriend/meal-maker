@@ -14,6 +14,23 @@ export type IngredientInfo = MicronutrientValues & {
     fiberPer100g?: number;
 };
 
+/** Per-100g values read from a photographed nutrition label. */
+export type NutritionLabelScan = {
+    productName?: string;
+    nutrition: Partial<
+        Pick<
+            IngredientInfo,
+            | 'caloriesPer100g'
+            | 'proteinPer100g'
+            | 'carbohydratePer100g'
+            | 'fatPer100g'
+            | 'sugarPer100g'
+            | 'saturatedFatPer100g'
+            | 'fiberPer100g'
+        >
+    >;
+};
+
 export type UserIngredient = MicronutrientValues & {
     preparationTips?: string[];
     ingredientId: string; // database id
@@ -26,10 +43,6 @@ export type UserIngredient = MicronutrientValues & {
     saturatedFatPer100g?: number;
     fiberPer100g?: number;
 };
-
-export const MEAL_GENERATORS = ['ollama', 'nutrition-lab'] as const;
-export type MealGenerator = (typeof MEAL_GENERATORS)[number];
-export const DEFAULT_MEAL_GENERATOR: MealGenerator = 'nutrition-lab';
 
 export type GenerateMealRequest = {
     ingredients: IngredientInfo[];
@@ -72,7 +85,8 @@ export type IngredientNutrition = MicronutrientValues & {
 
 export type MealIngredient = IngredientNutrition & {
     weight: number;
-    thumbnailSource?: 'nutrition-lab' | 'local';
+    /** Set on ingredients from Nutrition Lab generation, which carry their own food data. */
+    thumbnailSource?: 'nutrition-lab';
     /** The name was entered without reliable macro data; numeric placeholders are not nutrition values. */
     nutritionUnavailable?: true;
 };

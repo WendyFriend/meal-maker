@@ -46,3 +46,21 @@ it('supports custom colors and floating placement', () => {
         '--action-toast-icon': '#27813a',
     });
 });
+
+it('offers a tappable action without an icon', () => {
+    const onUndo = vi.fn();
+    render(
+        <ActionToast
+            message="Meal removed"
+            placement="floating"
+            icon={null}
+            action={{ label: 'Undo', onClick: onUndo }}
+        />,
+    );
+    expect(screen.getByRole('status')).toHaveClass('action-toast--actionable');
+    expect(
+        document.querySelector('.action-toast-symbol'),
+    ).not.toBeInTheDocument();
+    screen.getByRole('button', { name: 'Undo' }).click();
+    expect(onUndo).toHaveBeenCalledOnce();
+});

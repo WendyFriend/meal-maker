@@ -6,7 +6,6 @@ import {
     useMemo,
     useRef,
     useState,
-    type CSSProperties,
 } from 'react';
 import type { Recipe } from '../shared/types/recipe';
 import { getRecipes, deleteRecipes } from './services/recipeService';
@@ -27,6 +26,7 @@ import SwipeableCollectionRow from './components/SwipeableCollectionRow';
 import CollectionContextMenu from './components/CollectionContextMenu';
 import { contextMenuPosition } from './components/contextMenuPosition';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
+import { useUndoableDelete } from './hooks/useUndoableDelete';
 import {
     hasUnavailableNutrition,
     totalFiber,
@@ -97,8 +97,37 @@ export default function MyMeals({
     const [isRefreshing, setIsRefreshing] = useState(false);
     const refreshingRef = useRef(false);
     const previousActiveRef = useRef(isActive);
-    const [exitingRows, setExitingRows] = useState<Record<string, number>>({});
-    const rowElements = useRef(new Map<string, HTMLDivElement>());
+    const {
+        rowRef,
+        exitClass,
+        exitStyle,
+        hiddenIds,
+        remove,
+        removeNow,
+        undoToast,
+    } = useUndoableDelete<HTMLDivElement>({
+        isActive,
+        onHidden: () => setOpenSwipeId(null),
+        commit: async (ids) => {
+            const names = recipes
+                .filter((recipe) => recipe.id && ids.includes(recipe.id))
+                .map((recipe) => recipe.recipeName);
+            try {
+                const deleted = new Set(await deleteRecipes(ids));
+                setRecipes((current) =>
+                    current.filter(
+                        (recipe) => !recipe.id || !deleted.has(recipe.id),
+                    ),
+                );
+                if (ids.some((id) => !deleted.has(id)))
+                    throw new Error('Recipe was not removed.');
+            } catch {
+                setSwipeError(
+                    `Could not delete ${names.join(', ') || 'recipe'}. Please try again.`,
+                );
+            }
+        },
+    });
     const onRecipesRefreshedRef = useRef(onRecipesRefreshed);
     useLayoutEffect(() => {
         onRecipesRefreshedRef.current = onRecipesRefreshed;
@@ -154,15 +183,18 @@ export default function MyMeals({
 
     const filtered = useMemo(() => {
         const query = search.trim().toLowerCase();
-        if (!query) return recipes;
-        return recipes.filter(
+        const visible = recipes.filter(
+            (recipe) => !recipe.id || !hiddenIds.has(recipe.id),
+        );
+        if (!query) return visible;
+        return visible.filter(
             (recipe) =>
                 recipe.recipeName.toLowerCase().includes(query) ||
                 recipe.ingredients.some((ingredient) =>
                     ingredient.name.toLowerCase().includes(query),
                 ),
         );
-    }, [recipes, search]);
+    }, [recipes, search, hiddenIds]);
     const nutritionSummaries = useMemo(
         () =>
             showNutrition
@@ -176,48 +208,25 @@ export default function MyMeals({
         [filtered, showNutrition],
     );
 
-    async function deleteMeals(ids: string[]) {
+    // Confirmed bulk delete: rows leave at once; failures reappear.
+    function deleteMeals(ids: string[]) {
         setRecipeMenu(null);
-        const deleted = await deleteRecipes(ids);
-        const removed = new Set(deleted);
-        const visibleExits = Object.fromEntries(
-            deleted.flatMap((id) => {
-                const row = rowElements.current.get(id);
-                return row
-                    ? [[id, row.getBoundingClientRect().height || 82]]
-                    : [];
-            }),
-        );
-        if (
-            Object.keys(visibleExits).length &&
-            !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-        ) {
-            setExitingRows(visibleExits);
-            await new Promise<void>((resolve) =>
-                window.setTimeout(resolve, 180),
+        return removeNow(ids, async () => {
+            const deleted = await deleteRecipes(ids);
+            const removed = new Set(deleted);
+            setRecipes((current) =>
+                current.filter(
+                    (recipe) => !recipe.id || !removed.has(recipe.id),
+                ),
             );
-        }
-        setRecipes((current) =>
-            current.filter((recipe) => !recipe.id || !removed.has(recipe.id)),
-        );
-        setExitingRows({});
-        return deleted;
+            return deleted;
+        });
     }
-    async function deleteMeal(recipe: Recipe) {
-        if (!recipe.id) return false;
+    function deleteMeal(recipe: Recipe) {
+        if (!recipe.id) return;
+        setRecipeMenu(null);
         setSwipeError(undefined);
-        try {
-            const deleted = await deleteMeals([recipe.id]);
-            if (!deleted.includes(recipe.id))
-                throw new Error('Meal was not removed.');
-            setOpenSwipeId(null);
-            return true;
-        } catch {
-            setSwipeError(
-                `Could not delete ${recipe.recipeName}. Please try again.`,
-            );
-            return false;
-        }
+        remove([recipe.id], 'Recipe removed.');
     }
     const {
         selecting,
@@ -480,19 +489,12 @@ export default function MyMeals({
                                 onDelete={() => deleteMeal(recipe)}
                             >
                                 <div
-                                    ref={(node) => {
-                                        if (!recipe.id) return;
-                                        if (node)
-                                            rowElements.current.set(
-                                                recipe.id,
-                                                node,
-                                            );
-                                        else
-                                            rowElements.current.delete(
-                                                recipe.id,
-                                            );
-                                    }}
-                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${recipe.id && exitingRows[recipe.id] ? ' my-meals-row-exiting' : ''}`}
+                                    ref={
+                                        recipe.id
+                                            ? rowRef(recipe.id)
+                                            : undefined
+                                    }
+                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${exitClass(recipe.id)}`}
                                     onPointerDownCapture={(event) => {
                                         lastPointerType.current =
                                             event.pointerType;
@@ -513,13 +515,7 @@ export default function MyMeals({
                                                 event.clientY,
                                             );
                                     }}
-                                    style={
-                                        recipe.id && exitingRows[recipe.id]
-                                            ? ({
-                                                  '--exit-height': `${exitingRows[recipe.id]}px`,
-                                              } as CSSProperties)
-                                            : undefined
-                                    }
+                                    style={exitStyle(recipe.id)}
                                 >
                                     <button
                                         type="button"
@@ -569,8 +565,8 @@ export default function MyMeals({
                                             className="my-meals-row-photo"
                                             src={defaultMealPhoto}
                                             alt=""
-                                            width="72"
-                                            height="72"
+                                            width="36"
+                                            height="36"
                                             loading="lazy"
                                             decoding="async"
                                         />
@@ -673,9 +669,10 @@ export default function MyMeals({
                         if (onEditRecipe) onEditRecipe(recipeMenu.recipe);
                         else onOpenRecipe(recipeMenu.recipe);
                     }}
-                    onDelete={() => void deleteMeal(recipeMenu.recipe)}
+                    onDelete={() => deleteMeal(recipeMenu.recipe)}
                 />
             )}
+            {undoToast}
         </section>
     );
 }

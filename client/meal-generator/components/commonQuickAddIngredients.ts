@@ -440,10 +440,34 @@ export const commonQuickAddIngredients: Record<
     ],
 };
 
+// Common search terms outside the quick-add category tabs. Keep these small
+// and source them from Nutrition Lab so typing an exact name can fill nutrition
+// immediately without a round trip.
+export const commonSearchIngredients: CommonIngredient[] = [
+    ingredient('Banana', 173944, 'Bananas, raw', {
+        caloriesPer100g: 89,
+        proteinPer100g: 1.09,
+        carbohydratePer100g: 22.84,
+        fatPer100g: 0.33,
+        sugarPer100g: 12.23,
+        saturatedFatPer100g: 0.112,
+        fiberPer100g: 2.6,
+        ironPer100g: 0.26,
+        calciumPer100g: 5,
+        magnesiumPer100g: 27,
+        zincPer100g: 0.15,
+        seleniumPer100g: 1,
+        folatePer100g: 20,
+        vitaminCPer100g: 8.7,
+        vitaminB12Per100g: 0,
+    }),
+];
+
 const commonIngredientsByName = new Map(
-    Object.values(commonQuickAddIngredients)
-        .flat()
-        .map((item) => [normalizeIngredientName(item.name), item]),
+    [
+        ...Object.values(commonQuickAddIngredients).flat(),
+        ...commonSearchIngredients,
+    ].map((item) => [normalizeIngredientName(item.name), item]),
 );
 
 export function findCommonQuickAddIngredient(

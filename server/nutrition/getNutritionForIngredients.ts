@@ -1,6 +1,6 @@
 import type { IngredientNutrition } from '../../shared/types/types.ts';
 import type { IngredientInfo } from '../../shared/types/types.ts';
-import { matchesFoodDescription } from './usda/selectFood.js';
+import { matchesFoodDescription } from './foodMatching.js';
 import { lookupFoodNutrition } from './lookupFood.js';
 import { MICRONUTRIENTS } from '../../shared/micronutrients.js';
 
@@ -22,7 +22,6 @@ export function hasCompleteNutrition(
 
 export async function getNutritionForIngredients(
     ingredients: IngredientInfo[],
-    provider: 'usda' | 'nutrition-lab' = 'usda',
 ): Promise<{
     ingredientsWithNutrition: IngredientNutrition[];
     unresolvedIngredients: string[];
@@ -63,10 +62,7 @@ export async function getNutritionForIngredients(
             }
 
             try {
-                const nutrition = await lookupFoodNutrition(
-                    ingredient.name,
-                    provider,
-                );
+                const nutrition = await lookupFoodNutrition(ingredient.name);
                 // Preserve supplied values (including zero) and ingredient identity.
                 return {
                     ...nutrition,

@@ -5,6 +5,7 @@ import IngredientNutritionSheet from '../meal-generator/components/IngredientNut
 import NutritionInfo from '../meal-generator/components/NutritionInfo';
 import IngredientThumbnail from '../meal-generator/components/IngredientThumbnail';
 import { IngredientWeightInput } from '../meal-generator/components/IngredientWeightInput';
+import LoadingSpinner from './LoadingSpinner';
 import './IngredientSectionRow.css';
 
 type WeightControls = {
@@ -30,13 +31,19 @@ export default function IngredientSectionRow({
     calorieScale: number;
     weightControls?: WeightControls;
     showNutritionSheet?: boolean;
-    showChevron?: boolean;
+    /** `'space'` keeps the chevron's width without showing it, so names
+     *  wrap the same in view and edit mode. */
+    showChevron?: boolean | 'space';
     nutritionLookingUp?: boolean;
     onNutritionResolved?: (ingredient: IngredientInfo) => void;
     className?: string;
 }) {
     const [nutritionOpen, setNutritionOpen] = useState(false);
     const displayName = ingredient.name;
+    const chevronClass =
+        showChevron === 'space'
+            ? 'ingredient-name-chevron ingredient-name-chevron-space'
+            : 'ingredient-name-chevron';
     const calories = ingredient.nutritionUnavailable
         ? undefined
         : (ingredient.caloriesPer100g * ingredient.weight) / 100;
@@ -49,7 +56,6 @@ export default function IngredientSectionRow({
                 <IngredientThumbnail
                     name={ingredient.name}
                     fdcId={ingredient.nutritionSource?.fdcId}
-                    source={ingredient.thumbnailSource}
                 />
                 <div className="ingredient-info">
                     <div className="ingredient-info-heading">
@@ -63,7 +69,7 @@ export default function IngredientSectionRow({
                                 {showChevron &&
                                     !ingredient.nutritionUnavailable && (
                                         <span
-                                            className="ingredient-name-chevron"
+                                            className={chevronClass}
                                             aria-hidden="true"
                                         />
                                     )}
@@ -93,9 +99,27 @@ export default function IngredientSectionRow({
                                     </p>
                                 </NutritionInfo>
                             )}
+                        {ingredient.nutritionUnavailable &&
+                            nutritionLookingUp && (
+                                <span
+                                    className="ingredient-nutrition-loading"
+                                    role="status"
+                                    aria-label={`Finding nutrition for ${displayName}`}
+                                >
+                                    <LoadingSpinner size="small" />
+                                </span>
+                            )}
                         {showNutritionSheet &&
                             showChevron &&
-                            ingredient.nutritionUnavailable && (
+                            ingredient.nutritionUnavailable &&
+                            (showChevron === 'space' ? (
+                                <span
+                                    className="ingredient-chevron-button"
+                                    aria-hidden="true"
+                                >
+                                    <span className={chevronClass} />
+                                </span>
+                            ) : (
                                 <button
                                     type="button"
                                     className="ingredient-chevron-button"
@@ -103,11 +127,11 @@ export default function IngredientSectionRow({
                                     onClick={() => setNutritionOpen(true)}
                                 >
                                     <span
-                                        className="ingredient-name-chevron"
+                                        className={chevronClass}
                                         aria-hidden="true"
                                     />
                                 </button>
-                            )}
+                            ))}
                     </div>
                     <IngredientCalorieContribution
                         name={displayName}

@@ -7,10 +7,16 @@ export default function IngredientCamera({
     mode,
     onClose,
     onContinue,
+    backLabel = 'Back to My Ingredients',
+    continueLabel = 'Enter details',
+    note,
 }: {
     mode: 'food' | 'label';
     onClose: () => void;
     onContinue: (photo: string) => void;
+    backLabel?: string;
+    continueLabel?: string;
+    note?: string;
 }) {
     const dialogRef = useModalDialog();
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -102,11 +108,7 @@ export default function IngredientCamera({
             }}
         >
             <header className="ingredient-camera-header">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    aria-label="Back to My Ingredients"
-                >
+                <button type="button" onClick={onClose} aria-label={backLabel}>
                     ‹
                 </button>
                 <h2>{title}</h2>
@@ -157,7 +159,7 @@ export default function IngredientCamera({
                             className="ingredient-camera-continue"
                             onClick={() => preview && onContinue(preview)}
                         >
-                            Enter details
+                            {continueLabel}
                         </button>
                     </>
                 ) : (
@@ -234,9 +236,10 @@ export default function IngredientCamera({
             </div>
             {preview && (
                 <p className="ingredient-camera-note">
-                    {mode === 'label'
-                        ? 'Review the photo, then enter the nutrition values shown on the label.'
-                        : 'Review the photo, then enter the ingredient details.'}
+                    {note ??
+                        (mode === 'label'
+                            ? 'Review the photo, then enter the nutrition values shown on the label.'
+                            : 'Review the photo, then enter the ingredient details.')}
                 </p>
             )}
         </dialog>,

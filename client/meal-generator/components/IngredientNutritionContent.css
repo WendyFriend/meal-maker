@@ -30,7 +30,9 @@
 
 .ingredient-nutrition-lookup {
     display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 10px;
     min-height: 220px;
     color: var(--text-muted);
     font-size: 14px;
@@ -232,7 +234,7 @@
     color: var(--accent);
 }
 
-.ingredient-nutrition-content :is(input, textarea):focus-visible {
+.ingredient-nutrition-content input:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -336,45 +338,41 @@
     }
 }
 
-.ingredient-sheet-name-field {
-    display: grid;
-}
-
-.ingredient-sheet-name-field > * {
-    grid-area: 1 / 1;
-}
-
-.ingredient-sheet-name-measure {
-    visibility: hidden;
-    pointer-events: none;
-}
-
-.ingredient-nutrition-content-sheet .ingredient-inline-name {
-    height: 100%;
-    min-height: 0;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    resize: none;
-}
-
 .ingredient-nutrition-content-sheet .ingredient-inline-value {
     gap: 3px;
     line-height: inherit;
 }
 
+/* While editing, sheet values become soft filled fields that still sit on
+   the same line, so rows keep their height and nothing below moves. The
+   negative margins absorb the padding; 16px text avoids iOS focus zoom. */
 .ingredient-nutrition-content-sheet .ingredient-inline-value input {
-    width: 100%;
+    box-sizing: border-box;
+    width: 76px;
+    height: 26px;
     min-height: 0;
-    padding: 0;
+    margin-block: -5px;
+    padding: 0 8px;
     border: 0;
-    border-radius: 0;
-    background: transparent;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-h);
     font: inherit;
+    font-size: 16px;
+    line-height: 26px;
     appearance: textfield;
+    box-shadow: inset 0 0 0 1px var(--border);
+    transition: box-shadow 140ms ease;
+}
+
+.ingredient-nutrition-content-sheet .ingredient-micronutrients input {
+    width: 68px;
+}
+
+.ingredient-nutrition-content-sheet .ingredient-inline-value input:focus {
+    box-shadow:
+        inset 0 0 0 1.5px var(--accent),
+        0 0 0 3px var(--accent-bg);
 }
 
 .ingredient-nutrition-content-sheet
@@ -393,7 +391,17 @@
     min-width: 0;
 }
 
-.ingredient-nutrition-content-sheet :is(input, textarea):focus-visible {
+.ingredient-nutrition-content-sheet input:focus-visible {
     outline: none;
-    box-shadow: 0 1px 0 var(--accent);
+}
+
+/* Title with a small action that follows its last word. The row forbids a
+   break between title and action; the title itself still wraps normally. */
+.ingredient-nutrition-content-sheet .ingredient-nutrition-name-row {
+    white-space: nowrap;
+}
+
+.ingredient-nutrition-name-row > .ingredient-nutrition-name {
+    display: inline;
+    white-space: pre-wrap;
 }

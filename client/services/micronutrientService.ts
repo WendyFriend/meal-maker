@@ -3,7 +3,6 @@ import {
     type MicronutrientValues,
 } from '../../shared/micronutrients';
 import type { IngredientInfo } from '../../shared/types/types';
-import { loadMealGenerator } from '../settings/mealGenerator';
 
 export const micronutrientLookupKey = (name: string) =>
     name.trim().toLowerCase();
@@ -21,25 +20,37 @@ export function needsMicronutrients(ingredient: MicronutrientValues): boolean {
     );
 }
 
-// Food reference values can be reused across recipes and app restarts. Keep the
-// provider in the key so switching generators never mixes their results.
-const CACHE_KEY = 'meal-maker:ingredient-nutrition:v1';
+// Food reference values can be reused across recipes and app restarts.
+// v1 keyed entries by meal generator; it is dropped once.
+const CACHE_KEY = 'meal-maker:ingredient-nutrition:v2';
+try {
+    window.localStorage.removeItem('meal-maker:ingredient-nutrition:v1');
+} catch {
+    // Storage can be unavailable; there is then nothing to clean up.
+}
 const CACHE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const CACHE_LIMIT = 80;
 type CachedNutrition = { savedAt: number; ingredient: IngredientInfo };
 const resolvedLookups = new Map<string, CachedNutrition>();
 const lookups = new Map<string, Promise<IngredientInfo>>();
+let storedLookupsRaw: string | null | undefined;
+let storedLookups: Record<string, CachedNutrition> = {};
 
 function readStoredLookups(): Record<string, CachedNutrition> {
     try {
         const value = window.localStorage.getItem(CACHE_KEY);
-        if (!value) return {};
+        if (value === storedLookupsRaw) return storedLookups;
+        storedLookupsRaw = value;
+        if (!value) return (storedLookups = {});
         const parsed: unknown = JSON.parse(value);
-        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-            ? (parsed as Record<string, CachedNutrition>)
-            : {};
+        storedLookups =
+            parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                ? (parsed as Record<string, CachedNutrition>)
+                : {};
+        return storedLookups;
     } catch {
-        return {};
+        storedLookupsRaw = undefined;
+        return (storedLookups = {});
     }
 }
 
@@ -61,9 +72,7 @@ function cachedNutrition(key: string): IngredientInfo | undefined {
 export function getCachedIngredientNutrition(
     name: string,
 ): IngredientInfo | undefined {
-    return cachedNutrition(
-        `${loadMealGenerator()}:${micronutrientLookupKey(name)}`,
-    );
+    return cachedNutrition(micronutrientLookupKey(name));
 }
 
 function storeNutrition(key: string, ingredient: IngredientInfo) {
@@ -82,18 +91,17 @@ function storeNutrition(key: string, ingredient: IngredientInfo) {
             )
             .sort(([, a], [, b]) => a.savedAt - b.savedAt)
             .slice(-CACHE_LIMIT);
-        window.localStorage.setItem(
-            CACHE_KEY,
-            JSON.stringify(Object.fromEntries(recent)),
-        );
+        const serialized = JSON.stringify(Object.fromEntries(recent));
+        window.localStorage.setItem(CACHE_KEY, serialized);
+        storedLookupsRaw = serialized;
+        storedLookups = Object.fromEntries(recent);
     } catch {
         // Browsers can disable storage; the in-memory cache still works.
     }
 }
 
 export function getIngredientNutrition(name: string): Promise<IngredientInfo> {
-    const generator = loadMealGenerator();
-    const key = `${generator}:${micronutrientLookupKey(name)}`;
+    const key = micronutrientLookupKey(name);
     const resolved = cachedNutrition(key);
     if (resolved) return Promise.resolve(resolved);
     const cached = lookups.get(key);
@@ -102,7 +110,6 @@ export function getIngredientNutrition(name: string): Promise<IngredientInfo> {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-Meal-Generator': generator,
         },
         body: JSON.stringify({ name }),
         signal: AbortSignal.timeout(15_000),

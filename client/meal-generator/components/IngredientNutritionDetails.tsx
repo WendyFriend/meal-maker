@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { IngredientInfo } from '../../../shared/types/types';
 import { DAILY_VALUE_SOURCE } from '../../../shared/micronutrients';
@@ -13,10 +14,12 @@ export default function IngredientNutritionDetails({
     ingredient,
     micronutrientEditor,
     lookupState,
+    footer,
 }: {
     ingredient: IngredientInfo;
     lookupState: ReturnType<typeof useMicronutrientLookup>;
     micronutrientEditor?: MicronutrientEditor;
+    footer?: ReactNode;
 }) {
     const { data, loading, failed, retry } = lookupState;
     const lookup = data[micronutrientLookupKey(ingredient.name)];
@@ -61,7 +64,7 @@ export default function IngredientNutritionDetails({
                     </div>
                     <span>Per 100 g · % DV</span>
                 </div>
-                {micronutrientEditor && (
+                {micronutrientEditor && !micronutrientEditor.hideHint && (
                     <p className="ingredient-details-note">
                         Enter amounts per 100 g. Leave blank to use reference
                         data when available.
@@ -99,10 +102,18 @@ export default function IngredientNutritionDetails({
                                             value !== null,
                                     ),
                                 ),
+                                // Unavailable stays N/A even if a lookup has it.
+                                ...Object.fromEntries(
+                                    (
+                                        ingredient.unavailableMicronutrients ??
+                                        []
+                                    ).map((key) => [key, undefined]),
+                                ),
                             }}
                         />
                     </>
                 )}
+                {footer}
             </section>
         </div>
     );

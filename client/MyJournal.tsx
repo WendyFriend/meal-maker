@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JournalEntry } from '../shared/types/journal';
 import type { UserIngredient } from '../shared/types/types';
 import LoadingSpinner from './components/LoadingSpinner';
+import CollectionContextMenu from './components/CollectionContextMenu';
+import { contextMenuPosition } from './components/contextMenuPosition';
+import SwipeableCollectionRow from './components/SwipeableCollectionRow';
 import MealMicronutrients from './meal-generator/components/MealMicronutrients';
 import IngredientThumbnail from './meal-generator/components/IngredientThumbnail';
 import NutritionOverview from './meal-generator/components/NutritionOverview';
-import defaultMealPhoto from './assets/default-meal-photo.jpg';
 import { localDateValue } from './journal/nutrition';
 import { subscribeJournalChanges } from './journal/changes';
 import PlanCalendar from './journal/PlanCalendar';
@@ -17,12 +19,22 @@ import {
     totalNutrition,
 } from './utils/nutrition';
 import {
+    deleteJournalEntry,
     getJournalEntries,
     reorderJournalEntries,
+    saveJournalEntry,
     updateJournalEntryIngredients,
 } from './services/journalService';
 import PullRefreshIndicator from './components/PullRefreshIndicator';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
+import { useUndoableDelete } from './hooks/useUndoableDelete';
+import { useLongPressReorder } from './hooks/useLongPressReorder';
+import AddRowButton from './components/AddRowButton';
+import ActionToast from './components/ActionToast';
+import { successToastColors } from './components/actionToastColors';
+import AddMealSheet from './journal/AddMealSheet';
+import { nextPlanTime } from './journal/planMeal';
+import type { Recipe } from '../shared/types/recipe';
 import './components/SavedCollection.css';
 import './MyJournal.css';
 
@@ -57,47 +69,156 @@ function displayWeight(weight: number) {
     return `${Number(weight.toFixed(1))} g`;
 }
 
+/** Move Up, Move Down and Delete, with a separator. */
+const MEAL_MENU_HEIGHT = 151;
+
+/** "Meal N" over the name, optionally followed by the open chevron. */
+function MealLabelText({
+    number,
+    name,
+    chevron,
+}: {
+    number: number;
+    name: string;
+    chevron?: 'shown' | 'space';
+}) {
+    return (
+        <>
+            <small>Meal {number}</small>
+            <strong>
+                {name}
+                {chevron && (
+                    <>
+                        {'\u2060'}
+                        <span
+                            className={`journal-meal-open-chevron ingredient-name-chevron${chevron === 'space' ? ' ingredient-name-chevron-space' : ''}`}
+                            aria-hidden="true"
+                        />
+                    </>
+                )}
+            </strong>
+        </>
+    );
+}
+
 export default function MyJournal({
     isActive = true,
     savedIngredients = [],
+    onEnterMeal,
+    onOpenMeal,
 }: {
     isActive?: boolean;
     savedIngredients?: UserIngredient[];
+    /** Opens Add Meal to enter a meal by hand for `day`, listed last. */
+    onEnterMeal?: (target: { day: string; eatenAt: string }) => void;
+    /** Opens the meal as a recipe page. */
+    onOpenMeal?: (entry: JournalEntry) => void;
 }) {
     const [day, setDay] = useState(() => localDateValue());
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [attempt, setAttempt] = useState(0);
-    const [view, setView] = useState<'meals' | 'foods'>('meals');
+    const [view, setView] = useState<'meals' | 'foods' | 'nutrients'>('meals');
     const [expandedEntryIds, setExpandedEntryIds] = useState<string[]>([]);
-    const [reordering, setReordering] = useState(false);
-    const [draftOrder, setDraftOrder] = useState<string[]>([]);
-    const [savingOrder, setSavingOrder] = useState(false);
-    const [orderError, setOrderError] = useState('');
-    const [draggingId, setDraggingId] = useState<string | null>(null);
-    const longPressTimer = useRef<number | null>(null);
-    const pressStart = useRef<{ x: number; y: number } | null>(null);
-    useEffect(
-        () => () => {
-            if (longPressTimer.current !== null)
-                window.clearTimeout(longPressTimer.current);
-        },
-        [],
+    // Meals whose ingredients are being edited show a calmer header.
+    const [editingEntryIds, setEditingEntryIds] = useState<ReadonlySet<string>>(
+        () => new Set(),
     );
-    const mealsTabRef = useRef<HTMLButtonElement>(null);
-    const foodsTabRef = useRef<HTMLButtonElement>(null);
-    const [refreshing, setRefreshing] = useState(false);
-    const refreshingRef = useRef(false);
-    const requestIdRef = useRef(0);
-    const staleWhileHidden = useRef(false);
-    const [refreshError, setRefreshError] = useState('');
+    const setEntryEditing = useCallback((id: string, editing: boolean) => {
+        setEditingEntryIds((current) => {
+            if (current.has(id) === editing) return current;
+            const next = new Set(current);
+            if (editing) next.add(id);
+            else next.delete(id);
+            return next;
+        });
+    }, []);
+    const [actionSlots, setActionSlots] = useState<
+        Record<string, HTMLDivElement | null>
+    >({});
+    // Stable per-meal ref callbacks; a fresh callback each render would
+    // detach and reattach the slot, updating state in a loop.
+    const [actionSlotRefs] = useState(
+        () => new Map<string, (node: HTMLDivElement | null) => void>(),
+    );
+    function actionSlotRef(id: string) {
+        let ref = actionSlotRefs.get(id);
+        if (!ref) {
+            ref = (node) =>
+                setActionSlots((current) =>
+                    current[id] === node ? current : { ...current, [id]: node },
+                );
+            actionSlotRefs.set(id, ref);
+        }
+        return ref;
+    }
+    const [orderError, setOrderError] = useState('');
+    const [addingMeal, setAddingMeal] = useState(false);
+    const [mealAdded, setMealAdded] = useState(0);
+    const journalChangeSource = useRef(Symbol('my-journal'));
+    const lastPointerType = useRef('mouse');
+    const mealListRef = useRef<HTMLOListElement>(null);
     const [result, setResult] = useState<{
         day: string;
         entries: JournalEntry[];
         error?: string;
     }>();
+    // Swipe or right-click to remove. The meal hides at once and is only
+    // deleted when the Undo toast expires, so Undo needs no re-insert.
+    const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+    const [mealMenu, setMealMenu] = useState<{
+        entry: JournalEntry;
+        x: number;
+        y: number;
+        trigger: HTMLElement | null;
+    } | null>(null);
+    const closeMealMenu = useCallback(() => setMealMenu(null), []);
+    const [removeError, setRemoveError] = useState('');
+    const {
+        rowRef,
+        exitClass,
+        exitStyle,
+        hiddenIds,
+        remove,
+        finish: finishRemoval,
+        undoToast,
+    } = useUndoableDelete<HTMLLIElement>({
+        isActive,
+        onHidden: () => setOpenSwipeId(null),
+        commit: async (ids) => {
+            const removed = new Set<string>();
+            await Promise.all(
+                ids.map((id) =>
+                    deleteJournalEntry(id, journalChangeSource.current).then(
+                        () => removed.add(id),
+                        () =>
+                            setRemoveError('Could not remove meal. Try again.'),
+                    ),
+                ),
+            );
+            setResult((previous) =>
+                previous
+                    ? {
+                          ...previous,
+                          entries: previous.entries.filter(
+                              (entry) => !removed.has(entry.id),
+                          ),
+                      }
+                    : previous,
+            );
+        },
+    });
+    const mealsTabRef = useRef<HTMLButtonElement>(null);
+    const foodsTabRef = useRef<HTMLButtonElement>(null);
+    const nutrientsTabRef = useRef<HTMLButtonElement>(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const refreshingRef = useRef(false);
+    const requestIdRef = useRef(0);
+    const staleWhileHidden = useRef(false);
+    const [refreshError, setRefreshError] = useState('');
     useEffect(
         () =>
-            subscribeJournalChanges(() => {
+            subscribeJournalChanges((source) => {
+                if (source === journalChangeSource.current) return;
                 if (isActive) setAttempt((value) => value + 1);
                 else staleWhileHidden.current = true;
             }),
@@ -113,7 +234,8 @@ export default function MyJournal({
         if (!isActive) return;
         return () => {
             setCalendarOpen(false);
-            setDraggingId(null);
+            setOpenSwipeId(null);
+            setMealMenu(null);
         };
     }, [isActive]);
     useEffect(() => {
@@ -148,14 +270,28 @@ export default function MyJournal({
         };
     }, [day, attempt]);
     const current = result?.day === day ? result : undefined;
+    const entries = (current?.entries ?? []).filter(
+        (entry) => !hiddenIds.has(entry.id),
+    );
+    // Long press lifts a meal; dropping it saves the new order straight away.
+    const { liftedId, pressProps, projectedIndex } = useLongPressReorder({
+        listRef: mealListRef,
+        enabled: isActive && view === 'meals' && entries.length > 1,
+        onLift: () => {
+            // The saved order must list every meal, so settle any removal.
+            finishRemoval();
+            setOpenSwipeId(null);
+            setMealMenu(null);
+        },
+        onReorder: (id, to) => {
+            const ids = entries.map((entry) => entry.id);
+            ids.splice(ids.indexOf(id), 1);
+            ids.splice(to, 0, id);
+            saveMealOrder(ids);
+        },
+    });
     const refresh = () => {
-        if (
-            !current ||
-            current.error ||
-            refreshingRef.current ||
-            reordering ||
-            savingOrder
-        )
+        if (!current || current.error || refreshingRef.current || liftedId)
             return;
         refreshingRef.current = true;
         requestIdRef.current++;
@@ -165,70 +301,10 @@ export default function MyJournal({
     };
     const { containerRef, pullDistance } = usePullToRefresh({
         enabled: isActive,
-        disabled:
-            !current || Boolean(current.error) || reordering || savingOrder,
+        disabled: !current || Boolean(current.error) || Boolean(liftedId),
         refreshing,
         onRefresh: refresh,
     });
-    const entries = current?.entries ?? [];
-    const displayedEntries = reordering
-        ? [...entries].sort((a, b) => {
-              const first = draftOrder.indexOf(a.id);
-              const second = draftOrder.indexOf(b.id);
-              return (
-                  (first < 0 ? Infinity : first) -
-                  (second < 0 ? Infinity : second)
-              );
-          })
-        : entries;
-    useEffect(() => {
-        if (!draggingId) return;
-        const moveTo = (clientY: number) => {
-            const cards = [
-                ...(containerRef.current?.querySelectorAll<HTMLElement>(
-                    '.journal-meal-card',
-                ) ?? []),
-            ];
-            let destination = cards.findIndex((card) => {
-                const bounds = card.getBoundingClientRect();
-                return clientY < bounds.top + bounds.height / 2;
-            });
-            if (destination < 0) destination = cards.length - 1;
-            setDraftOrder((order) => {
-                const source = order.indexOf(draggingId);
-                if (source < 0 || source === destination || destination < 0)
-                    return order;
-                const next = [...order];
-                next.splice(source, 1);
-                next.splice(destination, 0, draggingId);
-                return next;
-            });
-        };
-        const onTouchMove = (event: TouchEvent) => {
-            if (event.touches.length !== 1) return;
-            if (event.cancelable) event.preventDefault();
-            moveTo(event.touches[0].clientY);
-        };
-        const onPointerMove = (event: PointerEvent) => {
-            if (event.pointerType === 'mouse') moveTo(event.clientY);
-        };
-        const stop = () => setDraggingId(null);
-        document.addEventListener('touchmove', onTouchMove, {
-            passive: false,
-            capture: true,
-        });
-        document.addEventListener('pointermove', onPointerMove);
-        document.addEventListener('touchend', stop, true);
-        document.addEventListener('pointerup', stop);
-        document.addEventListener('pointercancel', stop);
-        return () => {
-            document.removeEventListener('touchmove', onTouchMove, true);
-            document.removeEventListener('pointermove', onPointerMove);
-            document.removeEventListener('touchend', stop, true);
-            document.removeEventListener('pointerup', stop);
-            document.removeEventListener('pointercancel', stop);
-        };
-    }, [containerRef, draggingId]);
     const ingredients = entries.flatMap((entry) => entry.ingredients);
     const dailyKnownIngredients = knownNutritionIngredients(ingredients);
     const dailyTotals = totalNutrition(dailyKnownIngredients);
@@ -242,16 +318,14 @@ export default function MyJournal({
             : dailyFiber;
 
     function selectDay(nextDay: string) {
-        if (!nextDay || savingOrder || reordering) return;
+        if (!nextDay || liftedId) return;
         refreshingRef.current = false;
         requestIdRef.current++;
         setRefreshing(false);
         setRefreshError('');
         setExpandedEntryIds([]);
-        setReordering(false);
-        setDraggingId(null);
-        setDraftOrder([]);
         setOrderError('');
+        setOpenSwipeId(null);
         setDay(nextDay);
     }
 
@@ -263,68 +337,79 @@ export default function MyJournal({
         );
     }
 
-    function clearLongPress() {
-        if (longPressTimer.current !== null) {
-            window.clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
-        }
-        pressStart.current = null;
+    function removeMeal(entry: JournalEntry) {
+        setMealMenu(null);
+        setRemoveError('');
+        remove([entry.id], 'Meal removed.');
     }
 
-    function startReordering(dragId?: string) {
-        if (reordering || entries.length < 2) return;
-        setDraftOrder(entries.map((entry) => entry.id));
-        setExpandedEntryIds([]);
+    /** Shows the new order at once and saves it in the background. */
+    function saveMealOrder(orderedIds: string[]) {
+        const previous = current?.entries;
+        if (!previous) return;
+        const byId = new Map(previous.map((entry) => [entry.id, entry]));
+        const reordered = [
+            ...orderedIds.flatMap((id) => byId.get(id) ?? []),
+            ...previous.filter((entry) => !orderedIds.includes(entry.id)),
+        ].map((entry, index) => ({ ...entry, planPosition: index + 1 }));
+        const showOrder = (next: JournalEntry[]) =>
+            setResult((value) =>
+                value?.day === day ? { ...value, entries: next } : value,
+            );
+        showOrder(reordered);
         setOrderError('');
-        setReordering(true);
-        if (dragId) setDraggingId(dragId);
+        reorderJournalEntries(day, orderedIds).catch(() => {
+            showOrder(previous);
+            setOrderError('Could not save meal order. Try again.');
+        });
+    }
+
+    /** Copies a saved recipe into this day's plan as its last meal. */
+    async function addRecipeToPlan(recipe: Recipe) {
+        const saved = await saveJournalEntry(
+            {
+                eatenAt: nextPlanTime(day, current?.entries ?? []),
+                mealName: recipe.recipeName,
+                ingredients: recipe.ingredients,
+            },
+            journalChangeSource.current,
+        );
+        setResult((value) =>
+            value?.day === day
+                ? { ...value, entries: [...value.entries, saved] }
+                : value,
+        );
+        setAddingMeal(false);
+        setMealAdded((count) => count + 1);
+    }
+
+    function mealMoveActions(id: string) {
+        const index = entries.findIndex((entry) => entry.id === id);
+        return [
+            index > 0 && {
+                label: 'Move Up',
+                icon: <path d="M12 19V5m-6 6 6-6 6 6" />,
+                onSelect: () => moveMeal(id, -1),
+            },
+            index >= 0 &&
+                index < entries.length - 1 && {
+                    label: 'Move Down',
+                    icon: <path d="M12 5v14m-6-6 6 6 6-6" />,
+                    onSelect: () => moveMeal(id, 1),
+                },
+        ].filter((action) => action !== false);
     }
 
     function moveMeal(id: string, offset: number) {
-        setDraftOrder((order) => {
-            const index = order.indexOf(id);
-            const destination = index + offset;
-            if (index < 0 || destination < 0 || destination >= order.length)
-                return order;
-            const next = [...order];
-            [next[index], next[destination]] = [next[destination], next[index]];
-            return next;
-        });
-        setOrderError('');
+        const ids = entries.map((entry) => entry.id);
+        const index = ids.indexOf(id);
+        const destination = index + offset;
+        if (index < 0 || destination < 0 || destination >= ids.length) return;
+        finishRemoval();
+        [ids[index], ids[destination]] = [ids[destination], ids[index]];
+        saveMealOrder(ids);
     }
 
-    async function saveOrder() {
-        const orderedIds = displayedEntries.map((entry) => entry.id);
-        if (orderedIds.every((id, index) => id === entries[index]?.id)) {
-            setReordering(false);
-            setDraftOrder([]);
-            setDraggingId(null);
-            return;
-        }
-        setSavingOrder(true);
-        setOrderError('');
-        try {
-            await reorderJournalEntries(day, orderedIds);
-            setResult((previous) =>
-                previous?.day === day
-                    ? {
-                          ...previous,
-                          entries: displayedEntries.map((entry, index) => ({
-                              ...entry,
-                              planPosition: index + 1,
-                          })),
-                      }
-                    : previous,
-            );
-            setReordering(false);
-            setDraggingId(null);
-            setDraftOrder([]);
-        } catch {
-            setOrderError('Could not save meal order. Try again.');
-        } finally {
-            setSavingOrder(false);
-        }
-    }
     return (
         <section
             ref={containerRef}
@@ -346,7 +431,7 @@ export default function MyJournal({
                     <button
                         type="button"
                         aria-label="Previous day"
-                        disabled={savingOrder || reordering}
+                        disabled={Boolean(liftedId)}
                         onClick={() => selectDay(shiftDay(day, -1))}
                     >
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -359,7 +444,7 @@ export default function MyJournal({
                         aria-label="Choose plan date"
                         aria-haspopup="dialog"
                         aria-expanded={calendarOpen}
-                        disabled={savingOrder || reordering}
+                        disabled={Boolean(liftedId)}
                         onClick={() => setCalendarOpen(true)}
                     >
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -375,7 +460,7 @@ export default function MyJournal({
                     <button
                         type="button"
                         aria-label="Next day"
-                        disabled={savingOrder || reordering}
+                        disabled={Boolean(liftedId)}
                         onClick={() => selectDay(shiftDay(day, 1))}
                     >
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -436,22 +521,33 @@ export default function MyJournal({
                         role="tablist"
                         aria-label="Plan views"
                         onKeyDown={(event) => {
+                            const views = [
+                                'meals',
+                                'foods',
+                                'nutrients',
+                            ] as const;
+                            const currentIndex = views.indexOf(view);
                             const next =
-                                event.key === 'ArrowRight' ||
-                                event.key === 'End'
-                                    ? 'foods'
-                                    : event.key === 'ArrowLeft' ||
-                                        event.key === 'Home'
-                                      ? 'meals'
-                                      : null;
+                                event.key === 'ArrowRight'
+                                    ? views[(currentIndex + 1) % views.length]
+                                    : event.key === 'ArrowLeft'
+                                      ? views[
+                                            (currentIndex + views.length - 1) %
+                                                views.length
+                                        ]
+                                      : event.key === 'End'
+                                        ? 'nutrients'
+                                        : event.key === 'Home'
+                                          ? 'meals'
+                                          : null;
                             if (!next) return;
-                            if (reordering && next === 'foods') return;
                             event.preventDefault();
                             setView(next);
-                            (next === 'meals'
-                                ? mealsTabRef
-                                : foodsTabRef
-                            ).current?.focus();
+                            ({
+                                meals: mealsTabRef,
+                                foods: foodsTabRef,
+                                nutrients: nutrientsTabRef,
+                            })[next].current?.focus();
                         }}
                     >
                         <button
@@ -474,10 +570,21 @@ export default function MyJournal({
                             aria-controls="journal-foods-panel"
                             aria-selected={view === 'foods'}
                             tabIndex={view === 'foods' ? 0 : -1}
-                            disabled={reordering}
                             onClick={() => setView('foods')}
                         >
                             Food List
+                        </button>
+                        <button
+                            ref={nutrientsTabRef}
+                            type="button"
+                            role="tab"
+                            id="journal-nutrients-tab"
+                            aria-controls="journal-nutrients-panel"
+                            aria-selected={view === 'nutrients'}
+                            tabIndex={view === 'nutrients' ? 0 : -1}
+                            onClick={() => setView('nutrients')}
+                        >
+                            Key nutrients
                         </button>
                     </div>
                     <div
@@ -486,213 +593,228 @@ export default function MyJournal({
                         aria-labelledby="journal-meals-tab"
                         hidden={view !== 'meals'}
                     >
-                        {reordering && (
-                            <div
-                                className="journal-reorder-toolbar"
-                                role="group"
-                                aria-label="Arrange meals"
-                            >
-                                <span>Arrange meals</span>
-                                <button
-                                    type="button"
-                                    disabled={savingOrder}
-                                    onClick={() => {
-                                        setReordering(false);
-                                        setDraggingId(null);
-                                        setDraftOrder([]);
-                                        setOrderError('');
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={savingOrder}
-                                    onClick={() => void saveOrder()}
-                                >
-                                    {savingOrder ? (
-                                        <LoadingSpinner size="small" />
-                                    ) : (
-                                        'Done'
-                                    )}
-                                </button>
-                            </div>
-                        )}
-                        {orderError && (
+                        {(orderError || removeError) && (
                             <p className="journal-order-error" role="alert">
-                                {orderError}
+                                {orderError || removeError}
                             </p>
                         )}
                         {entries.length ? (
-                            <ol className="journal-meals">
-                                {displayedEntries.map((entry, index) => {
+                            <ol
+                                ref={mealListRef}
+                                className={`journal-meals${liftedId ? ' journal-meals-dragging' : ''}`}
+                            >
+                                {entries.map((entry, index) => {
                                     const expanded = expandedEntryIds.includes(
                                         entry.id,
                                     );
+                                    const editingMeal = editingEntryIds.has(
+                                        entry.id,
+                                    );
+                                    const canOpen = Boolean(
+                                        onOpenMeal && expanded && !editingMeal,
+                                    );
+                                    const mealNumber =
+                                        projectedIndex(index) + 1;
+                                    const press = pressProps(entry.id);
                                     return (
                                         <li
-                                            className={`journal-meal-card${reordering ? ' journal-meal-arranging' : ''}${draggingId === entry.id ? ' journal-meal-dragging' : ''}`}
+                                            className={`journal-meal-card${liftedId === entry.id ? ' journal-meal-dragging' : ''}${exitClass(entry.id)}`}
+                                            ref={rowRef(entry.id)}
+                                            data-expanded={expanded}
+                                            data-reorder-id={entry.id}
+                                            style={exitStyle(entry.id)}
                                             key={entry.id}
                                         >
-                                            <div className="journal-meal-row">
-                                                <button
-                                                    type="button"
-                                                    className="journal-meal-toggle"
-                                                    aria-label={`Meal ${index + 1}, ${entry.mealName}`}
-                                                    aria-expanded={
-                                                        reordering
-                                                            ? undefined
-                                                            : expanded
-                                                    }
-                                                    aria-controls={`journal-meal-${entry.id}`}
-                                                    title={
-                                                        entries.length > 1 &&
-                                                        !reordering
-                                                            ? 'Long press to arrange meals'
-                                                            : undefined
-                                                    }
+                                            <SwipeableCollectionRow
+                                                name={entry.mealName}
+                                                enabled={!liftedId}
+                                                open={openSwipeId === entry.id}
+                                                onOpen={() =>
+                                                    setOpenSwipeId(entry.id)
+                                                }
+                                                onClose={() =>
+                                                    setOpenSwipeId((id) =>
+                                                        id === entry.id
+                                                            ? null
+                                                            : id,
+                                                    )
+                                                }
+                                                onDelete={() =>
+                                                    removeMeal(entry)
+                                                }
+                                            >
+                                                {/* Long press, right-click and Alt+Arrow work anywhere on
+                                                    the row. A collapsed meal expands from anywhere; once
+                                                    expanded, the name (with its chevron) opens the meal
+                                                    page and the trailing chevron collapses it. */}
+                                                <div
+                                                    className={`journal-meal-row${canOpen ? ' journal-meal-row-split' : ''}${editingMeal ? ' journal-meal-row-editing' : ''}`}
+                                                    // Editing pauses reordering, so a long press
+                                                    // near ✕ / ✓ never lifts the meal.
+                                                    {...(editingMeal
+                                                        ? {}
+                                                        : press)}
                                                     onPointerDown={(event) => {
-                                                        if (
-                                                            reordering ||
-                                                            event.button !== 0
-                                                        )
-                                                            return;
-                                                        clearLongPress();
-                                                        pressStart.current = {
-                                                            x: event.clientX,
-                                                            y: event.clientY,
-                                                        };
-                                                        longPressTimer.current =
-                                                            window.setTimeout(
-                                                                () => {
-                                                                    longPressTimer.current =
-                                                                        null;
-                                                                    startReordering(
-                                                                        entry.id,
-                                                                    );
-                                                                },
-                                                                450,
+                                                        lastPointerType.current =
+                                                            event.pointerType;
+                                                        if (!editingMeal)
+                                                            press.onPointerDown(
+                                                                event,
                                                             );
                                                     }}
-                                                    onPointerMove={(event) => {
-                                                        if (
-                                                            pressStart.current &&
-                                                            (Math.abs(
-                                                                event.clientX -
-                                                                    pressStart
-                                                                        .current
-                                                                        .x,
-                                                            ) > 10 ||
-                                                                Math.abs(
-                                                                    event.clientY -
-                                                                        pressStart
-                                                                            .current
-                                                                            .y,
-                                                                ) > 10)
-                                                        )
-                                                            clearLongPress();
+                                                    onKeyDown={(event) => {
+                                                        if (!event.altKey)
+                                                            return;
+                                                        const offset =
+                                                            event.key ===
+                                                            'ArrowUp'
+                                                                ? -1
+                                                                : event.key ===
+                                                                    'ArrowDown'
+                                                                  ? 1
+                                                                  : 0;
+                                                        if (!offset) return;
+                                                        event.preventDefault();
+                                                        moveMeal(
+                                                            entry.id,
+                                                            offset,
+                                                        );
                                                     }}
-                                                    onPointerUp={() => {
-                                                        clearLongPress();
-                                                        setDraggingId(null);
-                                                    }}
-                                                    onPointerCancel={() => {
-                                                        clearLongPress();
-                                                        setDraggingId(null);
-                                                    }}
-                                                    onPointerLeave={
-                                                        clearLongPress
-                                                    }
                                                     onContextMenu={(event) => {
-                                                        if (entries.length < 2)
+                                                        // Leave the open edit actions their own menu.
+                                                        if (
+                                                            (
+                                                                event.target as HTMLElement
+                                                            ).closest(
+                                                                '.journal-meal-ingredient-actions',
+                                                            )
+                                                        )
                                                             return;
                                                         event.preventDefault();
-                                                        clearLongPress();
-                                                        startReordering();
-                                                    }}
-                                                    onClick={() => {
-                                                        if (!reordering)
-                                                            toggleEntry(
-                                                                entry.id,
-                                                            );
+                                                        press.onPointerUp();
+                                                        // Touch long press lifts the meal; the menu is
+                                                        // for right-click and the keyboard menu key.
+                                                        if (
+                                                            liftedId ||
+                                                            lastPointerType.current ===
+                                                                'touch'
+                                                        )
+                                                            return;
+                                                        const toggle =
+                                                            event.currentTarget.querySelector<HTMLElement>(
+                                                                '.journal-meal-toggle',
+                                                            ) ??
+                                                            event.currentTarget;
+                                                        const bounds =
+                                                            event.currentTarget.getBoundingClientRect();
+                                                        setOpenSwipeId(null);
+                                                        setMealMenu({
+                                                            entry,
+                                                            trigger: toggle,
+                                                            ...contextMenuPosition(
+                                                                event.clientX ||
+                                                                    bounds.left +
+                                                                        16,
+                                                                event.clientY ||
+                                                                    bounds.bottom,
+                                                                MEAL_MENU_HEIGHT,
+                                                            ),
+                                                        });
                                                     }}
                                                 >
-                                                    <img
-                                                        src={defaultMealPhoto}
-                                                        alt=""
-                                                        width="56"
-                                                        height="56"
-                                                    />
-                                                    <span className="journal-meal-label">
-                                                        <small>
-                                                            Meal {index + 1}
-                                                        </small>
-                                                        <strong>
-                                                            {entry.mealName}
-                                                        </strong>
-                                                    </span>
-                                                    {!reordering && (
-                                                        <svg
-                                                            className="journal-meal-chevron"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
+                                                    {/* No collapse while editing: leaving saves,
+                                                        and ✓ takes this column. */}
+                                                    {!editingMeal && (
+                                                        <button
+                                                            type="button"
+                                                            className="journal-meal-toggle"
+                                                            aria-label={`Meal ${mealNumber}, ${entry.mealName}`}
+                                                            aria-expanded={
+                                                                expanded
+                                                            }
+                                                            aria-controls={`journal-meal-${entry.id}`}
+                                                            aria-keyshortcuts={
+                                                                entries.length >
+                                                                1
+                                                                    ? 'Alt+ArrowUp Alt+ArrowDown'
+                                                                    : undefined
+                                                            }
+                                                            title={
+                                                                entries.length >
+                                                                1
+                                                                    ? 'Hold and drag to reorder'
+                                                                    : undefined
+                                                            }
+                                                            onClick={() =>
+                                                                toggleEntry(
+                                                                    entry.id,
+                                                                )
+                                                            }
+                                                        >
+                                                            <svg
+                                                                className="journal-meal-chevron"
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                aria-hidden="true"
+                                                            >
+                                                                <path d="m6 9 6 6 6-6" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+                                                    {canOpen ? (
+                                                        <button
+                                                            type="button"
+                                                            className="journal-meal-label journal-meal-open"
+                                                            aria-label={`Open ${entry.mealName} recipe`}
+                                                            disabled={Boolean(
+                                                                liftedId,
+                                                            )}
+                                                            onClick={() =>
+                                                                onOpenMeal?.(
+                                                                    entry,
+                                                                )
+                                                            }
+                                                        >
+                                                            <MealLabelText
+                                                                number={
+                                                                    mealNumber
+                                                                }
+                                                                name={
+                                                                    entry.mealName
+                                                                }
+                                                                chevron="shown"
+                                                            />
+                                                        </button>
+                                                    ) : (
+                                                        <span
+                                                            className="journal-meal-label"
                                                             aria-hidden="true"
                                                         >
-                                                            <path d="m6 9 6 6 6-6" />
-                                                        </svg>
+                                                            <MealLabelText
+                                                                number={
+                                                                    mealNumber
+                                                                }
+                                                                name={
+                                                                    entry.mealName
+                                                                }
+                                                                // Hidden, but keeps the name wrapping
+                                                                // the same as when it opens the meal.
+                                                                chevron={
+                                                                    onOpenMeal
+                                                                        ? 'space'
+                                                                        : undefined
+                                                                }
+                                                            />
+                                                        </span>
                                                     )}
-                                                </button>
-                                                {reordering && (
-                                                    <div className="journal-meal-move-actions">
-                                                        <button
-                                                            type="button"
-                                                            aria-label={`Move ${entry.mealName} up`}
-                                                            disabled={
-                                                                savingOrder ||
-                                                                index === 0
-                                                            }
-                                                            onClick={() =>
-                                                                moveMeal(
-                                                                    entry.id,
-                                                                    -1,
-                                                                )
-                                                            }
-                                                        >
-                                                            <svg
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                aria-hidden="true"
-                                                            >
-                                                                <path d="m6 14 6-6 6 6" />
-                                                            </svg>
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            aria-label={`Move ${entry.mealName} down`}
-                                                            disabled={
-                                                                savingOrder ||
-                                                                index ===
-                                                                    displayedEntries.length -
-                                                                        1
-                                                            }
-                                                            onClick={() =>
-                                                                moveMeal(
-                                                                    entry.id,
-                                                                    1,
-                                                                )
-                                                            }
-                                                        >
-                                                            <svg
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                aria-hidden="true"
-                                                            >
-                                                                <path d="m6 10 6 6 6-6" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                    <div
+                                                        className="journal-meal-ingredient-actions"
+                                                        ref={actionSlotRef(
+                                                            entry.id,
+                                                        )}
+                                                    />
+                                                </div>
+                                            </SwipeableCollectionRow>
                                             <div
                                                 className="journal-meal-expand"
                                                 id={`journal-meal-${entry.id}`}
@@ -703,9 +825,25 @@ export default function MyJournal({
                                                 <div className="journal-meal-expand-inner">
                                                     <JournalMealIngredients
                                                         entry={entry}
-                                                        disabled={reordering}
+                                                        expanded={expanded}
+                                                        actionsContainer={
+                                                            actionSlots[
+                                                                entry.id
+                                                            ]
+                                                        }
+                                                        disabled={Boolean(
+                                                            liftedId,
+                                                        )}
                                                         savedIngredients={
                                                             savedIngredients
+                                                        }
+                                                        onEditingChange={(
+                                                            editing,
+                                                        ) =>
+                                                            setEntryEditing(
+                                                                entry.id,
+                                                                editing,
+                                                            )
                                                         }
                                                         onSave={async (
                                                             next,
@@ -714,6 +852,7 @@ export default function MyJournal({
                                                                 await updateJournalEntryIngredients(
                                                                     entry.id,
                                                                     next,
+                                                                    journalChangeSource.current,
                                                                 );
                                                             setResult(
                                                                 (current) =>
@@ -734,6 +873,7 @@ export default function MyJournal({
                                                                           }
                                                                         : current,
                                                             );
+                                                            return saved;
                                                         }}
                                                     />
                                                 </div>
@@ -748,10 +888,21 @@ export default function MyJournal({
                                     No meals in your plan for this day
                                 </p>
                                 <p className="saved-collection-empty-hint">
-                                    Add a meal from Discover or Recipes to see
-                                    it here.
+                                    Add a meal from My Recipes or enter one
+                                    yourself.
                                 </p>
                             </div>
+                        )}
+                        {current && !current.error && (
+                            <AddRowButton
+                                label="Add meal"
+                                className="journal-add-meal"
+                                disabled={Boolean(liftedId)}
+                                onClick={() => {
+                                    setOpenSwipeId(null);
+                                    setAddingMeal(true);
+                                }}
+                            />
                         )}
                     </div>
                     <div
@@ -772,9 +923,6 @@ export default function MyJournal({
                                                         ingredient
                                                             .nutritionSource
                                                             ?.fdcId
-                                                    }
-                                                    source={
-                                                        ingredient.thumbnailSource
                                                     }
                                                 />
                                                 <span>
@@ -804,14 +952,57 @@ export default function MyJournal({
                             </div>
                         )}
                     </div>
-                    <div className="journal-nutrients-card">
-                        <MealMicronutrients
-                            ingredients={ingredients}
-                            scope="day"
-                        />
+                    <div
+                        id="journal-nutrients-panel"
+                        role="tabpanel"
+                        aria-labelledby="journal-nutrients-tab"
+                        hidden={view !== 'nutrients'}
+                    >
+                        {view === 'nutrients' && (
+                            <div className="journal-nutrients-card">
+                                <MealMicronutrients
+                                    ingredients={ingredients}
+                                    scope="day"
+                                />
+                            </div>
+                        )}
                     </div>
                 </>
             )}
+            {mealMenu && (
+                <CollectionContextMenu
+                    name={mealMenu.entry.mealName}
+                    x={mealMenu.x}
+                    y={mealMenu.y}
+                    trigger={mealMenu.trigger}
+                    actions={mealMoveActions(mealMenu.entry.id)}
+                    onDelete={() => removeMeal(mealMenu.entry)}
+                    onClose={closeMealMenu}
+                />
+            )}
+            {isActive && addingMeal && (
+                <AddMealSheet
+                    onClose={() => setAddingMeal(false)}
+                    onAddRecipe={addRecipeToPlan}
+                    onManual={() => {
+                        setAddingMeal(false);
+                        onEnterMeal?.({
+                            day,
+                            eatenAt: nextPlanTime(day, current?.entries ?? []),
+                        });
+                    }}
+                />
+            )}
+            {mealAdded > 0 && (
+                <ActionToast
+                    key={mealAdded}
+                    message="Meal added."
+                    placement="floating"
+                    colors={successToastColors}
+                    onClose={() => setMealAdded(0)}
+                />
+            )}
+            {undoToast}
         </section>
     );
 }

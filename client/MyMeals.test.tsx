@@ -81,6 +81,24 @@ function hold(row: HTMLElement) {
 }
 
 describe('My Meals collection', () => {
+    it('shows the shared confirmation toast when adding a saved recipe to My Plan', async () => {
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        const addButtons = await screen.findAllByRole('button', {
+            name: 'Add to My Plan',
+        });
+        fireEvent.click(addButtons[0]);
+
+        const toast = await screen.findByRole('status');
+        expect(toast).toHaveTextContent('Added to My Plan.');
+        expect(toast).toHaveClass('action-toast--floating');
+        expect(toast).toHaveStyle({
+            '--action-toast-background': '#fff',
+            '--action-toast-icon': '#27813a',
+        });
+        expect(toast.parentElement).toBe(document.body);
+        expect(saveJournalEntry).toHaveBeenCalledOnce();
+    });
+
     it('shows portion nutrition by default and remembers the eye toggle choice', async () => {
         vi.mocked(getRecipes).mockResolvedValueOnce([
             {
@@ -161,13 +179,16 @@ describe('My Meals collection', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Delete Tofu bowl' }),
         );
-        await waitFor(() =>
-            expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1']),
-        );
+        // Optimistic: the row leaves at once and Undo is offered.
         await waitFor(() =>
             expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument(),
         );
         expect(screen.getByText('Garden salad')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('Recipe removed.');
+        expect(deleteRecipes).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+        expect(screen.getByText('Tofu bowl')).toBeInTheDocument();
+        expect(deleteRecipes).not.toHaveBeenCalled();
     });
 
     it('slides an open row closed when clicking or focusing elsewhere', async () => {
@@ -248,15 +269,38 @@ describe('My Meals collection', () => {
         render(<MyMeals onOpenRecipe={vi.fn()} />);
         const row = await screen.findByRole('button', { name: /Tofu bowl/ });
         fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
-        fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
-
-        await waitFor(() =>
-            expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1']),
-        );
-        await waitFor(() =>
-            expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument(),
-        );
+        vi.useFakeTimers();
+        try {
+            fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+            await act(async () => vi.advanceTimersByTime(180));
+            expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument();
+            expect(deleteRecipes).not.toHaveBeenCalled();
+            // The delete is sent once the Undo toast expires.
+            await act(async () => vi.advanceTimersByTime(5000));
+            expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1']);
+        } finally {
+            vi.useRealTimers();
+        }
+        expect(screen.queryByText('Recipe removed.')).not.toBeInTheDocument();
         expect(screen.getByText('Garden salad')).toBeInTheDocument();
+    });
+
+    it('restores a recipe and explains when the delayed delete fails', async () => {
+        vi.mocked(deleteRecipes).mockRejectedValueOnce(new Error('offline'));
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        const row = await screen.findByRole('button', { name: /Tofu bowl/ });
+        fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
+        vi.useFakeTimers();
+        try {
+            fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+            await act(async () => vi.advanceTimersByTime(5180));
+        } finally {
+            vi.useRealTimers();
+        }
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Could not delete Tofu bowl',
+        );
+        expect(screen.getByText('Tofu bowl')).toBeInTheDocument();
     });
 
     it('opens the context menu from the keyboard and dismisses it with Escape', async () => {
@@ -670,7 +714,7 @@ describe('My Meals collection', () => {
         expect(screen.getByText('1 selected')).toBeInTheDocument();
     });
 
-    it('animates a row only after deletion succeeds, then removes it', async () => {
+    it('animates a bulk-deleted row at once, before the server responds', async () => {
         let finishDelete!: (ids: string[]) => void;
         vi.mocked(deleteRecipes).mockReturnValueOnce(
             new Promise((resolve) => {
@@ -685,17 +729,24 @@ describe('My Meals collection', () => {
         );
         const row = screen.getByRole('button', { name: 'Deselect Tofu bowl' });
         vi.useFakeTimers();
-        fireEvent.click(screen.getByRole('button', { name: 'Delete 1 meal' }));
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Confirm delete 1 meal' }),
-        );
-        expect(row.parentElement).not.toHaveClass('my-meals-row-exiting');
+        try {
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Delete 1 meal' }),
+            );
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Confirm delete 1 meal' }),
+            );
+            expect(row.parentElement).toHaveClass('collection-row-exiting');
+            await act(async () => vi.advanceTimersByTime(180));
+            expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument();
+            expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1']);
 
-        await act(async () => finishDelete(['1']));
-        expect(row.parentElement).toHaveClass('my-meals-row-exiting');
-        await act(async () => vi.advanceTimersByTime(180));
-        expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument();
-        expect(screen.getByText('Garden salad')).toBeInTheDocument();
+            await act(async () => finishDelete(['1']));
+            expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument();
+            expect(screen.getByText('Garden salad')).toBeInTheDocument();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('keeps failed and partially deleted items selected for retry', async () => {

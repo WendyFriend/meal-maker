@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mealmaker.me/sitemap.xml

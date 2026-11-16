@@ -4,9 +4,9 @@ import {
     deleteJournalEntry,
     saveJournalEntry,
 } from '../services/journalService';
-import LoadingSpinner from '../components/LoadingSpinner';
 import MyDayIcon from '../components/MyDayIcon';
-import ActionFeedback from '../components/ActionFeedback';
+import ActionToast from '../components/ActionToast';
+import { successToastColors } from '../components/actionToastColors';
 import './LogMealButton.css';
 
 export type JournalControl = {
@@ -31,6 +31,11 @@ export default function LogMealButton({
     const [localEntryId, setLocalEntryId] = useState<string | null>(null);
     const entryId = control ? control.entryId : localEntryId;
     const [saving, setSaving] = useState(false);
+    // Shown at once while the request runs, so the tap feels immediate.
+    const [optimisticAdded, setOptimisticAdded] = useState<boolean | null>(
+        null,
+    );
+    const added = optimisticAdded ?? Boolean(entryId);
     const [feedback, setFeedback] = useState<string>();
     const [error, setError] = useState<string>();
     const pending = useRef(false);
@@ -41,7 +46,8 @@ export default function LogMealButton({
         pending.current = true;
         setSaving(true);
         setError(undefined);
-        setFeedback(undefined);
+        setOptimisticAdded(!entryId);
+        setFeedback(entryId ? undefined : `Added to ${destinationLabel}.`);
         const setEntryId = control?.onChange ?? setLocalEntryId;
         try {
             if (entryId) {
@@ -54,9 +60,9 @@ export default function LogMealButton({
                     ingredients: meal.ingredients,
                 });
                 setEntryId(entry.id);
-                setFeedback(`Added to ${destinationLabel}`);
             }
         } catch {
+            setFeedback(undefined);
             setError(
                 entryId
                     ? `Could not remove this meal from ${destinationLabel}. Please try again.`
@@ -64,10 +70,11 @@ export default function LogMealButton({
             );
         } finally {
             pending.current = false;
+            setOptimisticAdded(null);
             setSaving(false);
         }
     }
-    const label = entryId
+    const label = added
         ? `Remove from ${destinationLabel}`
         : `Add to ${destinationLabel}`;
     return (
@@ -77,30 +84,29 @@ export default function LogMealButton({
                 className="journal-log-trigger"
                 aria-label={label}
                 title={label}
-                aria-pressed={Boolean(entryId)}
+                aria-pressed={added}
                 aria-busy={saving}
+                // Stays enabled while saving (taps are ignored until it
+                // settles) so the instant feedback is not dimmed.
                 disabled={
                     disabled ||
-                    saving ||
-                    (!entryId &&
+                    (!added &&
                         !meal.ingredients.some(
                             (ingredient) => ingredient.weight > 0,
                         ))
                 }
                 onClick={toggleMeal}
             >
-                {saving ? (
-                    <LoadingSpinner size="small" tone="inherit" />
-                ) : (
-                    <MyDayIcon remove={Boolean(entryId)} />
-                )}
+                <MyDayIcon remove={added} />
             </button>
             {feedback && (
-                <ActionFeedback
+                <ActionToast
                     key={feedback}
                     message={feedback}
+                    placement="floating"
+                    colors={successToastColors}
                     onClose={closeFeedback}
-                    durationMs={feedbackDurationMs}
+                    durationMs={feedbackDurationMs ?? 1800}
                 />
             )}
             {error && (

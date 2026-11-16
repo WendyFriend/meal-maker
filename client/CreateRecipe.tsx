@@ -1,3 +1,4 @@
+import { revealAboveKeyboard } from './utils/revealAboveKeyboard';
 import {
     useContext,
     useId,
@@ -13,14 +14,19 @@ import type {
 } from '../shared/types/types';
 import { MICRONUTRIENTS } from '../shared/micronutrients';
 import type { RecipeInput } from './services/recipeService';
-import { getIngredientNutrition } from './services/micronutrientService';
+import {
+    getCachedIngredientNutrition,
+    getIngredientNutrition,
+} from './services/micronutrientService';
 import {
     commonQuickAddIngredients,
+    commonSearchIngredients,
     findCommonQuickAddIngredient,
 } from './meal-generator/components/commonQuickAddIngredients';
 import { normalizeIngredientName } from './utils/Ingredient';
 import { totalFiber, totalNutrition } from './utils/nutrition';
 import NutritionOverview from './meal-generator/components/NutritionOverview';
+import { DetailTabPanel, DetailTabs } from './components/DetailTabs';
 import MealMicronutrients from './meal-generator/components/MealMicronutrients';
 import MealInstructions from './meal-generator/components/MealInstructions';
 import IngredientThumbnail from './meal-generator/components/IngredientThumbnail';
@@ -29,6 +35,7 @@ import SwipeableIngredientRow from './meal-generator/components/SwipeableIngredi
 import MealNutritionHighlights from './meal-generator/components/MealNutritionHighlights';
 import IngredientCalorieContribution from './meal-generator/components/IngredientCalorieContribution';
 import LoadingSpinner from './components/LoadingSpinner';
+import { usePrefetchIngredientNutrition } from './hooks/usePrefetchIngredientNutrition';
 import { useNutritionLabFoodSearch } from './hooks/useNutritionLabFoodSearch';
 import { ingredientDraftFromFoodSearch } from './services/foodSearchService';
 import { IngredientCollectionContext } from './ingredients/IngredientCollectionContext';
@@ -158,7 +165,10 @@ function RecipeImagePlaceholder() {
     );
 }
 
-const commonSuggestions = Object.values(commonQuickAddIngredients).flat();
+const commonSuggestions = [
+    ...Object.values(commonQuickAddIngredients).flat(),
+    ...commonSearchIngredients,
+];
 type RecipeSearchOption = {
     key: string;
     name: string;
@@ -197,6 +207,12 @@ export function RecipeIngredientNameInput({
         value,
         open && !committed,
     );
+    // Saved and common ingredients carry their own nutrition.
+    const knownLocally =
+        savedIngredients.some(
+            (item) => normalizeIngredientName(item.name) === query,
+        ) || Boolean(findCommonQuickAddIngredient(value.trim()));
+    usePrefetchIngredientNutrition(value, open && !committed && !knownLocally);
     const seen = new Set<string>();
     const suggestions = [...savedIngredients, ...commonSuggestions]
         .filter((item) => {
@@ -304,7 +320,11 @@ export function RecipeIngredientNameInput({
                     setOpen(true);
                     setHighlightedIndex(-1);
                 }}
-                onFocus={() => setOpen(true)}
+                onFocus={(event) => {
+                    setOpen(true);
+                    // Keep the field and its suggestions above the keyboard.
+                    revealAboveKeyboard(event.currentTarget);
+                }}
                 onBlur={() => {
                     setOpen(false);
                     if (value.trim()) onCommit(value);
@@ -393,6 +413,15 @@ export function RecipeIngredientNameInput({
     );
 }
 
+const recipeTabs = [
+    { id: 'ingredients', label: 'Ingredients' },
+    { id: 'nutrients', label: 'Key Nutrients' },
+    { id: 'steps', label: 'Steps' },
+] as const;
+// Plan meals keep ingredients only, so Add Meal has no Steps.
+const mealTabs = recipeTabs.slice(0, 2);
+type CreateTab = (typeof recipeTabs)[number]['id'];
+
 export default function CreateRecipe({
     savedIngredients,
     onSave,
@@ -400,6 +429,8 @@ export default function CreateRecipe({
     editMode = false,
     formId = 'create-recipe-form',
     onCancel,
+    subject = 'recipe',
+    fallbackName,
 }: {
     savedIngredients: UserIngredient[];
     onSave: (recipe: RecipeInput) => Promise<void>;
@@ -407,7 +438,16 @@ export default function CreateRecipe({
     editMode?: boolean;
     formId?: string;
     onCancel?: () => void;
+    /**
+     * "meal" is Add Meal on My Plan: the same form, labelled for a meal,
+     * without Steps (plan meals keep ingredients only).
+     */
+    subject?: 'recipe' | 'meal';
+    /** Makes the name optional; used when it is left blank. */
+    fallbackName?: (ingredients: MealIngredient[]) => string;
 }) {
+    const isMeal = subject === 'meal';
+    const nameLabel = isMeal ? 'Meal name' : 'Recipe name';
     const [name, setName] = useState(initialRecipe?.recipeName ?? '');
     const [rows, setRows] = useState<IngredientRow[]>(() =>
         (initialRecipe?.ingredients ?? []).map((ingredient, id) => ({
@@ -422,9 +462,7 @@ export default function CreateRecipe({
     const [steps, setSteps] = useState<string[]>(
         initialRecipe?.instructions ?? [],
     );
-    const [activeTab, setActiveTab] = useState<'nutrition' | 'steps'>(
-        'nutrition',
-    );
+    const [activeTab, setActiveTab] = useState<CreateTab>('ingredients');
     const [error, setError] = useState<string>();
     const [saving, setSaving] = useState(false);
     const [sheetRowId, setSheetRowId] = useState<number | null>(null);
@@ -432,8 +470,6 @@ export default function CreateRecipe({
     const ingredientCollection = useContext(IngredientCollectionContext);
     const nextId = useRef(initialRecipe?.ingredients.length ?? 0);
     const focusRow = useRef<number | null>(null);
-    const nutritionTab = useRef<HTMLButtonElement>(null);
-    const stepsTab = useRef<HTMLButtonElement>(null);
     const sheetRow = rows.find((row) => row.id === sheetRowId);
     const tabIdPrefix =
         formId === 'create-recipe-form' ? 'create-recipe' : formId;
@@ -521,7 +557,7 @@ export default function CreateRecipe({
     function commitName(id: number, value: string, selected?: IngredientInfo) {
         const name = value.trim();
         if (!name) return;
-        const match =
+        const known =
             selected ??
             savedIngredients.find(
                 (item) =>
@@ -529,6 +565,16 @@ export default function CreateRecipe({
                     normalizeIngredientName(name),
             ) ??
             findCommonQuickAddIngredient(name);
+        const cached = known ? undefined : getCachedIngredientNutrition(name);
+        const match =
+            known ??
+            (cached
+                ? {
+                      ...cached,
+                      name,
+                      resolvedName: cached.resolvedName ?? cached.name,
+                  }
+                : undefined);
         updateRow(id, (row) => ({
             ...row,
             name: match?.name ?? name,
@@ -602,28 +648,30 @@ export default function CreateRecipe({
     async function save(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (saving) return;
-        if (!name.trim()) {
-            setError('Enter a recipe name.');
+        if (!name.trim() && !fallbackName) {
+            setError(`Enter a ${subject} name.`);
             return;
         }
         if (!rows.length || ingredients.length !== rows.length) {
-            setActiveTab('nutrition');
+            setActiveTab('ingredients');
             setError(
                 'Add an ingredient name and weight, then tap its name to complete any missing nutrition.',
             );
             return;
         }
-        const instructions = steps.map((step) => step.trim()).filter(Boolean);
+        const instructions = isMeal
+            ? []
+            : steps.map((step) => step.trim()).filter(Boolean);
         setSaving(true);
         setError(undefined);
         try {
             await onSave({
-                recipeName: name.trim(),
+                recipeName: name.trim() || fallbackName?.(ingredients) || '',
                 ingredients,
                 instructions,
             });
         } catch {
-            setError('Could not save your recipe. Please try again.');
+            setError(`Could not save your ${subject}. Please try again.`);
             setSaving(false);
         }
     }
@@ -643,11 +691,23 @@ export default function CreateRecipe({
                 <div className="create-recipe-hero">
                     <RecipeImagePlaceholder />
                     <label className="create-recipe-name">
-                        <span>Recipe name</span>
+                        <span>
+                            {nameLabel}
+                            {fallbackName && (
+                                <span className="create-recipe-optional">
+                                    {' '}
+                                    (optional)
+                                </span>
+                            )}
+                        </span>
                         <input
                             type="text"
-                            aria-label="Recipe name"
-                            placeholder="e.g. My Chickpea Curry"
+                            aria-label={nameLabel}
+                            placeholder={
+                                isMeal
+                                    ? 'e.g. Sunday lentils'
+                                    : 'e.g. My Chickpea Curry'
+                            }
                             value={name}
                             onChange={(event) => {
                                 setName(event.target.value);
@@ -673,51 +733,26 @@ export default function CreateRecipe({
                     />
                 )}
 
-                <div
+                {/* Same order as Recipe Detail: overview, then tabs. */}
+                <NutritionOverview
+                    className="create-recipe-overview nutrition-overview-card"
+                    nutrition={nutrition}
+                    fiber={
+                        ingredients.length
+                            ? fiber
+                            : { ...fiber, available: true, hasKnown: true }
+                    }
+                    percentages={percentages}
+                />
+
+                <DetailTabs
                     className="create-recipe-tabs"
-                    role="tablist"
-                    aria-label="Recipe sections"
-                    onKeyDown={(event) => {
-                        const next =
-                            event.key === 'ArrowRight'
-                                ? 'steps'
-                                : event.key === 'ArrowLeft'
-                                  ? 'nutrition'
-                                  : null;
-                        if (!next) return;
-                        event.preventDefault();
-                        setActiveTab(next);
-                        (next === 'nutrition'
-                            ? nutritionTab
-                            : stepsTab
-                        ).current?.focus();
-                    }}
-                >
-                    <button
-                        ref={nutritionTab}
-                        type="button"
-                        role="tab"
-                        id={`${tabIdPrefix}-nutrition-tab`}
-                        aria-controls={`${tabIdPrefix}-nutrition-panel`}
-                        aria-selected={activeTab === 'nutrition'}
-                        tabIndex={activeTab === 'nutrition' ? 0 : -1}
-                        onClick={() => setActiveTab('nutrition')}
-                    >
-                        Ingredients &amp; Nutrition
-                    </button>
-                    <button
-                        ref={stepsTab}
-                        type="button"
-                        role="tab"
-                        id={`${tabIdPrefix}-steps-tab`}
-                        aria-controls={`${tabIdPrefix}-steps-panel`}
-                        aria-selected={activeTab === 'steps'}
-                        tabIndex={activeTab === 'steps' ? 0 : -1}
-                        onClick={() => setActiveTab('steps')}
-                    >
-                        Steps
-                    </button>
-                </div>
+                    tabs={isMeal ? mealTabs : recipeTabs}
+                    active={activeTab}
+                    onChange={setActiveTab}
+                    idPrefix={tabIdPrefix}
+                    ariaLabel={isMeal ? 'Meal details' : 'Recipe details'}
+                />
 
                 {error && (
                     <p className="create-recipe-error" role="alert">
@@ -725,11 +760,10 @@ export default function CreateRecipe({
                     </p>
                 )}
 
-                <div
-                    id={`${tabIdPrefix}-nutrition-panel`}
-                    role="tabpanel"
-                    aria-labelledby={`${tabIdPrefix}-nutrition-tab`}
-                    hidden={activeTab !== 'nutrition'}
+                <DetailTabPanel
+                    id="ingredients"
+                    idPrefix={tabIdPrefix}
+                    active={activeTab === 'ingredients'}
                 >
                     <section
                         className={`create-recipe-ingredients${editMode ? ' meal-ingredients' : ''}`}
@@ -776,7 +810,6 @@ export default function CreateRecipe({
                                                 row.source?.nutritionSource
                                                     ?.fdcId
                                             }
-                                            source={row.source?.thumbnailSource}
                                         />
                                         <div
                                             className={`create-recipe-ingredient-info${editMode ? ' ingredient-info' : ''}`}
@@ -924,52 +957,45 @@ export default function CreateRecipe({
                             <span aria-hidden="true">+</span> Add ingredient
                         </button>
                     </section>
+                </DetailTabPanel>
 
-                    <section
-                        className="create-recipe-preview"
-                        aria-labelledby="create-recipe-preview-heading"
-                    >
-                        <h2 id="create-recipe-preview-heading">
-                            Nutrition Preview
-                        </h2>
-                        {ingredients.length ? (
-                            <>
-                                <NutritionOverview
-                                    nutrition={nutrition}
-                                    fiber={fiber}
-                                    percentages={percentages}
-                                />
-                                <MealMicronutrients ingredients={ingredients} />
-                            </>
-                        ) : (
-                            <p className="create-recipe-preview-empty">
-                                Add an ingredient to see the nutrition preview.
-                            </p>
-                        )}
-                    </section>
-                </div>
-
-                <div
-                    id={`${tabIdPrefix}-steps-panel`}
-                    className="create-recipe-steps-panel"
-                    role="tabpanel"
-                    aria-labelledby={`${tabIdPrefix}-steps-tab`}
-                    hidden={activeTab !== 'steps'}
+                <DetailTabPanel
+                    id="nutrients"
+                    idPrefix={tabIdPrefix}
+                    active={activeTab === 'nutrients'}
+                    className="create-recipe-nutrients-panel"
                 >
-                    <MealInstructions
-                        instructions={steps}
-                        editor={{
-                            editing: true,
-                            canReset: false,
-                            onReset: () => {},
-                            onChange: (value) => {
-                                setSteps(value.split('\n'));
-                                setError(undefined);
-                            },
-                            disabled: saving,
-                        }}
-                    />
-                </div>
+                    {ingredients.length ? (
+                        <MealMicronutrients ingredients={ingredients} />
+                    ) : (
+                        <p className="create-recipe-nutrients-empty">
+                            Add an ingredient to see its key nutrients.
+                        </p>
+                    )}
+                </DetailTabPanel>
+
+                {!isMeal && (
+                    <DetailTabPanel
+                        id="steps"
+                        idPrefix={tabIdPrefix}
+                        active={activeTab === 'steps'}
+                        className="create-recipe-steps-panel"
+                    >
+                        <MealInstructions
+                            instructions={steps}
+                            editor={{
+                                editing: true,
+                                canReset: false,
+                                onReset: () => {},
+                                onChange: (value) => {
+                                    setSteps(value.split('\n'));
+                                    setError(undefined);
+                                },
+                                disabled: saving,
+                            }}
+                        />
+                    </DetailTabPanel>
+                )}
             </fieldset>
             {sheetRow && (
                 <NutritionDialog

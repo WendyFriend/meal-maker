@@ -1,0 +1,79 @@
+/* Shared ✕ / ✓ actions: bare glyphs in 44px touch targets. Cancel is quiet;
+   confirm is the one tinted action (Apple HIG). */
+.action-icon-button {
+    position: relative;
+    display: inline-grid;
+    flex: 0 0 44px;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-h);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.action-icon-button-confirm {
+    color: var(--coral);
+}
+
+.action-icon-button-danger {
+    color: var(--danger);
+}
+
+.action-icon-button svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.action-icon-button-cancel svg {
+    width: 18px;
+    height: 18px;
+}
+
+.action-icon-button .loading-spinner {
+    width: 18px;
+    height: 18px;
+}
+
+.action-icon-button:disabled {
+    cursor: default;
+}
+
+.action-icon-button-cancel:disabled,
+.action-icon-button-confirm:disabled:not([aria-busy='true']) {
+    opacity: 0.45;
+}
+
+.action-icon-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .action-icon-button {
+        transition:
+            background-color 150ms ease,
+            transform 150ms ease;
+    }
+
+    .action-icon-button:active:not(:disabled) {
+        transform: scale(0.92);
+    }
+}
+
+.action-icon-button:active:not(:disabled) {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+}
