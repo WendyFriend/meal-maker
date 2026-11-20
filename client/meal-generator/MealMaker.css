@@ -15,6 +15,17 @@
     scroll-snap-align: start;
 }
 
+/* At least a screen tall, like the form above it, so a short meal (one or
+   two ingredients) still scrolls to the top and fills the page instead of
+   showing See recipes above it. */
+.page-content-meal-maker .meal-maker-result {
+    box-sizing: border-box;
+    min-height: calc(
+        100svh - var(--meal-maker-header-height) -
+            var(--mobile-bottom-nav-height)
+    );
+}
+
 .page-content-meal-maker .meal-instructions {
     scroll-snap-stop: always;
     scroll-margin-top: var(--space-6);
