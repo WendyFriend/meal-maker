@@ -103,6 +103,9 @@ export default defineConfig({
         port: 4173,
         strictPort: true,
         https,
+        proxy: {
+            '/api': 'http://localhost:3001',
+        },
     },
     server: {
         host: true,

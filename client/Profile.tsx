@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useAuth } from './auth/useAuth';
 import LoadingSpinner from './components/LoadingSpinner';
 import Popover from './components/Popover';
+import {
+    mealPreferencesEnabled,
+    setMealPreferencesEnabled,
+    showDeveloperSettings,
+} from './features';
 import { deleteAccount } from './services/accountService';
 import { APP_VERSION } from './version';
 import './components/CollectionSelection.css';
@@ -21,6 +26,9 @@ export default function Profile({
     const { user } = useAuth();
     const [error, setError] = useState('');
     const [deleting, setDeleting] = useState(false);
+    const [showMealPreferences, setShowMealPreferences] = useState(
+        mealPreferencesEnabled,
+    );
     const email = user?.email ?? '';
 
     async function removeAccount() {
@@ -52,6 +60,28 @@ export default function Profile({
                 </span>
                 <p className="profile-email">{email}</p>
             </div>
+
+            {showDeveloperSettings && (
+                <section
+                    className="profile-developer"
+                    aria-labelledby="profile-developer-title"
+                >
+                    <h2 id="profile-developer-title">Development only</h2>
+                    <label className="profile-switch-row">
+                        <span>Show meal preferences</span>
+                        <input
+                            type="checkbox"
+                            role="switch"
+                            className="profile-switch"
+                            checked={showMealPreferences}
+                            onChange={(event) => {
+                                setMealPreferencesEnabled(event.target.checked);
+                                setShowMealPreferences(event.target.checked);
+                            }}
+                        />
+                    </label>
+                </section>
+            )}
 
             {error && (
                 <p className="profile-error" role="alert">

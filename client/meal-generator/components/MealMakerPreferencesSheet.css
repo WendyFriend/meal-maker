@@ -160,6 +160,12 @@
     padding-bottom: 20px;
 }
 
+/* Without the chips (hidden in production), the goals end the sheet:
+   leave generous room below them so it doesn't end abruptly. */
+.meal-maker-goal-section:last-child {
+    padding-bottom: 48px;
+}
+
 .meal-maker-preference-chips {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

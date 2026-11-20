@@ -80,8 +80,73 @@
     margin-top: auto;
 }
 
-.profile-actions /* Plain text, no button look; dims while pressed. */
-.profile-log-out {
+/* Developer settings (local development only): a grouped row with an
+   iOS-style switch. */
+.profile-developer h2 {
+    margin: 0 0 8px 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+}
+
+.profile-switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 16px;
+    border: 1px solid var(--border-hairline);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 55%);
+    color: var(--text-h);
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.profile-switch {
+    position: relative;
+    flex: none;
+    width: 51px;
+    height: 31px;
+    margin: 0;
+    border-radius: 999px;
+    background: var(--border-hairline);
+    appearance: none;
+    cursor: pointer;
+    transition: background-color 200ms ease;
+}
+
+.profile-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
+    transition: transform 200ms ease;
+}
+
+.profile-switch:checked {
+    background: var(--accent);
+}
+
+.profile-switch:checked::after {
+    transform: translateX(20px);
+}
+
+.profile-switch:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Plain text, no button look; dims while pressed. */
+.profile-actions .profile-log-out {
     min-height: 44px;
     padding: 8px 24px;
     border: 0;
@@ -154,7 +219,9 @@
 
 @media (prefers-reduced-motion: reduce) {
     .profile-log-out,
-    .profile-delete-link {
+    .profile-delete-link,
+    .profile-switch,
+    .profile-switch::after {
         transition: none;
     }
 }

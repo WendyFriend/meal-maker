@@ -39,6 +39,7 @@ import { MealMakerIntro } from './meal-generator/components/MealMakerIntro';
 import './meal-generator/MealMaker.css';
 import MealResult from './meal-generator/components/MealResult';
 import { useAuth } from './auth/useAuth';
+import { mealPreferencesEnabled } from './features';
 import AuthLoading from './auth/AuthLoading';
 import AccountRequiredDialog from './auth/AccountRequiredDialog';
 import {
@@ -819,7 +820,11 @@ function App() {
                 requirements: {
                     calories: caloriesGoal,
                     proteinGrams: proteinGramsGoal,
-                    preferences: mealPreferences,
+                    // Hidden chips (see features.ts) never apply, even
+                    // when restored from a saved draft.
+                    preferences: mealPreferencesEnabled()
+                        ? mealPreferences
+                        : [],
                 },
             };
 

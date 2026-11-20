@@ -3,6 +3,7 @@ import SlidingSheet from '../../components/SlidingSheet';
 import type { MealPreference } from '../../../shared/types/types';
 import MealGoalWheel from './MealGoalWheel';
 import { ConfirmButton } from '../../components/ConfirmCancelButtons';
+import { mealPreferencesEnabled } from '../../features';
 import './MealMakerPreferencesSheet.css';
 
 const mealPreferences = [
@@ -208,29 +209,34 @@ export default function MealMakerPreferencesSheet({
                     </div>
                 </div>
             </section>
-            <section
-                className="meal-maker-chip-section"
-                aria-labelledby="meal-maker-chip-title"
-            >
-                <h3 id="meal-maker-chip-title">Preferences</h3>
-                <div className="meal-maker-preference-chips">
-                    {mealPreferences.map(({ id, label }) => {
-                        const selected = draftPreferences.includes(id);
-                        return (
-                            <button
-                                type="button"
-                                key={id}
-                                aria-pressed={selected}
-                                className={selected ? 'selected' : ''}
-                                onClick={() => togglePreference(id)}
-                            >
-                                {selected && <span aria-hidden="true">✓</span>}
-                                {label}
-                            </button>
-                        );
-                    })}
-                </div>
-            </section>
+            {/* Hidden in production for now (see features.ts). */}
+            {mealPreferencesEnabled() && (
+                <section
+                    className="meal-maker-chip-section"
+                    aria-labelledby="meal-maker-chip-title"
+                >
+                    <h3 id="meal-maker-chip-title">Preferences</h3>
+                    <div className="meal-maker-preference-chips">
+                        {mealPreferences.map(({ id, label }) => {
+                            const selected = draftPreferences.includes(id);
+                            return (
+                                <button
+                                    type="button"
+                                    key={id}
+                                    aria-pressed={selected}
+                                    className={selected ? 'selected' : ''}
+                                    onClick={() => togglePreference(id)}
+                                >
+                                    {selected && (
+                                        <span aria-hidden="true">✓</span>
+                                    )}
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
         </SlidingSheet>
     );
 }
