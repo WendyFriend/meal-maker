@@ -72,7 +72,7 @@ it('tracks the handle and snaps back after a short drag', () => {
     fireEvent.pointerUp(handle, { pointerId: 1, clientY: 240 });
     expect(panel.style.getPropertyValue('--sheet-offset')).toBe('0px');
     expect(panel).toHaveAttribute('data-phase', 'settling');
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(onClose).not.toHaveBeenCalled();
 });
 
@@ -86,7 +86,7 @@ it('slides away on a longer downward drag and dismisses only once', () => {
     );
     expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(handle, { detail: 1 });
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(onClose).toHaveBeenCalledOnce();
 });
 
@@ -95,7 +95,7 @@ it('cancels a drag without closing the sheet', () => {
     dragTo(handle, 180);
     fireEvent.pointerCancel(handle, { pointerId: 1 });
     expect(panel.style.getPropertyValue('--sheet-offset')).toBe('0px');
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(onClose).not.toHaveBeenCalled();
 });
 
@@ -105,7 +105,7 @@ it('does not drag when the gesture starts on content', () => {
     dragTo(content, 180);
     fireEvent.pointerUp(content, { pointerId: 1, clientY: 380 });
     expect(panel).toHaveAttribute('data-phase', 'idle');
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(onClose).not.toHaveBeenCalled();
 });
 
@@ -116,7 +116,7 @@ it.each(['handle', 'escape', 'backdrop'])('dismisses using %s', (method) => {
         fireEvent(panel, new Event('cancel', { cancelable: true }));
     if (method === 'backdrop')
         fireEvent.click(panel, { clientX: 500, clientY: 100 });
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(onClose).toHaveBeenCalledOnce();
 });
 
@@ -128,7 +128,7 @@ it('prevents all dismissal methods while saving', () => {
     fireEvent.click(panel, { clientX: 500, clientY: 100 });
     dragTo(handle, 200);
     fireEvent.pointerUp(handle, { pointerId: 1, clientY: 400 });
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(onClose).not.toHaveBeenCalled();
 });
 
@@ -145,7 +145,7 @@ it('clears a pending dismissal callback when unmounted', () => {
     const { handle, onClose, unmount } = setup();
     fireEvent.click(handle);
     unmount();
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(onClose).not.toHaveBeenCalled();
 });
 
@@ -173,7 +173,7 @@ it('keeps background scroll locked through the exit and restores focus afterward
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole('button', { name: 'Close sheet' }));
     expect(document.body.style.overflow).toBe('hidden');
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(400));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(document.body.style.overflow).toBe('scroll');
     expect(trigger).toHaveFocus();
@@ -200,4 +200,34 @@ it('wraps keyboard focus within the sheet in both directions', () => {
     expect(first).toHaveFocus();
     fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
     expect(last).toHaveFocus();
+});
+
+function pull(target: HTMLElement, distance: number) {
+    const at = (y: number) => ({ touches: [{ clientX: 100, clientY: y }] });
+    fireEvent.touchStart(target, at(300));
+    fireEvent.touchMove(target, at(310));
+    fireEvent.touchMove(target, at(310 + distance));
+    fireEvent.touchEnd(target, { touches: [] });
+}
+
+it('closes when the content is pulled down from the top', () => {
+    const { panel, onClose } = setup();
+    pull(screen.getByText('Scrollable content'), 160);
+    expect(panel).toHaveAttribute('data-phase', 'closing');
+    act(() => vi.advanceTimersByTime(400));
+    expect(onClose).toHaveBeenCalledOnce();
+});
+
+it('springs back after a short pull and leaves scrolled content alone', () => {
+    const { panel, onClose } = setup();
+    const content = screen.getByText('Scrollable content');
+    pull(content, 30);
+    expect(panel).toHaveAttribute('data-phase', 'settling');
+    expect(panel.style.getPropertyValue('--sheet-offset')).toBe('0px');
+
+    panel.scrollTop = 200;
+    pull(content, 160);
+    expect(panel).toHaveAttribute('data-phase', 'settling');
+    act(() => vi.advanceTimersByTime(400));
+    expect(onClose).not.toHaveBeenCalled();
 });

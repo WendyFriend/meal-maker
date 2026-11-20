@@ -14,7 +14,7 @@ afterEach(() => {
 
 it('parses the persisted lookup cache once while checking many missing foods', () => {
     window.localStorage.setItem(
-        'meal-maker:ingredient-nutrition:v2',
+        'meal-maker:ingredient-nutrition:v3',
         JSON.stringify({
             'known-rice': {
                 savedAt: Date.now(),

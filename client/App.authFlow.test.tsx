@@ -44,9 +44,8 @@ it('offers returning and new users authentication before the guest trial', async
             name: 'Meal Maker',
         }),
     ).toBeVisible();
-    expect(
-        screen.getByText('Eat plant-based. Meet your nutrition goals.'),
-    ).toBeVisible();
+    expect(screen.getByText('Snap a photo.')).toBeVisible();
+    expect(screen.getByText('Get your meal plan.')).toBeVisible();
     expect(screen.getByRole('region', { name: 'Meal maker' })).toBeVisible();
     expect(
         screen.queryByRole('button', { name: 'Open navigation menu' }),
@@ -54,17 +53,17 @@ it('offers returning and new users authentication before the guest trial', async
     expect(getUserIngredients).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'Log in' }));
-    expect(
-        screen.getByRole('dialog', { name: 'Welcome to Meal Maker' }),
-    ).toBeVisible();
-    expect(
-        screen.getByRole('heading', { name: 'Welcome back.' }),
-    ).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Welcome back' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Close' }));
 
     await user.click(screen.getByRole('button', { name: 'Sign up' }));
+    const signUp = screen.getByRole('dialog', {
+        name: 'Create your Meal Maker account',
+    });
+    expect(signUp).toHaveTextContent('Save your own ingredients');
     expect(
-        screen.getByRole('heading', { name: 'A fresh start.' }),
+        screen.getByRole('button', { name: 'Create free account' }),
     ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Close' }));
 
@@ -77,7 +76,9 @@ it('offers returning and new users authentication before the guest trial', async
         ).toHaveFocus(),
     );
     expect(
-        screen.queryByRole('dialog', { name: 'Welcome to Meal Maker' }),
+        screen.queryByRole('dialog', {
+            name: 'Create your Meal Maker account',
+        }),
     ).not.toBeInTheDocument();
     await waitFor(() =>
         expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({
@@ -101,7 +102,7 @@ it('offers returning and new users authentication before the guest trial', async
     expect(screen.getByRole('region', { name: 'Meal maker' })).toBeVisible();
 });
 
-it('invites guests to sign in before adding a generated meal to My Plan', async () => {
+it('invites guests to sign in before adding a generated meal to My Diary', async () => {
     const meal = {
         mealName: 'Pumpkin bowl',
         instructions: [],
@@ -129,10 +130,10 @@ it('invites guests to sign in before adding a generated meal to My Plan', async 
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: 'Add to My Plan' }));
+    await user.click(screen.getByRole('button', { name: 'Add to My Diary' }));
     expect(
-        screen.getByRole('dialog', { name: 'Keep your meal' }),
-    ).toHaveTextContent('add this meal to My Plan');
+        screen.getByRole('dialog', { name: 'Create your Meal Maker account' }),
+    ).toHaveTextContent('Easy meal planning');
     expect(saveRecipe).not.toHaveBeenCalled();
 });
 
@@ -168,14 +169,20 @@ it('prompts for an account only on a protected meal action and keeps the meal', 
     await user.click(screen.getByRole('button', { name: 'Save this meal' }));
 
     expect(
-        screen.getByRole('dialog', { name: 'Keep your meal' }),
-    ).toHaveTextContent('account or sign in to save this meal');
+        screen.getByRole('dialog', { name: 'Create your Meal Maker account' }),
+    ).toHaveTextContent('Macro & micronutrient tracking');
+    // Returning users switch to signing in; the meal is still promised.
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(screen.getByRole('dialog', { name: 'Welcome back' })).toBeVisible();
+    expect(
+        screen.queryByText('Save your own ingredients'),
+    ).not.toBeInTheDocument();
 
     auth.user = { id: 'user' };
     rerender(<App />);
 
     expect(
-        screen.queryByRole('dialog', { name: 'Keep your meal' }),
+        screen.queryByRole('dialog', { name: 'Welcome back' }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Pumpkin bowl' })).toBeVisible();
 
@@ -240,6 +247,50 @@ it('clears the meal workspace when a signed-in user logs out', async () => {
     expect(screen.getByRole('button', { name: /Try it out/i })).toBeVisible();
 });
 
+it('forgets saved ingredients when the session ends without logging out', async () => {
+    auth.user = { id: 'user' };
+    vi.mocked(getUserIngredients).mockResolvedValue([
+        {
+            ingredientId: 'lentils',
+            name: 'Red split lentils, dry',
+            caloriesPer100g: 358,
+            proteinPer100g: 24,
+            carbohydratePer100g: 63,
+            fatPer100g: 1.5,
+        },
+    ]);
+    localStorage.setItem(
+        'meal-maker-guest-draft',
+        JSON.stringify({
+            pendingAuth: true,
+            ingredients: ['Red split lentils, dry'],
+            ingredientNutrition: [],
+        }),
+    );
+    const { rerender } = render(<App />);
+    expect(
+        await screen.findByRole('button', {
+            name: 'Edit nutrition for Red split lentils, dry, saved',
+        }),
+    ).toBeVisible();
+
+    // e.g. the session expired, or the user logged out in another tab.
+    auth.user = null;
+    rerender(<App />);
+    const user = userEvent.setup();
+    const tryIt = screen.queryByRole('button', { name: /Try it out/i });
+    if (tryIt) await user.click(tryIt);
+
+    expect(
+        screen.queryByRole('button', { name: /, saved$/ }),
+    ).not.toBeInTheDocument();
+    await user.type(
+        screen.getByRole('combobox', { name: 'Search or add an ingredient' }),
+        'red split',
+    );
+    expect(document.querySelector('.saved-mark')).toBeNull();
+});
+
 it('does not restore an ordinary stale guest workspace', () => {
     localStorage.setItem(
         'meal-maker-guest-draft',
@@ -268,4 +319,39 @@ it('does not restore an ordinary stale guest workspace', () => {
         screen.getByRole('combobox', { name: 'Search or add an ingredient' }),
     ).toHaveValue('');
     expect(localStorage.getItem('meal-maker-guest-draft')).toBeNull();
+});
+
+it('asks guests to sign in when they star an ingredient', async () => {
+    localStorage.setItem(
+        'meal-maker-guest-draft',
+        JSON.stringify({
+            pendingAuth: true,
+            ingredients: ['Pumpkin'],
+            ingredientNutrition: [
+                {
+                    name: 'Pumpkin',
+                    caloriesPer100g: 26,
+                    proteinPer100g: 1,
+                    carbohydratePer100g: 6.5,
+                    fatPer100g: 0.1,
+                },
+            ],
+        }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(
+        screen.getByRole('button', { name: 'Edit nutrition for Pumpkin' }),
+    );
+    await user.click(
+        screen.getByRole('button', { name: 'Save to My Ingredients' }),
+    );
+    expect(
+        screen.getByRole('dialog', { name: 'Create your Meal Maker account' }),
+    ).toHaveTextContent('Save your own ingredients');
+    // Nothing was saved, so the star stays empty.
+    expect(
+        screen.getByRole('button', { name: 'Save to My Ingredients' }),
+    ).toHaveAttribute('aria-pressed', 'false');
 });

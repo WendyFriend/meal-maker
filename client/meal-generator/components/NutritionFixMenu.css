@@ -97,17 +97,17 @@
     }
 }
 
-.nutrition-fix-menu ul {
+.nutrition-fix-options {
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
-.nutrition-fix-menu li + li {
+.nutrition-fix-options > li + li {
     border-top: 1px solid var(--border-hairline);
 }
 
-.nutrition-fix-menu button {
+.nutrition-fix-options button {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -125,13 +125,13 @@
     touch-action: manipulation;
 }
 
-.nutrition-fix-menu button:hover:not(:disabled),
-.nutrition-fix-menu button:focus-visible {
+.nutrition-fix-options button:hover:not(:disabled),
+.nutrition-fix-options button:focus-visible {
     background: var(--accent-bg);
     outline: none;
 }
 
-.nutrition-fix-menu svg {
+.nutrition-fix-options svg {
     flex: 0 0 auto;
     width: 20px;
     height: 20px;

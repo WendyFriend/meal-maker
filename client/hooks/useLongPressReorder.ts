@@ -14,6 +14,11 @@ export const LONG_PRESS_MS = 450;
 export const REORDER_SETTLE_MS = 220;
 const MOVE_TOLERANCE = 10;
 const LIFT_SCALE = 1.03;
+/**
+ * The lifted item grows to LIFT_SCALE over this long, from the slightly
+ * pressed-in size CSS gives a held item, instead of popping.
+ */
+const LIFT_GROW_MS = 240;
 const SETTLE_EASING = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 
 type Slot = { id: string; el: HTMLElement; top: number; height: number };
@@ -51,6 +56,8 @@ export function reorderTarget(slots: Slot[], from: number, delta: number) {
 /**
  * iOS-style reordering with no edit mode: long press lifts an item, the
  * others slide aside as it is dragged, and releasing drops it in place.
+ * Like iOS context menus, letting go without moving calls `onHold`
+ * instead (e.g. to show the item's menu); a lone item goes straight there.
  *
  * Movement is applied straight to the DOM in animation frames, so a drag
  * does not re-render the list; React only hears about crossings and the
@@ -61,11 +68,14 @@ export function useLongPressReorder({
     enabled,
     onLift,
     onReorder,
+    onHold,
 }: {
     listRef: RefObject<HTMLElement | null>;
     enabled: boolean;
     onLift?: () => void;
     onReorder: (id: string, to: number) => void;
+    /** A long press released without dragging. */
+    onHold?: (id: string) => void;
 }) {
     const [liftedId, setLiftedId] = useState<string | null>(null);
     const [projection, setProjection] = useState<{
@@ -73,22 +83,33 @@ export function useLongPressReorder({
         to: number;
     } | null>(null);
     const timer = useRef<number | null>(null);
-    const press = useRef<{ x: number; y: number } | null>(null);
+    const press = useRef<{
+        x: number;
+        y: number;
+        id: string;
+        el: HTMLElement;
+    } | null>(null);
     const drag = useRef<Drag | null>(null);
     const delta = useRef(0);
+    // The furthest the lifted item has been dragged, to tell a hold from a drag.
+    const travel = useRef(0);
     const frame = useRef<number | null>(null);
+    const liftedAt = useRef(0);
     const settleTimer = useRef<number | null>(null);
     const suppressClick = useRef(false);
     const onReorderRef = useRef(onReorder);
     const onLiftRef = useRef(onLift);
+    const onHoldRef = useRef(onHold);
     useEffect(() => {
         onReorderRef.current = onReorder;
         onLiftRef.current = onLift;
+        onHoldRef.current = onHold;
     });
 
     const cancelPress = useCallback(() => {
         if (timer.current !== null) window.clearTimeout(timer.current);
         timer.current = null;
+        if (press.current) delete press.current.el.dataset.pressing;
         press.current = null;
     }, []);
 
@@ -104,10 +125,17 @@ export function useLongPressReorder({
         );
     }, []);
 
-    const paint = useCallback(() => {
+    const paint = useCallback(function paintFrame() {
         frame.current = null;
         const current = drag.current;
         if (!current) return;
+        const grown = Math.min(
+            1,
+            (performance.now() - liftedAt.current) / LIFT_GROW_MS,
+        );
+        // Ease out: quick at first, settling into the lifted size.
+        const scale = 1 + (LIFT_SCALE - 1) * (1 - (1 - grown) ** 3);
+        if (grown < 1) frame.current = requestAnimationFrame(paintFrame);
         const { to, shifts } = reorderTarget(
             current.slots,
             current.from,
@@ -116,7 +144,7 @@ export function useLongPressReorder({
         current.slots.forEach(({ el }, index) => {
             el.style.transform =
                 index === current.from
-                    ? `translateY(${delta.current}px) scale(${LIFT_SCALE})`
+                    ? `translateY(${delta.current}px) scale(${scale})`
                     : shifts[index]
                       ? `translateY(${shifts[index]}px)`
                       : '';
@@ -137,6 +165,8 @@ export function useLongPressReorder({
             current.from,
             delta.current,
         );
+        // Held and let go: the item settles back and its menu opens.
+        if (travel.current <= MOVE_TOLERANCE) onHoldRef.current?.(current.id);
         const settleMs = window.matchMedia?.('(prefers-reduced-motion: reduce)')
             .matches
             ? 0
@@ -179,10 +209,21 @@ export function useLongPressReorder({
                 };
             });
             const from = slots.findIndex((slot) => slot.id === id);
-            if (from < 0 || slots.length < 2) return;
+            if (from < 0) return;
             navigator.vibrate?.(10);
             suppressClick.current = true;
+            // Nothing to reorder against: go straight to the menu.
+            if (slots.length < 2) {
+                onHoldRef.current?.(id);
+                return;
+            }
             delta.current = 0;
+            travel.current = 0;
+            liftedAt.current = window.matchMedia?.(
+                '(prefers-reduced-motion: reduce)',
+            ).matches
+                ? -Infinity
+                : performance.now();
             drag.current = { id, startY, slots, from };
             onLiftRef.current?.();
             setLiftedId(id);
@@ -198,6 +239,7 @@ export function useLongPressReorder({
             const current = drag.current;
             if (!current) return;
             delta.current = clientY - current.startY;
+            travel.current = Math.max(travel.current, Math.abs(delta.current));
             frame.current ??= requestAnimationFrame(paint);
         };
         const onTouchMove = (event: TouchEvent) => {
@@ -255,6 +297,23 @@ export function useLongPressReorder({
         [cancelPress],
     );
 
+    /** Lifts the item being pressed, if any. */
+    function liftPressed() {
+        const current = press.current;
+        cancelPress();
+        if (current) lift(current.id, current.y);
+        return Boolean(current);
+    }
+
+    /**
+     * Lifts a pending press at once, for the system long press (Android's
+     * `contextmenu`), which can come before LONG_PRESS_MS and would
+     * otherwise end the press with nothing shown.
+     */
+    function holdNow() {
+        return enabled && liftPressed();
+    }
+
     /** Handlers for the element a long press should start from. */
     function pressProps(id: string) {
         return {
@@ -263,12 +322,15 @@ export function useLongPressReorder({
                 if (!enabled || event.button !== 0 || drag.current) return;
                 cancelPress();
                 const startY = event.clientY;
-                press.current = { x: event.clientX, y: startY };
-                timer.current = window.setTimeout(() => {
-                    timer.current = null;
-                    press.current = null;
-                    lift(id, startY);
-                }, LONG_PRESS_MS);
+                // `data-pressing` lets CSS show the hold building up (after
+                // a short delay, so taps and scrolls never flash).
+                const el =
+                    event.currentTarget.closest<HTMLElement>(
+                        '[data-reorder-id]',
+                    ) ?? event.currentTarget;
+                el.dataset.pressing = 'true';
+                press.current = { x: event.clientX, y: startY, id, el };
+                timer.current = window.setTimeout(liftPressed, LONG_PRESS_MS);
             },
             onPointerMove(event: ReactPointerEvent<HTMLElement>) {
                 const start = press.current;
@@ -302,5 +364,5 @@ export function useLongPressReorder({
         return index;
     }
 
-    return { liftedId, pressProps, projectedIndex };
+    return { liftedId, pressProps, projectedIndex, holdNow };
 }

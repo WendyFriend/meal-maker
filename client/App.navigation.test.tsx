@@ -60,7 +60,7 @@ it('uses a single menu trigger with four destinations and supports Escape and ou
         within(screen.getByRole('navigation', { name: 'Primary' }))
             .getAllByRole('button')
             .map((button) => button.textContent),
-    ).toEqual(['Create Meal', 'My Ingredients', 'My Meals', 'My Plan']);
+    ).toEqual(['Create Meal', 'My Ingredients', 'My Meals', 'My Diary']);
     expect(screen.getByRole('button', { name: 'Meal Maker' })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(menu).toHaveFocus();
@@ -109,11 +109,11 @@ it('targets the form from Create Meal and the Meal Maker logo, including from ot
     await user.click(screen.getByRole('button', { name: 'Meal Maker' }));
     expect(lastScrollTarget()).toHaveClass('meal-maker-tool');
     await open();
-    await select('My Plan');
+    await select('My Diary');
     expect(
-        await screen.findByRole('heading', { name: 'My Plan' }),
+        await screen.findByRole('heading', { name: 'My Diary' }),
     ).toBeInTheDocument();
-    await screen.findByText('No meals in your plan for this day');
+    await screen.findByText('No meals in your diary for this day');
     await open();
     await select('My Meals');
     expect(
@@ -125,7 +125,7 @@ it('targets the form from Create Meal and the Meal Maker logo, including from ot
     expect(document.activeElement).toHaveClass('meal-maker-form');
 });
 
-it('navigates from the bottom tabs and returns focus to More after closing the menu', async () => {
+it('navigates from the bottom tabs', async () => {
     const user = userEvent.setup();
     render(<App />);
     const tabs = screen.getByRole('navigation', { name: 'Main tabs' });
@@ -133,7 +133,7 @@ it('navigates from the bottom tabs and returns focus to More after closing the m
         within(tabs)
             .getAllByRole('button')
             .map((button) => button.textContent),
-    ).toEqual(['Discover', 'My Plan', 'Recipes', 'Ingredients', 'More']);
+    ).toEqual(['Discover', 'Diary', 'Recipes', 'Ingredients', 'Profile']);
 
     await user.click(within(tabs).getByRole('button', { name: 'Ingredients' }));
     expect(
@@ -143,17 +143,32 @@ it('navigates from the bottom tabs and returns focus to More after closing the m
         within(tabs).getByRole('button', { name: 'Ingredients' }),
     ).toHaveAttribute('aria-current', 'page');
 
-    await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
+    await user.click(within(tabs).getByRole('button', { name: 'Diary' }));
     expect(
-        await screen.findByRole('heading', { name: 'My Plan' }),
+        await screen.findByRole('heading', { name: 'My Diary' }),
     ).toBeInTheDocument();
 
-    const more = within(tabs).getByRole('button', { name: 'More' });
-    await user.click(more);
-    expect(more).toHaveAttribute('aria-expanded', 'true');
-    await user.keyboard('{Escape}');
-    expect(more).toHaveFocus();
-    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await user.click(within(tabs).getByRole('button', { name: 'Profile' }));
+    expect(
+        await screen.findByRole('heading', { name: 'Profile' }),
+    ).toBeInTheDocument();
+    expect(
+        within(tabs).getByRole('button', { name: 'Profile' }),
+    ).toHaveAttribute('aria-current', 'page');
+
+    // Back to Recipes (kept mounted since its first visit) after Profile
+    // shows My Recipes, not a leftover Profile.
+    await user.click(within(tabs).getByRole('button', { name: 'Recipes' }));
+    await screen.findByRole('heading', { name: 'My Recipes' });
+    await user.click(within(tabs).getByRole('button', { name: 'Profile' }));
+    await screen.findByRole('heading', { name: 'Profile' });
+    await user.click(within(tabs).getByRole('button', { name: 'Recipes' }));
+    expect(
+        await screen.findByRole('heading', { name: 'My Recipes' }),
+    ).toBeInTheDocument();
+    expect(
+        screen.queryByRole('heading', { name: 'Profile' }),
+    ).not.toBeInTheDocument();
 
     await user.click(within(tabs).getByRole('button', { name: 'Discover' }));
     expect(document.activeElement).toHaveClass('meal-maker-form');
@@ -172,34 +187,34 @@ it('keeps My Recipes loaded when switching tabs', async () => {
         'tofu',
     );
 
-    await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
+    await user.click(within(tabs).getByRole('button', { name: 'Diary' }));
     await user.click(within(tabs).getByRole('button', { name: 'Recipes' }));
 
     expect(screen.getByRole('searchbox', { name: 'Search meals' })).toHaveValue(
         'tofu',
     );
     expect(screen.queryByText('Loading your meals…')).not.toBeInTheDocument();
-    expect(getRecipes).toHaveBeenCalledTimes(2);
+    expect(getRecipes).toHaveBeenCalledOnce();
 });
 
-it('keeps My Plan loaded when switching tabs', async () => {
+it('keeps My Diary loaded when switching tabs', async () => {
     const user = userEvent.setup();
     render(<App />);
     const tabs = screen.getByRole('navigation', { name: 'Main tabs' });
 
-    await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
+    await user.click(within(tabs).getByRole('button', { name: 'Diary' }));
     expect(
-        await screen.findByText('No meals in your plan for this day'),
+        await screen.findByText('No meals in your diary for this day'),
     ).toBeInTheDocument();
     expect(getJournalEntries).toHaveBeenCalledOnce();
 
     await user.click(within(tabs).getByRole('button', { name: 'Recipes' }));
-    await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
+    await user.click(within(tabs).getByRole('button', { name: 'Diary' }));
 
     expect(
-        screen.getByRole('heading', { name: 'My Plan' }),
+        screen.getByRole('heading', { name: 'My Diary' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Loading your plan…')).not.toBeInTheDocument();
+    expect(screen.queryByText('Loading your diary…')).not.toBeInTheDocument();
     expect(getJournalEntries).toHaveBeenCalledOnce();
 });
 
@@ -229,14 +244,14 @@ it('gives main tabs URLs and restores them with browser Back', async () => {
     const user = userEvent.setup();
     render(<App />);
     const tabs = screen.getByRole('navigation', { name: 'Main tabs' });
-    await user.click(within(tabs).getByRole('button', { name: 'My Plan' }));
-    expect(window.location.pathname).toBe('/my-plan');
+    await user.click(within(tabs).getByRole('button', { name: 'Diary' }));
+    expect(window.location.pathname).toBe('/my-diary');
     await user.click(within(tabs).getByRole('button', { name: 'Recipes' }));
     expect(window.location.pathname).toBe('/my-recipes');
     act(() => window.history.back());
-    await waitFor(() => expect(window.location.pathname).toBe('/my-plan'));
+    await waitFor(() => expect(window.location.pathname).toBe('/my-diary'));
     expect(
-        screen.getByRole('heading', { name: 'My Plan' }),
+        screen.getByRole('heading', { name: 'My Diary' }),
     ).toBeInTheDocument();
     act(() => window.history.forward());
     await waitFor(() => expect(window.location.pathname).toBe('/my-recipes'));
@@ -310,13 +325,59 @@ it('opens My Ingredients directly from its URL and refreshes on pull', async () 
 });
 
 it.each([
-    ['/my-plan', 'My Plan'],
-    ['/settings', 'Settings'],
-])('opens %s directly', (path, heading) => {
+    ['/my-diary', 'My Diary', '/my-diary'],
+    // The old My Plan address still works and moves to the new one.
+    ['/my-plan', 'My Diary', '/my-diary'],
+    ['/profile', 'Profile', '/profile'],
+    // The old Settings address opens Profile.
+    ['/settings', 'Profile', '/profile'],
+])('opens %s directly', (path, heading, canonical) => {
     window.history.replaceState(null, '', path);
     render(<App />);
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
-    expect(window.location.pathname).toBe(path);
+    expect(window.location.pathname).toBe(canonical);
+});
+
+it('shows a new recipe on My Recipes without reloading the list', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getUserIngredients).mockResolvedValue([
+        {
+            ingredientId: 'lentils-1',
+            name: 'Lentils',
+            caloriesPer100g: 116,
+            proteinPer100g: 9,
+            carbohydratePer100g: 20,
+            fatPer100g: 0.4,
+        },
+    ]);
+    vi.mocked(saveRecipe).mockImplementation(async (recipe) => ({
+        ...recipe,
+        id: 'recipe-new',
+        userId: 'user-1',
+    }));
+    render(<App />);
+    await user.click(
+        within(screen.getByRole('navigation', { name: 'Main tabs' })).getByRole(
+            'button',
+            { name: 'Recipes' },
+        ),
+    );
+    await user.click(
+        await screen.findByRole('button', { name: 'Create recipe' }),
+    );
+    await user.type(
+        screen.getByRole('textbox', { name: 'Recipe name' }),
+        'Lentil soup',
+    );
+    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    await user.type(
+        screen.getByRole('combobox', { name: 'Ingredient 1' }),
+        'Lentils{Enter}',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save recipe' }));
+
+    expect(await screen.findByText('Lentil soup')).toBeInTheDocument();
+    expect(getRecipes).toHaveBeenCalledOnce();
 });
 
 it('opens Create Recipe from My Meals and returns to the list', async () => {
@@ -348,7 +409,7 @@ it('opens Create Recipe from My Meals and returns to the list', async () => {
     ).toBeInTheDocument();
 });
 
-it('adds a manually entered meal to My Plan without saving a recipe', async () => {
+it('adds a manually entered meal to My Diary without saving a recipe', async () => {
     const user = userEvent.setup();
     vi.mocked(getUserIngredients).mockResolvedValue([
         {
@@ -368,22 +429,30 @@ it('adds a manually entered meal to My Plan without saving a recipe', async () =
     await user.click(
         within(screen.getByRole('navigation', { name: 'Main tabs' })).getByRole(
             'button',
-            { name: 'My Plan' },
+            { name: 'Diary' },
         ),
     );
     await user.click(await screen.findByRole('button', { name: 'Add meal' }));
     await user.click(screen.getByRole('button', { name: /Create a new one/ }));
 
-    expect(await screen.findByText('Add Meal')).toBeInTheDocument();
-    expect(
-        screen.getByRole('textbox', { name: 'Meal name' }),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    // The meal is created in place on My Diary, not on another page.
     await user.type(
-        screen.getByRole('combobox', { name: 'Ingredient 1' }),
+        await screen.findByRole('combobox', { name: 'Ingredient 1' }),
         'Lentils{Enter}',
     );
-    await user.click(screen.getByRole('button', { name: 'Save meal' }));
+    // ✕ / ✓ are in the app header, not in the meal.
+    const header = document.querySelector('header.page-header') as HTMLElement;
+    expect(header).toHaveTextContent('New Meal');
+    expect(
+        within(
+            document.querySelector('.journal-meals')! as HTMLElement,
+        ).queryByRole('button', { name: 'Save ingredients changes' }),
+    ).not.toBeInTheDocument();
+    await user.click(
+        within(header).getByRole('button', {
+            name: 'Save ingredients changes',
+        }),
+    );
 
     await waitFor(() => expect(saveJournalEntry).toHaveBeenCalledOnce());
     const weekday = new Date().toLocaleDateString('en-AU', {
@@ -394,11 +463,17 @@ it('adds a manually entered meal to My Plan without saving a recipe', async () =
     });
     expect(saveRecipe).not.toHaveBeenCalled();
     expect(
-        await screen.findByRole('heading', { name: 'My Plan' }),
+        screen.getByRole('heading', { name: 'My Diary' }),
     ).toBeInTheDocument();
+    // The header returns once the meal is saved.
+    await waitFor(() =>
+        expect(
+            document.querySelector('header.page-header'),
+        ).not.toHaveTextContent('New Meal'),
+    );
 });
 
-it('opens a My Plan meal as a recipe page and returns to My Plan', async () => {
+it('opens a My Diary meal as a recipe page and returns to My Diary', async () => {
     const user = userEvent.setup();
     vi.mocked(getJournalEntries).mockResolvedValue([
         {
@@ -421,16 +496,16 @@ it('opens a My Plan meal as a recipe page and returns to My Plan', async () => {
     await user.click(
         within(screen.getByRole('navigation', { name: 'Main tabs' })).getByRole(
             'button',
-            { name: 'My Plan' },
+            { name: 'Diary' },
         ),
     );
-    // A collapsed meal expands first; then its name opens the meal page.
-    await user.click(
-        await screen.findByRole('button', { name: 'Meal 1, Lentil bowl' }),
+    // The meal page opens from the meal's menu.
+    fireEvent.contextMenu(
+        (
+            await screen.findByRole('button', { name: 'Meal 1, Lentil bowl' })
+        ).closest('.journal-meal-row')!,
     );
-    await user.click(
-        screen.getByRole('button', { name: 'Open Lentil bowl recipe' }),
-    );
+    await user.click(screen.getByRole('menuitem', { name: 'View Details' }));
 
     expect(
         await screen.findByRole('heading', { name: 'Lentil bowl' }),
@@ -443,7 +518,9 @@ it('opens a My Plan meal as a recipe page and returns to My Plan', async () => {
     expect(
         screen.getByRole('button', { name: 'Save this meal' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add to My Plan' })).toBeNull();
+    expect(
+        screen.queryByRole('button', { name: 'Add to My Diary' }),
+    ).toBeNull();
 
     // Ingredient edits are saved to the plan, not to My Recipes.
     vi.mocked(updateJournalEntryIngredients).mockImplementation(
@@ -500,6 +577,6 @@ it('opens a My Plan meal as a recipe page and returns to My Plan', async () => {
 
     await user.click(screen.getByRole('button', { name: 'Back' }));
     expect(
-        await screen.findByRole('heading', { name: 'My Plan' }),
+        await screen.findByRole('heading', { name: 'My Diary' }),
     ).toBeInTheDocument();
 });

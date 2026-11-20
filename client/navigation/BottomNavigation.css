@@ -55,11 +55,6 @@
         stroke-linejoin: round;
     }
 
-    .bottom-navigation-tab:last-child .bottom-navigation-icon svg {
-        fill: currentColor;
-        stroke: none;
-    }
-
     .bottom-navigation-tab-active {
         color: var(--coral);
     }

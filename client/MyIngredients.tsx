@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { IngredientInfo, UserIngredient } from '../shared/types/types';
 import IngredientThumbnail from './meal-generator/components/IngredientThumbnail';
 import AddIngredientSheet from './components/AddIngredientSheet';
 import IngredientCamera from './components/IngredientCamera';
+import { LabelScanCamera } from './components/LabelScan';
+import type { IngredientPhoto } from './AddIngredient';
 import PullRefreshIndicator from './components/PullRefreshIndicator';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import useSavedIngredientFoodIds from './hooks/useSavedIngredientFoodIds';
@@ -11,12 +13,12 @@ import { normalizeIngredientName } from './utils/Ingredient';
 import './components/SavedCollection.css';
 import { useCollectionSelection } from './hooks/useCollectionSelection';
 import {
+    CollectionTitle,
+    SelectionActions,
     SelectionToggle,
-    SelectionControls,
-    SelectionIndicator,
-    BulkDeleteToolbar,
 } from './components/CollectionSelection';
 import SwipeableCollectionRow from './components/SwipeableCollectionRow';
+import SavedCollectionRow from './components/SavedCollectionRow';
 import CollectionContextMenu from './components/CollectionContextMenu';
 import { contextMenuPosition } from './components/contextMenuPosition';
 import { useUndoableDelete } from './hooks/useUndoableDelete';
@@ -31,7 +33,7 @@ type IngredientMenu = {
 type MyIngredientsProps = {
     ingredients: UserIngredient[];
     onDeleteMany: (ids: string[]) => Promise<string[]>;
-    onAdd: (ingredient?: IngredientInfo, referencePhoto?: string) => void;
+    onAdd: (ingredient?: IngredientInfo, photo?: IngredientPhoto) => void;
     onSaveFromDatabase: (ingredient: IngredientInfo) => Promise<UserIngredient>;
     onOpen: (ingredient: UserIngredient) => void;
     onEdit?: (ingredient: UserIngredient) => void;
@@ -58,37 +60,29 @@ export default function MyIngredients({
     const [ingredientMenu, setIngredientMenu] = useState<IngredientMenu | null>(
         null,
     );
-    const lastPointerType = useRef<string | null>(null);
     const [swipeError, setSwipeError] = useState<string>();
     const [addMode, setAddMode] = useState<
         'choices' | 'search' | 'camera-food' | 'camera-label' | null
     >(null);
-    const {
-        rowRef,
-        exitClass,
-        exitStyle,
-        hiddenIds,
-        remove,
-        removeNow,
-        undoToast,
-    } = useUndoableDelete<HTMLDivElement>({
-        isActive,
-        onHidden: () => setOpenSwipeId(null),
-        commit: async (ids) => {
-            const names = ingredients
-                .filter(({ ingredientId }) => ids.includes(ingredientId))
-                .map(({ name }) => name);
-            try {
-                const deleted = new Set(await onDeleteMany(ids));
-                if (ids.some((id) => !deleted.has(id)))
-                    throw new Error('Ingredient was not removed.');
-            } catch {
-                setSwipeError(
-                    `Could not delete ${names.join(', ') || 'ingredient'}. Please try again.`,
-                );
-            }
-        },
-    });
+    const { rowRef, exitClass, exitStyle, hiddenIds, remove, undoToast } =
+        useUndoableDelete<HTMLDivElement>({
+            isActive,
+            onHidden: () => setOpenSwipeId(null),
+            commit: async (ids) => {
+                const names = ingredients
+                    .filter(({ ingredientId }) => ids.includes(ingredientId))
+                    .map(({ name }) => name);
+                try {
+                    const deleted = new Set(await onDeleteMany(ids));
+                    if (ids.some((id) => !deleted.has(id)))
+                        throw new Error('Ingredient was not removed.');
+                } catch {
+                    setSwipeError(
+                        `Could not delete ${names.join(', ') || 'ingredient'}. Please try again.`,
+                    );
+                }
+            },
+        });
     const visibleIngredients = ingredients.filter(
         ({ ingredientId }) => !hiddenIds.has(ingredientId),
     );
@@ -98,8 +92,6 @@ export default function MyIngredients({
     const legacyFoodIds = useSavedIngredientFoodIds(ingredients, isActive);
     const {
         selecting,
-        deleting,
-        error,
         selectedItems,
         allVisibleSelected,
         selectAllLabel,
@@ -123,9 +115,15 @@ export default function MyIngredients({
             setIngredientMenu(null);
             onOpen(ingredient);
         },
-        // Confirmed bulk delete: rows leave at once; failures reappear.
-        onDeleteMany: (ids) => removeNow(ids, () => onDeleteMany(ids)),
-        noun: 'ingredient',
+        onDelete: (ids) => {
+            setSwipeError(undefined);
+            remove(
+                ids,
+                ids.length === 1
+                    ? 'Ingredient removed.'
+                    : `${ids.length} ingredients removed.`,
+            );
+        },
         search,
         isActive,
         onSelectionStart: () => {
@@ -135,7 +133,7 @@ export default function MyIngredients({
     });
     const { containerRef, pullDistance } = usePullToRefresh({
         enabled: isActive && Boolean(onRefresh),
-        disabled: deleting || selecting,
+        disabled: selecting,
         refreshing,
         onRefresh: () => onRefresh?.(),
     });
@@ -152,7 +150,7 @@ export default function MyIngredients({
         x: number,
         y: number,
     ) {
-        if (selecting || deleting || !isActive) return;
+        if (selecting || !isActive) return;
         setOpenSwipeId(null);
         setIngredientMenu({
             ingredient,
@@ -164,11 +162,10 @@ export default function MyIngredients({
     return (
         <section
             ref={containerRef}
-            className={`my-ingredients saved-collection${isActive && onRefresh ? ' pull-refresh-active' : ''}${selecting ? ' saved-collection-selecting' : ''}`}
+            className={`my-ingredients saved-collection${isActive && onRefresh ? ' pull-refresh-active' : ''}`}
             aria-labelledby="my-ingredients-heading"
             hidden={!isActive}
             inert={!isActive}
-            aria-busy={deleting}
             onKeyDown={(event) => {
                 if (event.key === 'Escape' && selecting) {
                     event.preventDefault();
@@ -185,14 +182,31 @@ export default function MyIngredients({
             )}
             <header className="saved-collection-intro">
                 <div className="saved-collection-title">
-                    <h1 id="my-ingredients-heading">My Ingredients</h1>
-                    {ingredients.length > 0 && (
-                        <SelectionToggle
-                            selecting={selecting}
-                            disabled={deleting}
+                    <CollectionTitle
+                        id="my-ingredients-heading"
+                        title="My Ingredients"
+                        selecting={selecting}
+                        count={selectedItems.length}
+                    />
+                    {selecting ? (
+                        <SelectionActions
+                            count={selectedItems.length}
                             noun="ingredient"
-                            onClick={toggleSelection}
+                            allVisibleSelected={allVisibleSelected}
+                            toggleAllLabel={selectAllLabel}
+                            selectableCount={selectableCount}
+                            onToggleAll={toggleVisible}
+                            onDelete={deleteSelected}
+                            onCancel={cancelSelection}
                         />
+                    ) : (
+                        ingredients.length > 0 && (
+                            <SelectionToggle
+                                selecting={false}
+                                noun="ingredient"
+                                onClick={toggleSelection}
+                            />
+                        )
                     )}
                 </div>
             </header>
@@ -217,7 +231,6 @@ export default function MyIngredients({
                     }}
                     placeholder="Search ingredients..."
                     aria-label="Search ingredients"
-                    disabled={deleting}
                 />
             </div>
             {refreshError && (
@@ -233,14 +246,6 @@ export default function MyIngredients({
                     {swipeError}
                 </p>
             )}
-            <SelectionControls
-                visible={selecting}
-                count={selectedItems.length}
-                allVisibleSelected={allVisibleSelected}
-                label={selectAllLabel}
-                disabled={deleting || selectableCount === 0}
-                onToggle={toggleVisible}
-            />
             {filteredIngredients.length > 0 ? (
                 <div className="saved-collection-list">
                     {filteredIngredients.map((ingredient) => {
@@ -249,7 +254,7 @@ export default function MyIngredients({
                             <SwipeableCollectionRow
                                 key={ingredient.ingredientId}
                                 name={ingredient.name}
-                                enabled={!selecting && !deleting}
+                                enabled={!selecting}
                                 open={
                                     isActive &&
                                     !selecting &&
@@ -261,76 +266,15 @@ export default function MyIngredients({
                                 onClose={() => setOpenSwipeId(null)}
                                 onDelete={() => deleteIngredient(ingredient)}
                             >
-                                <div
-                                    ref={rowRef(ingredient.ingredientId)}
-                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${exitClass(ingredient.ingredientId)}`}
+                                <SavedCollectionRow
+                                    rowRef={rowRef(ingredient.ingredientId)}
+                                    className={exitClass(
+                                        ingredient.ingredientId,
+                                    )}
                                     style={exitStyle(ingredient.ingredientId)}
-                                    onPointerDownCapture={(event) => {
-                                        lastPointerType.current =
-                                            event.pointerType;
-                                    }}
-                                    onContextMenu={(event) => {
-                                        event.preventDefault();
-                                        if (lastPointerType.current === 'touch')
-                                            return;
-                                        const trigger =
-                                            event.currentTarget.querySelector<HTMLButtonElement>(
-                                                '.saved-collection-row',
-                                            );
-                                        if (trigger)
-                                            openMenu(
-                                                ingredient,
-                                                trigger,
-                                                event.clientX,
-                                                event.clientY,
-                                            );
-                                    }}
-                                >
-                                    <button
-                                        type="button"
-                                        className="saved-collection-row"
-                                        id={`saved-ingredient-${ingredient.ingredientId}`}
-                                        aria-pressed={
-                                            selecting ? selected : undefined
-                                        }
-                                        aria-label={
-                                            selecting
-                                                ? `${selected ? 'Deselect' : 'Select'} ${ingredient.name}`
-                                                : undefined
-                                        }
-                                        disabled={deleting}
-                                        onPointerDown={(event) =>
-                                            startPress(event, ingredient)
-                                        }
-                                        onPointerMove={movePress}
-                                        onPointerUp={endPress}
-                                        onPointerCancel={endPress}
-                                        onPointerLeave={endPress}
-                                        onKeyDown={(event) => {
-                                            if (
-                                                event.key === 'ContextMenu' ||
-                                                (event.shiftKey &&
-                                                    event.key === 'F10')
-                                            ) {
-                                                event.preventDefault();
-                                                const rect =
-                                                    event.currentTarget.getBoundingClientRect();
-                                                openMenu(
-                                                    ingredient,
-                                                    event.currentTarget,
-                                                    rect.left + 20,
-                                                    rect.bottom - 8,
-                                                );
-                                                return;
-                                            }
-                                            if (
-                                                event.key === 'Enter' ||
-                                                event.key === ' '
-                                            )
-                                                resetClickSuppression();
-                                        }}
-                                        onClick={() => clickItem(ingredient)}
-                                    >
+                                    id={`saved-ingredient-${ingredient.ingredientId}`}
+                                    name={ingredient.name}
+                                    media={
                                         <IngredientThumbnail
                                             name={ingredient.name}
                                             size={64}
@@ -344,24 +288,20 @@ export default function MyIngredients({
                                                 ]
                                             }
                                         />
-                                        <span className="saved-collection-row-info">
-                                            <strong>{ingredient.name}</strong>
-                                        </span>
-                                        {selecting ? (
-                                            <SelectionIndicator
-                                                selected={selected}
-                                            />
-                                        ) : (
-                                            <svg
-                                                className="saved-collection-row-chevron"
-                                                viewBox="0 0 24 24"
-                                                aria-hidden="true"
-                                            >
-                                                <path d="m9 6 6 6-6 6" />
-                                            </svg>
-                                        )}
-                                    </button>
-                                </div>
+                                    }
+                                    selecting={selecting}
+                                    selected={selected}
+                                    onPressStart={(event) =>
+                                        startPress(event, ingredient)
+                                    }
+                                    onPressMove={movePress}
+                                    onPressEnd={endPress}
+                                    onActivate={() => clickItem(ingredient)}
+                                    onKeyActivate={resetClickSuppression}
+                                    onMenu={(trigger, x, y) =>
+                                        openMenu(ingredient, trigger, x, y)
+                                    }
+                                />
                             </SwipeableCollectionRow>
                         );
                     })}
@@ -372,7 +312,7 @@ export default function MyIngredients({
                         className="saved-collection-empty-icon"
                         aria-hidden="true"
                     >
-                        {ingredients.length === 0 ? (
+                        {visibleIngredients.length === 0 ? (
                             <svg viewBox="0 0 32 32" fill="none">
                                 <path d="M5 17h22c-.8 7-5 11-11 11S5.8 24 5 17Z" />
                                 <path d="M16 17V9m0 4c-4 0-6-2-6-6 4 0 6 2 6 6Zm0-2c0-4 2-6 6-6 0 4-2 6-6 6Z" />
@@ -385,12 +325,12 @@ export default function MyIngredients({
                         )}
                     </div>
                     <p className="saved-collection-empty-title">
-                        {ingredients.length === 0
+                        {visibleIngredients.length === 0
                             ? 'No ingredients yet'
                             : 'No matching ingredients'}
                     </p>
                     <p className="saved-collection-empty-hint">
-                        {ingredients.length === 0
+                        {visibleIngredients.length === 0
                             ? 'Add an ingredient to start building your pantry.'
                             : 'Try a different search.'}
                     </p>
@@ -398,15 +338,7 @@ export default function MyIngredients({
             )}
             {isActive &&
                 createPortal(
-                    selecting ? (
-                        <BulkDeleteToolbar
-                            count={selectedItems.length}
-                            noun="ingredient"
-                            deleting={deleting}
-                            error={error}
-                            onDelete={deleteSelected}
-                        />
-                    ) : (
+                    !selecting && (
                         <button
                             type="button"
                             className="floating-add-button saved-collection-add-button ingredients-add-button"
@@ -454,17 +386,26 @@ export default function MyIngredients({
                     onScan={() => setAddMode('camera-label')}
                 />
             )}
-            {isActive &&
-                (addMode === 'camera-food' || addMode === 'camera-label') && (
-                    <IngredientCamera
-                        mode={addMode === 'camera-label' ? 'label' : 'food'}
-                        onClose={() => setAddMode(null)}
-                        onContinue={(photo) => {
-                            setAddMode(null);
-                            onAdd(undefined, photo);
-                        }}
-                    />
-                )}
+            {isActive && addMode === 'camera-food' && (
+                <IngredientCamera
+                    mode="food"
+                    onClose={() => setAddMode(null)}
+                    onContinue={(src) => {
+                        setAddMode(null);
+                        onAdd(undefined, { src, kind: 'food' });
+                    }}
+                />
+            )}
+            {isActive && addMode === 'camera-label' && (
+                <LabelScanCamera
+                    backLabel="Back to My Ingredients"
+                    onClose={() => setAddMode(null)}
+                    onPhoto={(src) => {
+                        setAddMode(null);
+                        onAdd(undefined, { src, kind: 'label' });
+                    }}
+                />
+            )}
             {undoToast}
         </section>
     );

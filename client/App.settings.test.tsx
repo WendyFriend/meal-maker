@@ -6,7 +6,11 @@ import { getUserIngredients } from './services/ingredientService';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
 
 vi.mock('./auth/useAuth', () => ({
-    useAuth: () => ({ user: { id: 'user' }, loading: false, signOut: vi.fn() }),
+    useAuth: () => ({
+        user: { id: 'user' },
+        loading: false,
+        signOut: vi.fn(),
+    }),
 }));
 vi.mock('./services/ingredientService', () => ({
     getUserIngredients: vi.fn().mockResolvedValue([]),
@@ -35,33 +39,6 @@ afterEach(async () => {
         window.requestAnimationFrame(() => resolve()),
     );
     vi.unstubAllGlobals();
-});
-
-async function openSettings(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(
-        screen.getByRole('button', { name: 'Open navigation menu' }),
-    );
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-}
-
-it('remembers the Quick Add layout', async () => {
-    const user = userEvent.setup();
-    const { unmount } = render(<App />);
-    await openSettings(user);
-
-    expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    expect(
-        screen.queryByRole('button', { name: 'Save sample ingredients' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /Tiles/ })).toBeChecked();
-
-    await user.click(screen.getByRole('radio', { name: /Rows/ }));
-    expect(screen.getByRole('radio', { name: /Rows/ })).toBeChecked();
-
-    unmount();
-    render(<App />);
-    await openSettings(user);
-    expect(screen.getByRole('radio', { name: /Rows/ })).toBeChecked();
 });
 
 it('reports the meal generation server timing', async () => {

@@ -33,7 +33,7 @@ export default function PlanCalendar({
     return (
         <SlidingSheet
             className="plan-calendar-sheet"
-            label="Choose plan date"
+            label="Choose diary date"
             onClose={onClose}
             header={<h2>Choose date</h2>}
         >

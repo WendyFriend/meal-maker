@@ -26,6 +26,7 @@ import {
     fillMissingRecipeNutrition,
     type RecipeNutritionEnrichment,
 } from './utils/recipeNutrition';
+import { calorieScale } from './utils/nutrition';
 import './RecipeDetail.css';
 import AddRowButton from './components/AddRowButton';
 
@@ -221,7 +222,7 @@ export default function RecipeDetail({
     onSave?: (recipe: Recipe) => Promise<Recipe>;
     startInEditMode?: boolean;
     /**
-     * 'plan-meal' shows a My Plan meal as a recipe: its ingredients can be
+     * 'plan-meal' shows a My Diary meal as a recipe: its ingredients can be
      * edited (saved back to the plan through onSave) and it can be starred
      * into My Recipes, since it may not be saved there yet. Its name and
      * ingredients save back to the plan; plan meals have no steps.
@@ -281,17 +282,10 @@ export default function RecipeDetail({
         previewIngredient && Number.isFinite(previewIngredient.caloriesPer100g)
             ? previewIngredient.caloriesPer100g
             : undefined;
-    const ingredientCalorieScale = useMemo(() => {
-        const largestCalories = Math.max(
-            0,
-            ...originalMeal.ingredients.map((ingredient) =>
-                ingredient.nutritionUnavailable
-                    ? 0
-                    : (ingredient.caloriesPer100g * ingredient.weight) / 100,
-            ),
-        );
-        return Math.max(500, Math.ceil((largestCalories * 2) / 100) * 100);
-    }, [originalMeal.ingredients]);
+    const ingredientCalorieScale = useMemo(
+        () => calorieScale(originalMeal.ingredients),
+        [originalMeal.ingredients],
+    );
 
     function updateMeal(
         next:

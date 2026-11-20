@@ -280,7 +280,7 @@ it('opens the food camera from Take a photo', () => {
     ).toBeDisabled();
 });
 
-it('passes a selected label photo to the editor as a reference', async () => {
+it('passes a selected label photo to the editor to read', async () => {
     const { onAdd } = setup();
     fireEvent.click(
         screen.getByRole('button', { name: 'Scan nutrition label' }),
@@ -290,13 +290,11 @@ it('passes a selected label photo to the editor as a reference', async () => {
             files: [new File(['label'], 'label.png', { type: 'image/png' })],
         },
     });
-    fireEvent.click(
-        await screen.findByRole('button', { name: 'Enter details' }),
-    );
-    expect(onAdd).toHaveBeenCalledWith(
-        undefined,
-        expect.stringMatching(/^data:image\/png;base64,/),
-    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Use photo' }));
+    expect(onAdd).toHaveBeenCalledWith(undefined, {
+        src: expect.stringMatching(/^data:image\/png;base64,/),
+        kind: 'label',
+    });
 });
 
 it('releases the camera when the scanner closes', async () => {

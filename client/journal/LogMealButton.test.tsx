@@ -64,7 +64,7 @@ describe('My Day toggle', () => {
     it('stacks the My Day action after the bookmark in the header', () => {
         render(<MealResult meal={meal} onChange={vi.fn()} />);
         const bookmark = screen.getByRole('button', { name: 'Save this meal' });
-        const add = screen.getByRole('button', { name: 'Add to My Plan' });
+        const add = screen.getByRole('button', { name: 'Add to My Diary' });
         expect(add.closest('.meal-result-actions')).toBe(
             bookmark.closest('.meal-result-actions'),
         );
@@ -78,18 +78,18 @@ describe('My Day toggle', () => {
         const user = userEvent.setup();
         render(
             <form onSubmit={outerSave}>
-                <LogMealButton meal={meal} destinationLabel="My Plan" />
+                <LogMealButton meal={meal} destinationLabel="My Diary" />
             </form>,
         );
         await user.click(
-            screen.getByRole('button', { name: 'Add to My Plan' }),
+            screen.getByRole('button', { name: 'Add to My Diary' }),
         );
         const feedback = await screen.findByRole('status');
         expect(feedback).toHaveClass('action-toast--floating');
-        expect(feedback).toHaveTextContent('Added to My Plan.');
+        expect(feedback).toHaveTextContent('Added to My Diary.');
         expect(feedback).toHaveStyle({
-            '--action-toast-background': '#fff',
-            '--action-toast-icon': '#27813a',
+            '--action-toast-background': 'var(--toast-bg)',
+            '--action-toast-icon': 'var(--toast-icon)',
         });
         expect(saveJournalEntry).toHaveBeenCalledOnce();
         expect(vi.mocked(saveJournalEntry).mock.calls[0][0]).toMatchObject({
@@ -97,15 +97,15 @@ describe('My Day toggle', () => {
             ingredients: meal.ingredients,
         });
         const remove = screen.getByRole('button', {
-            name: 'Remove from My Plan',
+            name: 'Remove from My Diary',
         });
         expect(remove).toHaveAttribute('aria-pressed', 'true');
         await user.click(remove);
         expect(deleteJournalEntry).toHaveBeenCalledExactlyOnceWith('entry-1');
         expect(
-            screen.getByRole('button', { name: 'Add to My Plan' }),
+            screen.getByRole('button', { name: 'Add to My Diary' }),
         ).toHaveAttribute('aria-pressed', 'false');
-        expect(screen.queryByText('Added to My Plan.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Added to My Diary.')).not.toBeInTheDocument();
         expect(outerSave).not.toHaveBeenCalled();
     });
     it('dismisses the confirmation automatically without forgetting the journal entry', async () => {

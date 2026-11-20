@@ -7,6 +7,17 @@ import {
 } from '../components/ConfirmCancelButtons';
 import { pageConfig, type Page } from './pages';
 
+/** Header ✕ / ✓ for an edit that is not a form (e.g. a My Diary meal). */
+export type HeaderEditActions = {
+    title: string;
+    saving: boolean;
+    cancelLabel: string;
+    saveLabel: string;
+    savingLabel: string;
+    onCancel: () => void;
+    onSave: () => void;
+};
+
 type PageHeaderProps = {
     currentPage: Page;
     themed: boolean;
@@ -15,6 +26,8 @@ type PageHeaderProps = {
         subject: 'ingredient' | 'meal';
         saving: boolean;
     };
+    /** Replaces the header with ✕ title ✓ while something is edited. */
+    editActions?: HeaderEditActions;
     onBack: () => void;
     onEdit?: () => void;
     onOpenMenu: () => void;
@@ -28,6 +41,7 @@ export default function PageHeader({
     currentPage,
     themed,
     editor,
+    editActions,
     onBack,
     onEdit,
     onOpenMenu,
@@ -37,6 +51,42 @@ export default function PageHeader({
     showMenu = true,
 }: PageHeaderProps) {
     const config = pageConfig[currentPage];
+    // Editing a My Diary meal confirms from the header, like an iOS
+    // navigation bar in edit mode, leaving the meal itself uncluttered.
+    // The header is part of the edit, so tapping it never saves on leave.
+    if (editActions) {
+        return (
+            <header
+                className="page-header page-header-create-recipe page-header-name-edit"
+                data-part-of-edit=""
+            >
+                <div className="page-header-inner">
+                    <CancelButton
+                        key="cancel-header-edit"
+                        disabled={editActions.saving}
+                        label={editActions.cancelLabel}
+                        title="Cancel changes"
+                        onClick={editActions.onCancel}
+                    />
+                    <span className="page-header-create-title">
+                        {editActions.title}
+                    </span>
+                    <ConfirmButton
+                        key="save-header-edit"
+                        disabled={editActions.saving}
+                        busy={editActions.saving}
+                        label={
+                            editActions.saving
+                                ? editActions.savingLabel
+                                : editActions.saveLabel
+                        }
+                        title="Save changes"
+                        onClick={editActions.onSave}
+                    />
+                </div>
+            </header>
+        );
+    }
     // Renaming a recipe or plan meal confirms from the header, like an iOS navigation bar,
     // so the name field keeps the heading's width.
     if (
@@ -73,7 +123,6 @@ export default function PageHeader({
             </header>
         );
     }
-    // Create Recipe and Add Meal share the same form page and header.
     const createForm =
         currentPage === 'create-recipe'
             ? {
@@ -81,13 +130,7 @@ export default function PageHeader({
                   cancelLabel: 'Cancel creating recipe',
                   saveLabel: 'Save recipe',
               }
-            : currentPage === 'add-meal'
-              ? {
-                    formId: 'add-meal-form',
-                    cancelLabel: 'Cancel adding meal',
-                    saveLabel: 'Save meal',
-                }
-              : undefined;
+            : undefined;
     if (createForm) {
         return (
             <header className="page-header page-header-create-recipe">

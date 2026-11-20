@@ -105,6 +105,49 @@ describe('generateMealWithNutritionLab', () => {
         ).toBe(true);
     });
 
+    it('sends the profile diet with Plant based, each once and only known ones', async () => {
+        const fetchMock = vi.fn<typeof fetch>(
+            async () =>
+                new Response(
+                    JSON.stringify({
+                        mealName: 'Rice bowl',
+                        instructions: ['Serve.'],
+                        ingredients: [
+                            {
+                                name: 'Rice',
+                                weight: 85,
+                                caloriesPer100g: 400,
+                                proteinPer100g: 7,
+                                carbohydratePer100g: 80,
+                                fatPer100g: 1,
+                            },
+                        ],
+                    }),
+                ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        await generateMealWithNutritionLab({
+            ingredients: [
+                {
+                    name: 'rice',
+                    caloriesPer100g: 400,
+                    proteinPer100g: 7,
+                    carbohydratePer100g: 80,
+                    fatPer100g: 1,
+                },
+            ],
+            requirements: {
+                preferences: ['plant-based'],
+                dietary: ['gluten-free', 'vegan', 'keto' as unknown as 'vegan'],
+            },
+        });
+
+        expect(
+            JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).requirements,
+        ).toEqual({ dietary: ['gluten-free', 'vegan'] });
+    });
+
     it('sends saved macros directly without a food id and maps the returned nutrition', async () => {
         const fetchMock = vi.fn<typeof fetch>(
             async () =>

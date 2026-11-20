@@ -1,4 +1,5 @@
-import { useState, type Ref } from 'react';
+import { useState, type Dispatch, type Ref, type SetStateAction } from 'react';
+import type { MealPhoto } from '../mealPhotos';
 import type {
     IngredientInfo,
     MealPreference,
@@ -9,6 +10,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import IngredientInput from './IngredientInput';
 import MealMakerPreferencesSheet from './MealMakerPreferencesSheet';
 import SelectedIngredients from './SelectedIngredients';
+import { normalizeIngredientName } from '../../utils/Ingredient';
 import './MealMakerForm.css';
 
 type MealMakerFormProps = {
@@ -21,6 +23,11 @@ type MealMakerFormProps = {
         nutrition: IngredientInfo,
     ) => void;
     onRemoveIngredient: (ingredient: string) => void;
+    /** Photos taken with Photo, shown with the chips they added. */
+    photos?: MealPhoto[];
+    onPhotosChange?: Dispatch<SetStateAction<MealPhoto[]>>;
+    onOpenPhoto?: (id: string) => void;
+    onRemovePhoto?: (id: string) => void;
     onIngredientClick: (index: number) => void;
     calories: number | undefined;
     onCaloriesChange: (calories: number | undefined) => void;
@@ -39,6 +46,10 @@ export default function MealMakerForm({
     onIngredientsChange,
     onIngredientNutritionSelected,
     onRemoveIngredient,
+    photos = [],
+    onPhotosChange,
+    onOpenPhoto,
+    onRemovePhoto,
     onIngredientClick,
     calories,
     onCaloriesChange,
@@ -74,12 +85,23 @@ export default function MealMakerForm({
                         onIngredientNutritionSelected={
                             onIngredientNutritionSelected
                         }
+                        onPhotosChange={onPhotosChange}
                     />
-                    {ingredients.length > 0 ? (
+                    {ingredients.length > 0 || photos.length > 0 ? (
                         <SelectedIngredients
                             ingredients={ingredients}
+                            photos={photos}
+                            onOpenPhoto={onOpenPhoto}
+                            onRemovePhoto={onRemovePhoto}
                             removeIngredient={onRemoveIngredient}
                             onIngredientClick={onIngredientClick}
+                            isSaved={(name) =>
+                                savedIngredients.some(
+                                    (saved) =>
+                                        normalizeIngredientName(saved.name) ===
+                                        normalizeIngredientName(name),
+                                )
+                            }
                             onClear={() => onIngredientsChange([])}
                         />
                     ) : (

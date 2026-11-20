@@ -1,56 +1,92 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest';
-import { handleNutritionLabel, labelToPer100g } from './readNutritionLabel.js';
-import { parseJsonObject } from '../../ai/vision.js';
+import {
+    handleNutritionLabel,
+    labelScanFromResponse,
+} from './readNutritionLabel.js';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+});
 
-it('uses the per 100g column when the label has one', () => {
+const cell = (value: number | null, unit: string | null = 'g') => ({
+    text: `${value} ${unit}`,
+    value,
+    unit,
+    lessThan: false,
+});
+
+const image = 'data:image/jpeg;base64,abc';
+
+function labReplies(body: unknown, status = 200) {
+    vi.stubEnv('MEALMAKER_API_KEY', 'key');
+    const fetchMock = vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify(body), { status }));
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+}
+
+it('uses the lab ingredient and fills gaps from the per 100 column', () => {
     expect(
-        labelToPer100g({
-            productName: ' Rolled oats ',
-            servingSizeGrams: 40,
-            per100g: {
-                energyKcal: 379,
-                protein: 13.5,
-                carbohydrate: 59.7,
-                fat: 7.1,
-                sugar: null,
-                fiber: '10.2g',
+        labelScanFromResponse({
+            labelFound: true,
+            servingSize: '40 g',
+            per100: {
+                calories: cell(379, 'kcal'),
+                fibre: cell(10.2),
+                sugars: cell(null),
             },
-            perServing: { energyKcal: 152 },
+            ingredient: {
+                name: 'Rolled oats',
+                proteinPer100g: 13.5,
+                carbohydratePer100g: 59.7,
+                fatPer100g: 7.1,
+                ironPer100g: 3.6,
+                sodiumPer100g: 4,
+            },
+            warnings: ['Energy does not add up.'],
+            basis: '100g',
         }),
     ).toEqual({
-        productName: 'Rolled oats',
         nutrition: {
             caloriesPer100g: 379,
             proteinPer100g: 13.5,
             carbohydratePer100g: 59.7,
             fatPer100g: 7.1,
             fiberPer100g: 10.2,
+            ironPer100g: 3.6,
         },
+        basis: '100g',
+        warnings: ['Energy does not add up.'],
     });
 });
 
-it('scales a per-serving label and converts kilojoules', () => {
+it('converts kilojoules and label units, keeping zeros', () => {
     expect(
-        labelToPer100g({
-            servingSizeGrams: 30,
-            per100g: null,
-            perServing: { energyKj: 502, protein: 3, fat: 0 },
-        }).nutrition,
-    ).toEqual({ caloriesPer100g: 400, proteinPer100g: 10, fatPer100g: 0 });
+        labelScanFromResponse({
+            labelFound: true,
+            servingSize: null,
+            per100: {
+                energyKj: cell(1674, 'kJ'),
+                fatTotal: cell(0),
+                calcium: cell(0.12, 'g'),
+            },
+            basis: '100mL',
+        }),
+    ).toEqual({
+        nutrition: {
+            caloriesPer100g: 400,
+            fatPer100g: 0,
+            calciumPer100g: 120,
+        },
+        basis: '100mL',
+        warnings: [],
+    });
 });
 
-it('returns nothing it cannot convert to per 100g', () => {
-    expect(
-        labelToPer100g({ perServing: { protein: 3 }, servingSizeGrams: null })
-            .nutrition,
-    ).toEqual({});
-    expect(labelToPer100g('not json').nutrition).toEqual({});
-});
-
-it('rejects non-image input before calling the model', async () => {
+it('rejects non-image input before calling the lab', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     const result = await handleNutritionLabel({ image: 'hello' });
@@ -58,32 +94,58 @@ it('rejects non-image input before calling the model', async () => {
     expect(fetchMock).not.toHaveBeenCalled();
 });
 
-it('sends the photo to the vision model and reports unreadable labels', async () => {
-    vi.stubEnv('OLLAMA_API_KEY', 'key');
-    vi.stubEnv('OLLAMA_MODEL', 'gemma4');
-    const fetchMock = vi.fn().mockResolvedValue(
-        new Response(
-            JSON.stringify({
-                choices: [{ message: { content: '{"per100g":null}' } }],
-            }),
-        ),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const image = 'data:image/jpeg;base64,abc';
-    const result = await handleNutritionLabel({ image });
-    expect(result.status).toBe(422);
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.model).toBe('gemma4');
-    expect(body.messages[1].content[1]).toEqual({
-        type: 'image_url',
-        image_url: { url: image },
+it('sends the photo and name to Nutrition Lab', async () => {
+    const fetchMock = labReplies({
+        labelFound: true,
+        servingSize: null,
+        per100: {},
+        ingredient: { proteinPer100g: 3 },
     });
-    vi.unstubAllEnvs();
+    const result = await handleNutritionLabel({ image, name: ' Soy milk ' });
+    expect(result).toEqual({
+        status: 200,
+        body: {
+            nutrition: { proteinPer100g: 3 },
+            basis: '100g',
+            warnings: [],
+        },
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+        'https://mealmaker.brotherk3d.com/api/v1/labels/read?ingredient=1&name=Soy+milk',
+    );
+    expect(init.headers.Authorization).toBe('Bearer key');
+    expect(JSON.parse(init.body)).toEqual({ image });
 });
 
-it('reads JSON wrapped in a code fence', () => {
-    expect(parseJsonObject('```json\n{"per100g":{"protein":1}}\n```')).toEqual({
-        per100g: { protein: 1 },
+it('reports photos without a label', async () => {
+    labReplies({ labelFound: false, servingSize: null, per100: {} });
+    expect((await handleNutritionLabel({ image })).status).toBe(422);
+});
+
+it('retries once when the vision model fails', async () => {
+    const fetchMock = labReplies({ error: { code: 'MODEL_FAILED' } }, 502);
+    fetchMock
+        .mockResolvedValueOnce(new Response('{}', { status: 502 }))
+        .mockResolvedValueOnce(
+            new Response(
+                JSON.stringify({
+                    labelFound: true,
+                    servingSize: null,
+                    per100: { protein: cell(5) },
+                }),
+            ),
+        );
+    const result = await handleNutritionLabel({ image });
+    expect(result.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
+it('explains rate limits', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    labReplies({ error: { code: 'RATE_LIMITED' } }, 429);
+    expect(await handleNutritionLabel({ image })).toEqual({
+        status: 429,
+        body: { message: 'Too many scans right now. Try again in a minute.' },
     });
-    expect(parseJsonObject('no json here')).toBeUndefined();
 });

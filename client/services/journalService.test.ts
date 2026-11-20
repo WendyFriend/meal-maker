@@ -5,7 +5,9 @@ import {
     deleteJournalEntry,
     reorderJournalEntries,
     updateJournalEntryIngredients,
+    updateJournalEntryName,
 } from './journalService';
+import { MissingJournalEntryError } from './journalErrors';
 import { localDayBounds } from '../journal/nutrition';
 import { subscribeJournalChanges } from '../journal/changes';
 const db = vi.hoisted(() => ({
@@ -19,6 +21,7 @@ const db = vi.hoisted(() => ({
     delete: vi.fn(),
     eq: vi.fn(),
     single: vi.fn(),
+    maybeSingle: vi.fn(),
     rpc: vi.fn(),
 }));
 vi.mock('../lib/supabase', () => ({ supabase: db }));
@@ -157,7 +160,7 @@ describe('journal persistence', () => {
     it('removes only the selected journal entry and propagates deletion failures', async () => {
         const changed = vi.fn();
         const unsubscribe = subscribeJournalChanges(changed);
-        db.single.mockResolvedValueOnce({
+        db.maybeSingle.mockResolvedValueOnce({
             data: { id: 'entry-1' },
             error: null,
         });
@@ -165,7 +168,7 @@ describe('journal persistence', () => {
         expect(db.from).toHaveBeenCalledWith('journal_entries');
         expect(db.delete).toHaveBeenCalledOnce();
         expect(db.eq).toHaveBeenCalledWith('id', 'entry-1');
-        db.single.mockResolvedValueOnce({
+        db.maybeSingle.mockResolvedValueOnce({
             data: null,
             error: new Error('offline'),
         });
@@ -176,7 +179,7 @@ describe('journal persistence', () => {
     it('updates only one journal ingredient snapshot and announces the change', async () => {
         const changed = vi.fn();
         const unsubscribe = subscribeJournalChanges(changed);
-        db.single.mockResolvedValueOnce({
+        db.maybeSingle.mockResolvedValueOnce({
             data: {
                 id: 'entry-1',
                 eaten_at: '2026-10-29T08:00:00Z',
@@ -200,12 +203,23 @@ describe('journal persistence', () => {
             updateJournalEntryIngredients('entry-1', []),
         ).rejects.toThrow('Add at least one ingredient');
         expect(db.update).not.toHaveBeenCalled();
-        db.single.mockResolvedValueOnce({
+        db.maybeSingle.mockResolvedValueOnce({
             data: null,
             error: new Error('offline'),
         });
         await expect(
             updateJournalEntryIngredients('entry-1', ingredients),
         ).rejects.toThrow('offline');
+    });
+    it('reports a meal deleted elsewhere instead of failing on no row', async () => {
+        db.maybeSingle.mockResolvedValue({ data: null, error: null });
+        await expect(
+            updateJournalEntryIngredients('gone', ingredients),
+        ).rejects.toBeInstanceOf(MissingJournalEntryError);
+        await expect(
+            updateJournalEntryName('gone', 'Tofu bowl'),
+        ).rejects.toBeInstanceOf(MissingJournalEntryError);
+        // Removing a meal that is already gone succeeds.
+        await expect(deleteJournalEntry('gone')).resolves.toBeUndefined();
     });
 });

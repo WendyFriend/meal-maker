@@ -1,110 +1,104 @@
-import { askVisionJson, imageFromRequest } from '../../ai/vision.js';
+import { MICRONUTRIENTS } from '../../../shared/micronutrients.js';
 import type { NutritionLabelScan } from '../../../shared/types/types.js';
+import { readNutritionLabelRemote } from '../mealmaker/client.js';
+import type {
+    MealMakerLabelAmount,
+    MealMakerLabelResponse,
+} from '../mealmaker/types.js';
+import { imageFromRequest } from '../photo/imageFromRequest.js';
+import { photoFailure, retryOnce } from '../photo/photoFailure.js';
+
+type LabelField = keyof NutritionLabelScan['nutrition'];
 
 const KJ_PER_KCAL = 4.184;
 
-const systemPrompt = `You read food nutrition labels from photos.
-Reply with JSON only, in exactly this shape:
-{
-  "productName": string | null,
-  "servingSizeGrams": number | null,
-  "per100g": Values | null,
-  "perServing": Values | null
-}
-Values = {
-  "energyKcal": number | null,
-  "energyKj": number | null,
-  "protein": number | null,
-  "carbohydrate": number | null,
-  "fat": number | null,
-  "saturatedFat": number | null,
-  "sugar": number | null,
-  "fiber": number | null
-}
-Amounts are grams except energy. Treat a per 100ml column as per100g.
-Copy numbers exactly as printed. Use null for anything not printed or unreadable; never guess.
-"carbohydrate" is total carbohydrate. "sugar" is total sugars, not added sugars.
-If the image is not a nutrition label, return every field as null.`;
+// Label rows to fall back on when Nutrition Lab omits `ingredient`.
+const LABEL_ROWS: [LabelField, string, unit: 'g' | 'mg'][] = [
+    ['proteinPer100g', 'protein', 'g'],
+    ['carbohydratePer100g', 'carbohydrate', 'g'],
+    ['fatPer100g', 'fatTotal', 'g'],
+    ['saturatedFatPer100g', 'saturated', 'g'],
+    ['sugarPer100g', 'sugars', 'g'],
+    ['fiberPer100g', 'fibre', 'g'],
+    ['calciumPer100g', 'calcium', 'mg'],
+];
 
-type Values = Partial<
-    Record<
-        | 'energyKcal'
-        | 'energyKj'
-        | 'protein'
-        | 'carbohydrate'
-        | 'fat'
-        | 'saturatedFat'
-        | 'sugar'
-        | 'fiber',
-        unknown
-    >
->;
-
-const fieldMap = [
-    ['proteinPer100g', 'protein'],
-    ['carbohydratePer100g', 'carbohydrate'],
-    ['fatPer100g', 'fat'],
-    ['saturatedFatPer100g', 'saturatedFat'],
-    ['sugarPer100g', 'sugar'],
-    ['fiberPer100g', 'fiber'],
-] as const;
+const FIELDS: LabelField[] = [
+    'caloriesPer100g',
+    ...LABEL_ROWS.slice(0, 6).map(([field]) => field),
+    ...MICRONUTRIENTS.map(({ key }) => key),
+];
 
 function amount(value: unknown): number | undefined {
-    const number =
-        typeof value === 'string'
-            ? Number(value.replace(/[^\d.]/g, ''))
-            : value;
-    return typeof number === 'number' && Number.isFinite(number) && number >= 0
-        ? number
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? Math.round(value * 100) / 100
         : undefined;
 }
 
-function hasValues(values: unknown): values is Values {
-    return (
-        typeof values === 'object' &&
-        values !== null &&
-        Object.values(values).some((value) => amount(value) !== undefined)
-    );
+/** A label cell in the wanted unit; g and mg convert, anything else is unread. */
+function cell(row: MealMakerLabelAmount | null | undefined, unit: 'g' | 'mg') {
+    const value = amount(row?.value);
+    if (value === undefined) return undefined;
+    const printed = row?.unit?.toLowerCase() ?? unit;
+    if (printed === unit) return value;
+    if (printed === 'g' && unit === 'mg') return amount(value * 1000);
+    if (printed === 'mg' && unit === 'g') return amount(value / 1000);
+    return undefined;
 }
-
-const round = (value: number) => Math.round(value * 10) / 10;
 
 /**
- * Turns the model's reading into per-100g values. A per-serving column is
- * scaled by the serving size; kilojoules fill in missing kilocalories.
- * Values the label does not show are left out, never set to zero.
+ * Nutrition Lab's label reading as per-100g ingredient values. Its
+ * `ingredient` wins; the per-100 column fills anything it left out. Values
+ * the label does not print stay out, never zero.
  */
-export function labelToPer100g(reading: unknown): NutritionLabelScan {
-    const raw =
-        typeof reading === 'object' && reading !== null
-            ? (reading as Record<string, unknown>)
-            : {};
-    const serving = amount(raw.servingSizeGrams);
-    const source = hasValues(raw.per100g)
-        ? { values: raw.per100g, scale: 1 }
-        : hasValues(raw.perServing) && serving
-          ? { values: raw.perServing, scale: 100 / serving }
-          : undefined;
-    const productName =
-        typeof raw.productName === 'string' && raw.productName.trim()
-            ? raw.productName.trim().slice(0, 120)
-            : undefined;
-    if (!source) return { nutrition: {}, ...(productName && { productName }) };
-
-    const { values, scale } = source;
-    const kcal = amount(values.energyKcal);
-    const kj = amount(values.energyKj);
-    const energy = kcal ?? (kj === undefined ? undefined : kj / KJ_PER_KCAL);
+export function labelScanFromResponse(
+    response: MealMakerLabelResponse,
+): NutritionLabelScan {
+    const per100 = response.per100 ?? {};
+    const caloriesInKj = per100.calories?.unit?.toLowerCase() === 'kj';
+    const kcal = caloriesInKj ? undefined : amount(per100.calories?.value);
+    const kj = amount(
+        (caloriesInKj ? per100.calories : per100.energyKj)?.value,
+    );
+    const fromLabel: NutritionLabelScan['nutrition'] = {
+        caloriesPer100g:
+            kcal ??
+            (kj === undefined ? undefined : Math.round(kj / KJ_PER_KCAL)),
+        ...Object.fromEntries(
+            LABEL_ROWS.map(([field, row, unit]) => [
+                field,
+                cell(per100[row], unit),
+            ]),
+        ),
+    };
+    const ingredient = response.ingredient ?? {};
+    const nested = ingredient.micronutrientsPer100g ?? {};
     const nutrition: NutritionLabelScan['nutrition'] = {};
-    if (energy !== undefined)
-        nutrition.caloriesPer100g = Math.round(energy * scale);
-    for (const [field, key] of fieldMap) {
-        const value = amount(values[key]);
-        if (value !== undefined) nutrition[field] = round(value * scale);
+    for (const field of FIELDS) {
+        const value =
+            amount(ingredient[field]) ??
+            amount(nested[field.replace(/Per100g$/, '')]) ??
+            fromLabel[field];
+        if (value !== undefined) nutrition[field] = value;
     }
-    return { nutrition, ...(productName && { productName }) };
+    return {
+        nutrition,
+        basis: response.basis === '100mL' ? '100mL' : '100g',
+        warnings: (response.warnings ?? []).filter(
+            (warning) => typeof warning === 'string' && warning.trim(),
+        ),
+    };
 }
 
+const unreadable = {
+    status: 422,
+    body: {
+        message:
+            'Couldn’t find a nutrition label. Try a closer, well-lit photo.',
+    },
+};
+
+/** Reads a nutrition label photo with Nutrition Lab. */
 export async function handleNutritionLabel(input: unknown) {
     const image = imageFromRequest(input);
     if (!image) {
@@ -113,20 +107,26 @@ export async function handleNutritionLabel(input: unknown) {
             body: { message: 'Provide a JPEG, PNG or WebP photo.' },
         };
     }
-    const scan = labelToPer100g(
-        await askVisionJson(
-            systemPrompt,
-            'Read the nutrition values on this label.',
-            image,
-        ),
-    );
-    return Object.keys(scan.nutrition).length
-        ? { status: 200, body: scan }
-        : {
-              status: 422,
-              body: {
-                  message:
-                      'Could not read this label. Try a closer, well-lit photo.',
-              },
-          };
+    const name =
+        typeof input === 'object' &&
+        input !== null &&
+        'name' in input &&
+        typeof input.name === 'string'
+            ? input.name.trim().slice(0, 120) || undefined
+            : undefined;
+    try {
+        const response = await retryOnce(() =>
+            readNutritionLabelRemote(image, name),
+        );
+        if (!response.labelFound) return unreadable;
+        const scan = labelScanFromResponse(response);
+        return Object.keys(scan.nutrition).length
+            ? { status: 200, body: scan }
+            : unreadable;
+    } catch (error) {
+        return photoFailure(
+            error,
+            'Could not read the label. Please try again.',
+        );
+    }
 }

@@ -8,7 +8,11 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MyMeals from './MyMeals';
 import { useState } from 'react';
-import { getRecipes, deleteRecipes } from './services/recipeService';
+import {
+    getRecipes,
+    deleteRecipes,
+    saveRecipe,
+} from './services/recipeService';
 import { saveJournalEntry } from './services/journalService';
 import { mockPickerEnvironment } from './test/pickerEnvironment';
 import type { Recipe } from '../shared/types/recipe';
@@ -16,6 +20,7 @@ import type { Recipe } from '../shared/types/recipe';
 vi.mock('./services/recipeService', () => ({
     getRecipes: vi.fn(),
     deleteRecipes: vi.fn(),
+    saveRecipe: vi.fn(),
 }));
 vi.mock('./services/journalService', () => ({
     saveJournalEntry: vi.fn(),
@@ -63,6 +68,12 @@ beforeEach(() => {
     mockPickerEnvironment();
     vi.mocked(deleteRecipes).mockImplementation(async (ids) => ids);
     vi.mocked(getRecipes).mockResolvedValue(recipes);
+    let copyId = 0;
+    vi.mocked(saveRecipe).mockImplementation(async (input) => ({
+        ...input,
+        id: `copy-${(copyId += 1)}`,
+        userId: 'user',
+    }));
     vi.mocked(saveJournalEntry).mockResolvedValue({ id: 'journal-1' } as never);
 });
 
@@ -81,19 +92,19 @@ function hold(row: HTMLElement) {
 }
 
 describe('My Meals collection', () => {
-    it('shows the shared confirmation toast when adding a saved recipe to My Plan', async () => {
+    it('shows the shared confirmation toast when adding a saved recipe to My Diary', async () => {
         render(<MyMeals onOpenRecipe={vi.fn()} />);
         const addButtons = await screen.findAllByRole('button', {
-            name: 'Add to My Plan',
+            name: 'Add to My Diary',
         });
         fireEvent.click(addButtons[0]);
 
         const toast = await screen.findByRole('status');
-        expect(toast).toHaveTextContent('Added to My Plan.');
+        expect(toast).toHaveTextContent('Added to My Diary.');
         expect(toast).toHaveClass('action-toast--floating');
         expect(toast).toHaveStyle({
-            '--action-toast-background': '#fff',
-            '--action-toast-icon': '#27813a',
+            '--action-toast-background': 'var(--toast-bg)',
+            '--action-toast-icon': 'var(--toast-icon)',
         });
         expect(toast.parentElement).toBe(document.body);
         expect(saveJournalEntry).toHaveBeenCalledOnce();
@@ -368,13 +379,13 @@ describe('My Meals collection', () => {
         expect(await screen.findByText('Remote edit')).toBeInTheDocument();
         expect(screen.queryByText('Local edit')).not.toBeInTheDocument();
     });
-    it('adds a saved recipe to My Plan and opens Create Recipe from the coral button', async () => {
+    it('adds a saved recipe to My Diary and opens Create Recipe from the coral button', async () => {
         const onCreate = vi.fn();
         render(<MyMeals onOpenRecipe={vi.fn()} onCreate={onCreate} />);
         await screen.findByText('Tofu bowl');
 
         fireEvent.click(
-            screen.getAllByRole('button', { name: 'Add to My Plan' })[0],
+            screen.getAllByRole('button', { name: 'Add to My Diary' })[0],
         );
         expect(saveJournalEntry).toHaveBeenCalledOnce();
         expect(vi.mocked(saveJournalEntry).mock.calls[0][0]).toMatchObject({
@@ -382,7 +393,7 @@ describe('My Meals collection', () => {
             ingredients: recipes[0].ingredients,
         });
         expect(
-            await screen.findByRole('button', { name: 'Remove from My Plan' }),
+            await screen.findByRole('button', { name: 'Remove from My Diary' }),
         ).toHaveAttribute('aria-pressed', 'true');
 
         fireEvent.click(screen.getByRole('button', { name: 'Create recipe' }));
@@ -423,11 +434,14 @@ describe('My Meals collection', () => {
             screen.queryByRole('img', { name: 'Saved meal' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.getAllByRole('button', { name: 'Add to My Plan' }),
+            screen.getAllByRole('button', { name: 'Add to My Diary' }),
         ).toHaveLength(2);
-        expect(document.querySelectorAll('.my-meals-row-photo')).toHaveLength(
-            2,
-        );
+        // Same rows as My Ingredients: picture, name, then Add to My Diary.
+        expect(
+            document.querySelectorAll(
+                '.saved-collection-row .meal-ingredient-thumbnail',
+            ),
+        ).toHaveLength(2);
         fireEvent.change(screen.getByRole('searchbox'), {
             target: { value: ' carrot ' },
         });
@@ -457,27 +471,44 @@ describe('My Meals collection', () => {
         ).not.toBeInTheDocument();
         rerender(<MyMeals {...props} isActive />);
         expect(screen.getByRole('searchbox')).toHaveValue('tofu');
-        expect(getRecipes).toHaveBeenCalledTimes(2);
+        expect(getRecipes).toHaveBeenCalledOnce();
         expect(
             screen.queryByRole('button', { name: 'Create recipe' }),
         ).not.toBeInTheDocument();
     });
 
-    it('refreshes in the background when returning to My Recipes', async () => {
+    it('does not reload when returning to My Recipes', async () => {
         const props = { onOpenRecipe: vi.fn() };
         const { rerender } = render(<MyMeals {...props} />);
         await screen.findByText('Tofu bowl');
         rerender(<MyMeals {...props} isActive={false} />);
-        vi.mocked(getRecipes).mockResolvedValueOnce([
-            { ...recipes[0], id: '3', recipeName: 'New laptop recipe' },
-            ...recipes,
-        ]);
         rerender(<MyMeals {...props} isActive />);
+        fireEvent(document, new Event('visibilitychange'));
         expect(screen.getByText('Tofu bowl')).toBeInTheDocument();
+        expect(getRecipes).toHaveBeenCalledOnce();
+    });
+
+    it('shows a newly created recipe at once, on top and highlighted', async () => {
+        const props = { onOpenRecipe: vi.fn() };
+        const { rerender } = render(<MyMeals {...props} />);
+        await screen.findByText('Tofu bowl');
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'tofu' },
+        });
+        rerender(<MyMeals {...props} isActive={false} />);
+        const created = { ...recipes[0], id: '3', recipeName: 'Lentil soup' };
+        rerender(<MyMeals {...props} isActive createdRecipes={[created]} />);
+
+        const row = screen.getByRole('button', { name: /Lentil soup/ });
+        // Newest first, and not hidden by the earlier search.
+        const tofu = screen.getByRole('button', { name: /Tofu bowl/ });
         expect(
-            await screen.findByText('New laptop recipe'),
-        ).toBeInTheDocument();
-        expect(getRecipes).toHaveBeenCalledTimes(2);
+            row.compareDocumentPosition(tofu) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.getByRole('searchbox')).toHaveValue('');
+        expect(row.closest('.saved-collection-row-new')).not.toBeNull();
+        expect(getRecipes).toHaveBeenCalledOnce();
     });
 
     it('refreshes by pulling down from the top while keeping meals visible', async () => {
@@ -605,7 +636,7 @@ describe('My Meals collection', () => {
         expect(screen.getByText('Garden salad')).toBeInTheDocument();
         expect(getRecipes).toHaveBeenCalledTimes(3);
     });
-    it('enters selection on long press without opening, then bulk deletes selected meals', async () => {
+    it('enters selection on long press without opening, then bulk deletes selected recipes', async () => {
         const onOpenRecipe = vi.fn();
         render(<MyMeals onOpenRecipe={onOpenRecipe} />);
         hold(await screen.findByRole('button', { name: /Tofu bowl/ }));
@@ -615,30 +646,28 @@ describe('My Meals collection', () => {
                 '.saved-collection-row-wrapper-selected .saved-collection-row',
             ),
         ).toHaveAttribute('aria-pressed', 'true');
-        const selectedCard = document.querySelector(
+        const selectedRow = document.querySelector(
             '.saved-collection-row-wrapper-selected',
         )!;
-        const trailingSelection = selectedCard.querySelector<HTMLButtonElement>(
-            '.my-meals-selection-action',
-        )!;
-        expect(trailingSelection).toBeVisible();
+        // The check takes Add to My Diary's place, in the same column,
+        // so rows never reflow while selecting.
         expect(
-            trailingSelection.querySelector('.collection-selection-check'),
+            selectedRow.querySelector(
+                '.saved-collection-row-action .collection-selection-check',
+            ),
         ).toBeInTheDocument();
         expect(
-            trailingSelection.querySelector('.my-meals-saved-star'),
+            screen.queryByRole('button', { name: 'Add to My Diary' }),
         ).not.toBeInTheDocument();
-        expect(
-            selectedCard.querySelector(
-                '.saved-collection-row .collection-selection-check',
-            ),
-        ).not.toBeInTheDocument();
-        fireEvent.click(trailingSelection);
-        expect(selectedCard).not.toHaveClass(
+        const tofu = screen.getByRole('button', { name: 'Deselect Tofu bowl' });
+        fireEvent.click(tofu);
+        expect(selectedRow).not.toHaveClass(
             'saved-collection-row-wrapper-selected',
         );
-        fireEvent.click(trailingSelection);
-        expect(selectedCard).toHaveClass(
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Select Tofu bowl' }),
+        );
+        expect(selectedRow).toHaveClass(
             'saved-collection-row-wrapper-selected',
         );
         expect(
@@ -647,24 +676,91 @@ describe('My Meals collection', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Select Garden salad' }),
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Delete 2 meals' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Delete 2 recipes' }),
+        );
         expect(deleteRecipes).not.toHaveBeenCalled();
         fireEvent.click(
-            screen.getByRole('button', { name: 'Confirm delete 2 meals' }),
+            screen.getByRole('button', {
+                name: 'Confirm delete 2 recipes',
+                hidden: true,
+            }),
         );
         expect(
             await screen.findByText('No saved meals yet'),
         ).toBeInTheDocument();
-        expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1', '2']);
+        expect(screen.getByText('2 recipes removed.')).toBeInTheDocument();
+        // Sent only once the Undo toast expires.
+        expect(deleteRecipes).not.toHaveBeenCalled();
+    });
+
+    it('duplicates selected meals on top, named like Finder copies', async () => {
+        vi.mocked(getRecipes).mockResolvedValue([
+            ...recipes,
+            { ...recipes[0], id: '3', recipeName: 'Tofu bowl copy' },
+        ]);
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        hold(await screen.findByRole('button', { name: /^Garden salad/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Select Tofu bowl' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+
         expect(
-            screen.queryByRole('button', { name: 'Create recipe' }),
+            await screen.findByText('2 recipes duplicated.'),
+        ).toBeInTheDocument();
+        // Saved oldest first, so a reload keeps the on-screen order.
+        expect(
+            vi.mocked(saveRecipe).mock.calls.map(([r]) => r.recipeName),
+        ).toEqual(['Garden salad copy', 'Tofu bowl copy 2']);
+        const names = Array.from(
+            document.querySelectorAll('.saved-collection-row-info strong'),
+        ).map((name) => name.textContent);
+        expect(names.slice(0, 3)).toEqual([
+            'Tofu bowl copy 2',
+            'Garden salad copy',
+            'Tofu bowl',
+        ]);
+        expect(
+            document.querySelectorAll('.saved-collection-row-new'),
+        ).toHaveLength(2);
+        expect(
+            screen.queryByRole('button', { name: 'Duplicate' }),
         ).not.toBeInTheDocument();
+        expect(saveRecipe).toHaveBeenCalledWith({
+            recipeName: 'Tofu bowl copy 2',
+            ingredients: recipes[0].ingredients,
+            instructions: recipes[0].instructions,
+        });
+    });
+
+    it('duplicates one meal from the context menu and keeps selection on failure', async () => {
+        render(<MyMeals onOpenRecipe={vi.fn()} />);
+        const row = await screen.findByRole('button', { name: /Tofu bowl/ });
+        fireEvent.contextMenu(row, { button: 2, clientX: 120, clientY: 140 });
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
+        expect(
+            await screen.findByText('Recipe duplicated.'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Tofu bowl copy')).toBeInTheDocument();
+
+        vi.mocked(saveRecipe).mockRejectedValueOnce(new Error('offline'));
+        hold(screen.getByRole('button', { name: /^Garden salad/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+        expect(
+            await screen.findByText(
+                'Could not duplicate Garden salad. Please try again.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Deselect Garden salad' }),
+        ).toBeInTheDocument();
     });
 
     it('selects search results while retaining other selections, and cancels with Escape or the cross', async () => {
         render(<MyMeals onOpenRecipe={vi.fn()} />);
         await screen.findByText('Tofu bowl');
-        fireEvent.click(screen.getByRole('button', { name: 'Select meals' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Select recipes' }));
         fireEvent.click(
             screen.getByRole('button', { name: 'Select Tofu bowl' }),
         );
@@ -679,7 +775,7 @@ describe('My Meals collection', () => {
         expect(screen.getByText('1 selected')).toBeInTheDocument();
         fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' });
         expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Select meals' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Select recipes' }));
         fireEvent.click(
             screen.getByRole('button', { name: 'Cancel selection' }),
         );
@@ -689,41 +785,65 @@ describe('My Meals collection', () => {
         expect(deleteRecipes).not.toHaveBeenCalled();
     });
 
-    it('lets the user cancel a bulk delete before any meal is removed', async () => {
+    it('asks before deleting and keeps the selection when the menu is dismissed', async () => {
         render(<MyMeals onOpenRecipe={vi.fn()} />);
         await screen.findByText('Tofu bowl');
-        fireEvent.click(screen.getByRole('button', { name: 'Select meals' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Select recipes' }));
         fireEvent.click(
             screen.getByRole('button', { name: 'Select Tofu bowl' }),
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Delete 1 meal' }));
-        expect(screen.getByText('Delete 1 meal?')).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Cancel delete' }),
-        ).toHaveFocus();
-        fireEvent.keyDown(
-            screen.getByRole('button', { name: 'Cancel delete' }),
-            {
-                key: 'Escape',
-            },
-        );
-        expect(
-            screen.getByRole('button', { name: 'Delete 1 meal' }),
-        ).toHaveFocus();
+        const trash = screen.getByRole('button', { name: 'Delete 1 recipe' });
+        // The trash opens a small confirmation menu (native light dismiss).
+        expect(trash).toHaveAttribute('popovertarget');
+        fireEvent.click(trash);
         expect(deleteRecipes).not.toHaveBeenCalled();
         expect(screen.getByText('1 selected')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {
+                name: 'Confirm delete 1 recipe',
+                hidden: true,
+            }),
+        ).toBeInTheDocument();
     });
 
-    it('animates a bulk-deleted row at once, before the server responds', async () => {
-        let finishDelete!: (ids: string[]) => void;
-        vi.mocked(deleteRecipes).mockReturnValueOnce(
-            new Promise((resolve) => {
-                finishDelete = resolve;
-            }),
+    it('swaps the title row in place without moving rows', async () => {
+        render(<MyMeals onOpenRecipe={vi.fn()} onCreate={vi.fn()} />);
+        await screen.findByText('Tofu bowl');
+        expect(
+            screen.getByRole('heading', { name: 'My Recipes' }),
+        ).toBeInTheDocument();
+        hold(screen.getByRole('button', { name: /^Tofu bowl/ }));
+        expect(
+            screen.getByRole('heading', { name: '1 Selected' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Show nutrition' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('toolbar', { name: 'Selected recipe actions' }),
+        ).toBeInTheDocument();
+        // Nothing new appears below: no add button, no floating bar.
+        expect(
+            screen.queryByRole('button', { name: 'Create recipe' }),
+        ).not.toBeInTheDocument();
+        // The check takes the Add to My Diary column, keeping row widths.
+        expect(
+            document.querySelectorAll(
+                '.saved-collection-row-wrapper-with-action .saved-collection-row-action .collection-selection-check',
+            ),
+        ).toHaveLength(2);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Cancel selection' }),
         );
+        expect(
+            screen.getByRole('heading', { name: 'My Recipes' }),
+        ).toBeInTheDocument();
+    });
+
+    it('removes bulk-deleted rows at once with an Undo toast', async () => {
         render(<MyMeals onOpenRecipe={vi.fn()} />);
         await screen.findByText('Tofu bowl');
-        fireEvent.click(screen.getByRole('button', { name: 'Select meals' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Select recipes' }));
         fireEvent.click(
             screen.getByRole('button', { name: 'Select Tofu bowl' }),
         );
@@ -731,60 +851,51 @@ describe('My Meals collection', () => {
         vi.useFakeTimers();
         try {
             fireEvent.click(
-                screen.getByRole('button', { name: 'Delete 1 meal' }),
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Confirm delete 1 meal' }),
+                screen.getByRole('button', {
+                    name: 'Confirm delete 1 recipe',
+                    hidden: true,
+                }),
             );
             expect(row.parentElement).toHaveClass('collection-row-exiting');
+            // Selection ends straight away; the toast offers Undo.
+            expect(
+                screen.getByRole('heading', { name: 'My Recipes' }),
+            ).toBeInTheDocument();
+            expect(screen.getByText('Recipe removed.')).toBeInTheDocument();
             await act(async () => vi.advanceTimersByTime(180));
             expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument();
-            expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1']);
-
-            await act(async () => finishDelete(['1']));
-            expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument();
-            expect(screen.getByText('Garden salad')).toBeInTheDocument();
+            fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+            expect(screen.getByText('Tofu bowl')).toBeInTheDocument();
+            await act(async () => vi.advanceTimersByTime(6000));
+            expect(deleteRecipes).not.toHaveBeenCalled();
         } finally {
             vi.useRealTimers();
         }
     });
 
-    it('keeps failed and partially deleted items selected for retry', async () => {
-        vi.mocked(deleteRecipes)
-            .mockRejectedValueOnce(new Error('offline'))
-            .mockResolvedValueOnce(['1'])
-            .mockResolvedValueOnce(['2']);
+    it('restores rows and explains when a bulk delete fails', async () => {
+        vi.mocked(deleteRecipes).mockResolvedValueOnce(['1']);
         render(<MyMeals onOpenRecipe={vi.fn()} />);
         await screen.findByText('Tofu bowl');
-        fireEvent.click(screen.getByRole('button', { name: 'Select meals' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Select recipes' }));
         fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Delete 2 meals' }));
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Confirm delete 2 meals' }),
-        );
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'Could not delete',
-        );
-        expect(screen.getByText('2 selected')).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Delete 2 meals' }));
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Confirm delete 2 meals' }),
-        );
-        expect(
-            await screen.findByRole('button', { name: 'Delete 1 meal' }),
-        ).toBeInTheDocument();
+        vi.useFakeTimers();
+        try {
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: 'Confirm delete 2 recipes',
+                    hidden: true,
+                }),
+            );
+            expect(screen.getByText('2 recipes removed.')).toBeInTheDocument();
+            await act(async () => vi.advanceTimersByTime(5180));
+        } finally {
+            vi.useRealTimers();
+        }
+        expect(deleteRecipes).toHaveBeenCalledExactlyOnceWith(['1', '2']);
+        expect(await screen.findByText('Garden salad')).toBeInTheDocument();
         expect(screen.queryByText('Tofu bowl')).not.toBeInTheDocument();
-        expect(screen.getByRole('alert')).toHaveTextContent(
-            'Some meals could not be deleted',
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'Delete 1 meal' }));
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Confirm delete 1 meal' }),
-        );
-        expect(
-            await screen.findByText('No saved meals yet'),
-        ).toBeInTheDocument();
-        expect(deleteRecipes).toHaveBeenLastCalledWith(['2']);
+        expect(screen.getByRole('alert')).toHaveTextContent('Could not delete');
     });
 
     it('does not select or open a meal when a press turns into scrolling', async () => {

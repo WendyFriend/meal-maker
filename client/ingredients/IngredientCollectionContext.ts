@@ -5,4 +5,8 @@ import type { IngredientInfo, UserIngredient } from '../../shared/types/types';
 export const IngredientCollectionContext = createContext<{
     ingredients: UserIngredient[];
     save: (ingredient: IngredientInfo) => Promise<void>;
+    /** Removes a saved ingredient (e.g. from a sheet's ★). */
+    remove?: (ingredientId: string) => Promise<void>;
+    /** Opens My Ingredients (e.g. from a "Saved" toast). */
+    open?: () => void;
 } | null>(null);

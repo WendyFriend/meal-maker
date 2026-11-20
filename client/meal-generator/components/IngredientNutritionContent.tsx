@@ -44,8 +44,18 @@ type IngredientNutritionContentProps = {
     titleAccessory?: ReactNode;
     /** Shown under the title. */
     titleFooter?: ReactNode;
+    /** Makes the title tappable (e.g. to rename the ingredient). */
+    onTitleClick?: () => void;
+    titleClickLabel?: string;
+    /** Replaces the title while it is being edited. */
+    titleEditor?: ReactNode;
     /** Full-width content between the header and the nutrition facts. */
     afterHeader?: ReactNode;
+    /**
+     * Shown over the nutrition in its place (for example while a label is
+     * read, or why it couldn't be), so no number can be edited meanwhile.
+     */
+    nutritionCover?: ReactNode;
     /** Shown at the end of the vitamins and minerals section. */
     detailsFooter?: ReactNode;
 };
@@ -98,7 +108,11 @@ export default function IngredientNutritionContent({
     onNutritionResolved,
     titleAccessory,
     titleFooter,
+    onTitleClick,
+    titleClickLabel,
+    titleEditor,
     afterHeader,
+    nutritionCover,
     detailsFooter,
 }: IngredientNutritionContentProps) {
     const lookupState = useMicronutrientLookup([ingredient], {
@@ -265,7 +279,26 @@ export default function IngredientNutritionContent({
         </>
     ) : (
         <Heading className="ingredient-nutrition-name" id={nameId}>
-            {nutritionName}
+            {onTitleClick ? (
+                // An inline span, not a button, so a long name wraps like
+                // the title and the ? stays on its last line.
+                <span
+                    role="button"
+                    tabIndex={0}
+                    className="ingredient-nutrition-name-button"
+                    aria-label={titleClickLabel}
+                    onClick={onTitleClick}
+                    onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        onTitleClick();
+                    }}
+                >
+                    {nutritionName}
+                </span>
+            ) : (
+                nutritionName
+            )}
         </Heading>
     );
 
@@ -279,7 +312,9 @@ export default function IngredientNutritionContent({
                     fdcId={source?.fdcId}
                 />
                 <div className="ingredient-nutrition-title">
-                    {titleAccessory ? (
+                    {titleEditor ? (
+                        titleEditor
+                    ) : titleAccessory ? (
                         <div className="ingredient-nutrition-name-row">
                             {titleHeading}
                             {/* A word joiner keeps the action on the
@@ -318,243 +353,270 @@ export default function IngredientNutritionContent({
                     <span>Looking up {ingredient.name}…</span>
                 </div>
             ) : (
-                <>
-                    <section
-                        className="nutrition-facts"
-                        aria-label="Nutrition facts"
+                // While loading, the numbers hide under a spinner but keep
+                // their space, so the sheet never jumps; they fade back in.
+                <div
+                    className="ingredient-nutrition-body"
+                    data-covered={nutritionCover ? true : undefined}
+                >
+                    {nutritionCover && (
+                        <div className="ingredient-nutrition-cover">
+                            {nutritionCover}
+                        </div>
+                    )}
+                    <div
+                        className="ingredient-nutrition-numbers"
+                        inert={Boolean(nutritionCover)}
+                        aria-hidden={nutritionCover ? true : undefined}
                     >
                         <section
-                            className="ingredient-macro-breakdown"
-                            aria-label="Macro energy breakdown"
-                            onPointerLeave={() => setHoveredMacro(null)}
-                            onBlur={(event) => {
-                                if (
-                                    !event.currentTarget.contains(
-                                        event.relatedTarget,
-                                    )
-                                )
-                                    setFocusedMacro(null);
-                            }}
-                            onKeyDown={(event) => {
-                                if (
-                                    event.key === 'Escape' &&
-                                    activeKey !== null
-                                ) {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    setHoveredMacro(null);
-                                    setFocusedMacro(null);
-                                }
-                            }}
+                            className="nutrition-facts"
+                            aria-label="Nutrition facts"
                         >
-                            <ul className="ingredient-macro-legend">
-                                {breakdown.map(
-                                    ({ key, label, color, percentage }) => (
-                                        <li
-                                            key={key}
-                                            data-macro={key}
-                                            data-active={activeKey === key}
-                                        >
-                                            <span
-                                                className="ingredient-macro-dot"
-                                                style={{ background: color }}
-                                                aria-hidden="true"
-                                            />
-                                            <span>{label}</span>
-                                            <strong>
-                                                {macroTotal > 0
-                                                    ? `${percentage}%`
-                                                    : '—'}
-                                            </strong>
-                                        </li>
-                                    ),
-                                )}
-                            </ul>
-                            <div className="nutrition-overview-chart">
-                                {activeMacro && (
-                                    <div
-                                        className="nutrition-overview-tooltip"
-                                        id={tooltipId}
-                                        role="tooltip"
-                                        style={{
-                                            left: `clamp(80px, ${tooltipCenter}%, calc(100% - 80px))`,
-                                        }}
-                                    >
-                                        <strong>{activeMacro.label}</strong>
-                                        <span>
-                                            {activeMacro.percentage}% of macro
-                                            energy
-                                        </span>
-                                    </div>
-                                )}
-                                <div
-                                    className="ingredient-macro-bar nutrition-overview-bar"
-                                    data-has-active={activeKey !== null}
-                                    role="group"
-                                    aria-label={
-                                        macroTotal > 0
-                                            ? breakdown
-                                                  .map(
-                                                      ({ label, percentage }) =>
-                                                          `${label}: ${percentage}% of macro energy`,
-                                                  )
-                                                  .join(', ')
-                                            : 'No macro energy breakdown available'
-                                    }
-                                >
-                                    {breakdown
-                                        .filter(
-                                            ({ barPercentage }) =>
-                                                barPercentage > 0,
+                            <section
+                                className="ingredient-macro-breakdown"
+                                aria-label="Macro energy breakdown"
+                                onPointerLeave={() => setHoveredMacro(null)}
+                                onBlur={(event) => {
+                                    if (
+                                        !event.currentTarget.contains(
+                                            event.relatedTarget,
                                         )
-                                        .map(
-                                            ({
-                                                key,
-                                                label,
-                                                color,
-                                                percentage,
-                                                barPercentage,
-                                            }) => (
-                                                <button
-                                                    type="button"
-                                                    key={key}
-                                                    className="nutrition-overview-segment"
-                                                    data-active={
-                                                        activeKey === key
-                                                    }
-                                                    aria-pressed={
-                                                        focusedMacro === key
-                                                    }
-                                                    aria-label={`${label}: ${percentage}% of macro energy`}
-                                                    aria-describedby={
-                                                        activeKey === key
-                                                            ? tooltipId
-                                                            : undefined
-                                                    }
-                                                    style={
-                                                        {
-                                                            '--macro-color':
-                                                                color,
-                                                            width: `${barPercentage}%`,
-                                                        } as React.CSSProperties
-                                                    }
-                                                    onPointerEnter={(event) => {
-                                                        if (
-                                                            event.pointerType !==
-                                                            'touch'
-                                                        )
-                                                            setHoveredMacro(
-                                                                key,
-                                                            );
-                                                    }}
-                                                    onFocus={() =>
-                                                        setFocusedMacro(key)
-                                                    }
-                                                    onClick={(event) => {
-                                                        setFocusedMacro(key);
-                                                        event.currentTarget.focus(
-                                                            {
-                                                                preventScroll: true,
-                                                            },
-                                                        );
-                                                    }}
-                                                />
-                                            ),
-                                        )}
-                                </div>
-                            </div>
-                        </section>
-                        <table
-                            className="nutrition-facts-table"
-                            aria-label={
-                                variant === 'sheet'
-                                    ? 'Nutrition per 100 g'
-                                    : undefined
-                            }
-                        >
-                            <thead>
-                                <tr>
-                                    <th scope="col" aria-label="Nutrient" />
-                                    <th scope="col">
-                                        {variant === 'sheet'
-                                            ? 'Per 100g'
-                                            : 'Per 100 g'}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <th scope="row">
-                                        Calories
-                                        {editor?.showRequiredMarkers && (
-                                            <span
-                                                className="ingredient-required-marker"
-                                                aria-hidden="true"
+                                    )
+                                        setFocusedMacro(null);
+                                }}
+                                onKeyDown={(event) => {
+                                    if (
+                                        event.key === 'Escape' &&
+                                        activeKey !== null
+                                    ) {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        setHoveredMacro(null);
+                                        setFocusedMacro(null);
+                                    }
+                                }}
+                            >
+                                <ul className="ingredient-macro-legend">
+                                    {breakdown.map(
+                                        ({ key, label, color, percentage }) => (
+                                            <li
+                                                key={key}
+                                                data-macro={key}
+                                                data-active={activeKey === key}
                                             >
-                                                {' '}
-                                                *
+                                                <span
+                                                    className="ingredient-macro-dot"
+                                                    style={{
+                                                        background: color,
+                                                    }}
+                                                    aria-hidden="true"
+                                                />
+                                                <span>{label}</span>
+                                                <strong>
+                                                    {macroTotal > 0
+                                                        ? `${percentage}%`
+                                                        : '—'}
+                                                </strong>
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
+                                <div className="nutrition-overview-chart">
+                                    {activeMacro && (
+                                        <div
+                                            className="nutrition-overview-tooltip"
+                                            id={tooltipId}
+                                            role="tooltip"
+                                            style={{
+                                                left: `clamp(80px, ${tooltipCenter}%, calc(100% - 80px))`,
+                                            }}
+                                        >
+                                            <strong>{activeMacro.label}</strong>
+                                            <span>
+                                                {activeMacro.percentage}% of
+                                                macro energy
                                             </span>
-                                        )}
-                                    </th>
-                                    <td>
-                                        {nutritionValue(
-                                            'caloriesPer100g',
-                                            'Calories',
-                                            'kcal',
-                                        )}
-                                    </td>
-                                </tr>
-                                {nutrients.map((nutrient) => (
-                                    <tr
-                                        key={nutrient.key}
-                                        className={
-                                            'inset' in nutrient
-                                                ? 'nutrition-facts-inset'
-                                                : undefined
+                                        </div>
+                                    )}
+                                    <div
+                                        className="ingredient-macro-bar nutrition-overview-bar"
+                                        data-has-active={activeKey !== null}
+                                        role="group"
+                                        aria-label={
+                                            macroTotal > 0
+                                                ? breakdown
+                                                      .map(
+                                                          ({
+                                                              label,
+                                                              percentage,
+                                                          }) =>
+                                                              `${label}: ${percentage}% of macro energy`,
+                                                      )
+                                                      .join(', ')
+                                                : 'No macro energy breakdown available'
                                         }
                                     >
+                                        {breakdown
+                                            .filter(
+                                                ({ barPercentage }) =>
+                                                    barPercentage > 0,
+                                            )
+                                            .map(
+                                                ({
+                                                    key,
+                                                    label,
+                                                    color,
+                                                    percentage,
+                                                    barPercentage,
+                                                }) => (
+                                                    <button
+                                                        type="button"
+                                                        key={key}
+                                                        className="nutrition-overview-segment"
+                                                        data-active={
+                                                            activeKey === key
+                                                        }
+                                                        aria-pressed={
+                                                            focusedMacro === key
+                                                        }
+                                                        aria-label={`${label}: ${percentage}% of macro energy`}
+                                                        aria-describedby={
+                                                            activeKey === key
+                                                                ? tooltipId
+                                                                : undefined
+                                                        }
+                                                        style={
+                                                            {
+                                                                '--macro-color':
+                                                                    color,
+                                                                width: `${barPercentage}%`,
+                                                            } as React.CSSProperties
+                                                        }
+                                                        onPointerEnter={(
+                                                            event,
+                                                        ) => {
+                                                            if (
+                                                                event.pointerType !==
+                                                                'touch'
+                                                            )
+                                                                setHoveredMacro(
+                                                                    key,
+                                                                );
+                                                        }}
+                                                        onFocus={() =>
+                                                            setFocusedMacro(key)
+                                                        }
+                                                        onClick={(event) => {
+                                                            setFocusedMacro(
+                                                                key,
+                                                            );
+                                                            event.currentTarget.focus(
+                                                                {
+                                                                    preventScroll: true,
+                                                                },
+                                                            );
+                                                        }}
+                                                    />
+                                                ),
+                                            )}
+                                    </div>
+                                </div>
+                            </section>
+                            <table
+                                className="nutrition-facts-table"
+                                aria-label={
+                                    variant === 'sheet'
+                                        ? 'Nutrition per 100 g'
+                                        : undefined
+                                }
+                            >
+                                <thead>
+                                    <tr>
+                                        <th scope="col" aria-label="Nutrient" />
+                                        <th scope="col">
+                                            {variant === 'sheet'
+                                                ? 'Per 100g'
+                                                : 'Per 100 g'}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
                                         <th scope="row">
-                                            {nutrient.label}
-                                            {editor?.showRequiredMarkers &&
-                                                [
-                                                    'proteinPer100g',
-                                                    'fatPer100g',
-                                                    'carbohydratePer100g',
-                                                ].includes(nutrient.key) && (
-                                                    <span
-                                                        className="ingredient-required-marker"
-                                                        aria-hidden="true"
-                                                    >
-                                                        {' '}
-                                                        *
-                                                    </span>
-                                                )}
+                                            Calories
+                                            {editor?.showRequiredMarkers && (
+                                                <span
+                                                    className="ingredient-required-marker"
+                                                    aria-hidden="true"
+                                                >
+                                                    {' '}
+                                                    *
+                                                </span>
+                                            )}
                                         </th>
                                         <td>
                                             {nutritionValue(
-                                                nutrient.key,
-                                                nutrient.label,
+                                                'caloriesPer100g',
+                                                'Calories',
+                                                'kcal',
                                             )}
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {variant !== 'sheet' && (
-                            <p className="nutrition-facts-note">
-                                N/A means the value isn’t available for this
-                                ingredient. Amounts are based on the
-                                ingredient’s nutrition data.
-                            </p>
-                        )}
-                    </section>
-                    <IngredientNutritionDetails
-                        ingredient={resolvedIngredient}
-                        lookupState={lookupState}
-                        micronutrientEditor={editor?.micronutrients}
-                        footer={detailsFooter}
-                    />
-                </>
+                                    {nutrients.map((nutrient) => (
+                                        <tr
+                                            key={nutrient.key}
+                                            className={
+                                                'inset' in nutrient
+                                                    ? 'nutrition-facts-inset'
+                                                    : undefined
+                                            }
+                                        >
+                                            <th scope="row">
+                                                {nutrient.label}
+                                                {editor?.showRequiredMarkers &&
+                                                    [
+                                                        'proteinPer100g',
+                                                        'fatPer100g',
+                                                        'carbohydratePer100g',
+                                                    ].includes(
+                                                        nutrient.key,
+                                                    ) && (
+                                                        <span
+                                                            className="ingredient-required-marker"
+                                                            aria-hidden="true"
+                                                        >
+                                                            {' '}
+                                                            *
+                                                        </span>
+                                                    )}
+                                            </th>
+                                            <td>
+                                                {nutritionValue(
+                                                    nutrient.key,
+                                                    nutrient.label,
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {variant !== 'sheet' && (
+                                <p className="nutrition-facts-note">
+                                    N/A means the value isn’t available for this
+                                    ingredient. Amounts are based on the
+                                    ingredient’s nutrition data.
+                                </p>
+                            )}
+                        </section>
+                        <IngredientNutritionDetails
+                            ingredient={resolvedIngredient}
+                            lookupState={lookupState}
+                            micronutrientEditor={editor?.micronutrients}
+                            footer={detailsFooter}
+                        />
+                    </div>
+                </div>
             )}
         </div>
     );

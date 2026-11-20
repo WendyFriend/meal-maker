@@ -21,7 +21,30 @@ type SlidingSheetProps = {
     dismissible?: boolean;
 };
 
-/** Native modal sheet with a draggable handle; content keeps its own scroll gestures. */
+const CLOSE_MS = 300;
+/** A quick downward flick closes even when the drag was short (px/ms). */
+const FLICK_VELOCITY = 0.5;
+
+/** The nearest scrolled content between the touch and the sheet, if any. */
+function scrolledAbove(target: EventTarget | null, sheet: HTMLElement) {
+    for (
+        let element = target instanceof Element ? target : null;
+        element && element !== sheet;
+        element = element.parentElement
+    ) {
+        if (
+            element.scrollTop > 0 &&
+            element.scrollHeight > element.clientHeight
+        )
+            return true;
+    }
+    return sheet.scrollTop > 0;
+}
+
+/**
+ * Native modal sheet. Drag the handle, or pull the content down from the top
+ * (as on iOS), to close; content otherwise keeps its own scroll gestures.
+ */
 export default function SlidingSheet({
     children,
     id,
@@ -37,6 +60,9 @@ export default function SlidingSheet({
         pointerId: number;
         startY: number;
         offset: number;
+        lastY: number;
+        lastTime: number;
+        velocity: number;
     } | null>(null);
     const suppressClick = useRef(false);
     const closing = useRef(false);
@@ -46,6 +72,10 @@ export default function SlidingSheet({
         'idle' | 'dragging' | 'settling' | 'closing'
     >('idle');
     const [interacted, setInteracted] = useState(false);
+    const offsetRef = useRef(0);
+    const settleRef = useRef<
+        (offset: number, velocity: number, cancelled?: boolean) => void
+    >(() => {});
 
     function finishClose() {
         if (delivered.current) return;
@@ -61,9 +91,14 @@ export default function SlidingSheet({
                 delivered.current = true;
                 onClose();
             }
-        }, 240);
+        }, CLOSE_MS + 60);
         return () => window.clearTimeout(timer);
     }, [phase, onClose]);
+
+    function move(next: number) {
+        offsetRef.current = next;
+        setOffset(next);
+    }
 
     function dismiss() {
         if (!dismissible || closing.current) return;
@@ -73,14 +108,120 @@ export default function SlidingSheet({
             return;
         }
         setInteracted(true);
-        setOffset(
+        move(
             window.innerHeight -
                 (panelRef.current?.getBoundingClientRect().top ?? 0) +
-                offset +
+                offsetRef.current +
                 16,
         );
         setPhase('closing');
     }
+
+    /** Ends a drag: far enough or flicked closes, otherwise springs back. */
+    function settle(dragged: number, velocity: number, cancelled = false) {
+        const height = panelRef.current?.getBoundingClientRect().height ?? 0;
+        const threshold = Math.min(120, Math.max(60, height * 0.2));
+        if (
+            !cancelled &&
+            (dragged >= threshold ||
+                (dragged > 16 && velocity > FLICK_VELOCITY))
+        )
+            dismiss();
+        else {
+            move(0);
+            setPhase('settling');
+        }
+    }
+
+    useEffect(() => {
+        settleRef.current = settle;
+    });
+
+    // Pulling the content down from the top moves the sheet. Native listeners,
+    // so the move can stop the page from scrolling (React's are passive).
+    useEffect(() => {
+        const sheet = panelRef.current;
+        if (!sheet || !dismissible) return;
+        let gesture: {
+            startX: number;
+            startY: number;
+            lastY: number;
+            lastTime: number;
+            velocity: number;
+            dragging: boolean;
+        } | null = null;
+
+        function start(event: TouchEvent) {
+            gesture = null;
+            const touch = event.touches[0];
+            if (
+                event.touches.length !== 1 ||
+                closing.current ||
+                (event.target instanceof Element &&
+                    event.target.closest('.sliding-sheet-handle')) ||
+                scrolledAbove(event.target, sheet!)
+            )
+                return;
+            gesture = {
+                startX: touch.clientX,
+                startY: touch.clientY,
+                lastY: touch.clientY,
+                lastTime: event.timeStamp,
+                velocity: 0,
+                dragging: false,
+            };
+        }
+
+        function track(event: TouchEvent) {
+            const touch = event.touches[0];
+            if (!gesture || !touch) return;
+            const dy = touch.clientY - gesture.startY;
+            if (!gesture.dragging) {
+                const dx = Math.abs(touch.clientX - gesture.startX);
+                if (Math.abs(dy) < 6 && dx < 6) return;
+                // Scrolling up or sideways belongs to the content.
+                if (dy <= 0 || dx > dy) {
+                    gesture = null;
+                    return;
+                }
+                gesture.dragging = true;
+                gesture.startY = touch.clientY;
+                setInteracted(true);
+                setPhase('dragging');
+            }
+            event.preventDefault();
+            const elapsed = event.timeStamp - gesture.lastTime;
+            if (elapsed > 0)
+                gesture.velocity = (touch.clientY - gesture.lastY) / elapsed;
+            gesture.lastY = touch.clientY;
+            gesture.lastTime = event.timeStamp;
+            move(Math.max(0, touch.clientY - gesture.startY));
+        }
+
+        function end(event: TouchEvent) {
+            const finished = gesture;
+            gesture = null;
+            if (!finished?.dragging) return;
+            // A pause before letting go is not a flick.
+            const still = event.timeStamp - finished.lastTime > 80;
+            settleRef.current(
+                offsetRef.current,
+                still ? 0 : finished.velocity,
+                event.type === 'touchcancel',
+            );
+        }
+
+        sheet.addEventListener('touchstart', start, { passive: true });
+        sheet.addEventListener('touchmove', track, { passive: false });
+        sheet.addEventListener('touchend', end);
+        sheet.addEventListener('touchcancel', end);
+        return () => {
+            sheet.removeEventListener('touchstart', start);
+            sheet.removeEventListener('touchmove', track);
+            sheet.removeEventListener('touchend', end);
+            sheet.removeEventListener('touchcancel', end);
+        };
+    }, [panelRef, dismissible]);
 
     function startDrag(event: PointerEvent<HTMLButtonElement>) {
         if (
@@ -95,6 +236,9 @@ export default function SlidingSheet({
             pointerId: event.pointerId,
             startY: event.clientY,
             offset: 0,
+            lastY: event.clientY,
+            lastTime: event.timeStamp,
+            velocity: 0,
         };
         event.currentTarget.setPointerCapture(event.pointerId);
         setInteracted(true);
@@ -107,7 +251,12 @@ export default function SlidingSheet({
         gesture.offset = Math.max(0, event.clientY - gesture.startY);
         if (Math.abs(event.clientY - gesture.startY) > 3)
             suppressClick.current = true;
-        setOffset(gesture.offset);
+        const elapsed = event.timeStamp - gesture.lastTime;
+        if (elapsed > 0)
+            gesture.velocity = (event.clientY - gesture.lastY) / elapsed;
+        gesture.lastY = event.clientY;
+        gesture.lastTime = event.timeStamp;
+        move(gesture.offset);
     }
 
     function endDrag(
@@ -119,14 +268,9 @@ export default function SlidingSheet({
         drag.current = null;
         if (event.currentTarget.hasPointerCapture(event.pointerId))
             event.currentTarget.releasePointerCapture(event.pointerId);
-        const height = panelRef.current?.getBoundingClientRect().height ?? 0;
-        const threshold = Math.min(120, Math.max(60, height * 0.2));
-        if (!cancelled && gesture.offset >= threshold) dismiss();
-        else {
-            setOffset(0);
-            setPhase('settling');
-            if (cancelled) suppressClick.current = true;
-        }
+        if (cancelled) suppressClick.current = true;
+        const still = event.timeStamp - gesture.lastTime > 80;
+        settle(gesture.offset, still ? 0 : gesture.velocity, cancelled);
     }
 
     return createPortal(

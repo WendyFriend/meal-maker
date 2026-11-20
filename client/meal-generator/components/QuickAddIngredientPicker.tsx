@@ -25,7 +25,6 @@ import chickpeasPhoto from '../../assets/ingredients/protein-chickpeas.webp';
 import oatsPhoto from '../../assets/ingredients/grains-oats.webp';
 import walnutsPhoto from '../../assets/ingredients/nuts-walnuts.png';
 import IngredientThumbnail from './IngredientThumbnail';
-import { useQuickAddLayout } from '../../settings/quickAddLayout';
 import './QuickAddIngredientPicker.css';
 
 const categoryPhotos: Partial<Record<QuickAddCategoryId, string>> = {
@@ -189,7 +188,6 @@ export default function QuickAddIngredientPicker({
     selectedIngredients,
     onToggleIngredient,
 }: QuickAddIngredientPickerProps) {
-    const [quickAddLayout] = useQuickAddLayout();
     const [active, setActive] = useState<{
         category: QuickAddCategory;
         trigger: HTMLButtonElement;
@@ -270,7 +268,7 @@ export default function QuickAddIngredientPicker({
                         <PickerCloseButton onClose={close} />
                     </header>
                     <div
-                        className={`quick-add-picker-options quick-add-picker-options-${quickAddLayout}`}
+                        className="quick-add-picker-options quick-add-picker-options-tiles"
                         data-category={active.category.id}
                         role="group"
                         aria-label={`${active.category.name} ingredients`}

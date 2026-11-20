@@ -9,6 +9,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GenerateMealResponse } from '../../../shared/types/types';
 import { deleteRecipe, saveRecipe } from '../../services/recipeService';
 import { mockPickerEnvironment } from '../../test/pickerEnvironment';
+import { fixMenuOption } from '../../test/fixMenu';
+import userEvent from '@testing-library/user-event';
 import MealResult from './MealResult';
 
 vi.mock('../../services/recipeService', () => ({
@@ -123,8 +125,8 @@ describe('meal result detail layout', () => {
         expect(feedback).toHaveTextContent('Saved to My Recipes.');
         expect(feedback).toHaveClass('action-toast--floating');
         expect(feedback).toHaveStyle({
-            '--action-toast-background': '#fff',
-            '--action-toast-icon': '#27813a',
+            '--action-toast-background': 'var(--toast-bg)',
+            '--action-toast-icon': 'var(--toast-icon)',
         });
         fireEvent.click(
             screen.getByRole('button', { name: 'Remove this meal from saved' }),
@@ -152,7 +154,7 @@ describe('meal result detail layout', () => {
             screen.getByRole('button', { name: 'Save this meal' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Add to My Plan' }),
+            screen.getByRole('button', { name: 'Add to My Diary' }),
         ).toBeInTheDocument();
 
         const ingredients = screen.getByRole('tab', { name: 'Ingredients' });
@@ -210,5 +212,65 @@ describe('meal result detail layout', () => {
                 screen.getByRole('group', { name: 'Meal nutrition summary' }),
             ).getByRole('button', { name: 'Fibre: unavailable' }),
         ).toHaveTextContent('—');
+    });
+
+    it('lets ingredient sheets fix numbers and star when editable', async () => {
+        mockPickerEnvironment();
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        const onStarAuthRequired = vi.fn(() => true);
+        render(
+            <MealResult
+                meal={meal}
+                onChange={onChange}
+                editableIngredientNutrition
+                onIngredientStarAuthRequired={onStarAuthRequired}
+            />,
+        );
+        await user.click(screen.getByRole('button', { name: /^Tofu/ }));
+
+        await user.click(
+            screen.getByRole('button', { name: 'Save to My Ingredients' }),
+        );
+        expect(onStarAuthRequired).toHaveBeenCalledOnce();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Doesn’t look right?' }),
+        );
+        await user.click(fixMenuOption('Correct the numbers'));
+        const calories = screen.getByRole('spinbutton', {
+            name: 'Calories per 100 grams',
+        });
+        await user.clear(calories);
+        await user.type(calories, '140');
+        await user.click(
+            screen.getByRole('button', { name: 'Save ingredient changes' }),
+        );
+        await waitFor(() =>
+            expect(onChange).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    ingredients: [
+                        expect.objectContaining({
+                            name: 'Tofu',
+                            weight: 200,
+                            caloriesPer100g: 140,
+                        }),
+                    ],
+                }),
+            ),
+        );
+    });
+
+    it('keeps ingredient sheets read-only by default', async () => {
+        mockPickerEnvironment();
+        const user = userEvent.setup();
+        render(<MealResult meal={meal} onChange={vi.fn()} />);
+        await user.click(screen.getByRole('button', { name: /^Tofu/ }));
+        expect(
+            screen.queryByRole('button', { name: 'Doesn’t look right?' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Save to My Ingredients' }),
+        ).not.toBeInTheDocument();
     });
 });

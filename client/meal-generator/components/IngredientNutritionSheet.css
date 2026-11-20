@@ -77,3 +77,85 @@
 .ingredient-nutrition-sheet.ingredient-nutrition-sheet-full {
     height: 100dvh;
 }
+
+/* ☆ Save to My Ingredients (My Diary): the top bar's trailing action, in
+   the ✓ column, so renaming swaps one for the other without moving. */
+.sliding-sheet-header .ingredient-sheet-star {
+    position: absolute;
+    top: -2px;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ingredient-sheet-star svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    transition:
+        fill 150ms ease,
+        transform 150ms ease;
+}
+
+.ingredient-sheet-star[aria-pressed='true'] {
+    color: var(--star);
+}
+
+.ingredient-sheet-star[aria-pressed='true'] svg {
+    fill: currentColor;
+}
+
+.ingredient-sheet-star:active svg {
+    transform: scale(0.88);
+}
+
+.ingredient-sheet-star:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: -4px;
+    border-radius: 12px;
+}
+
+/* "Saved to My Ingredients." sits at the bottom of the visible sheet. It is
+   sticky at the end of the content, so it never moves what is above. */
+.nutrition-sheet-toast {
+    position: sticky;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 3;
+    display: flex;
+    justify-content: center;
+    height: 0;
+    pointer-events: none;
+}
+
+.nutrition-sheet-toast .action-toast {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: max-content;
+    max-width: 100%;
+    transform: translateX(-50%);
+    margin: 0;
+    pointer-events: auto;
+    animation: action-toast-enter 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-sheet-star svg {
+        transition: none;
+    }
+
+    .nutrition-sheet-toast .action-toast {
+        animation: none;
+    }
+}

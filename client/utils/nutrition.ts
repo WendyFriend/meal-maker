@@ -47,3 +47,20 @@ export function totalFiber(ingredients: MealIngredient[]) {
         hasKnown: known.length > 0,
     };
 }
+
+/**
+ * The calorie track's full width for a list of ingredients: twice the
+ * largest portion, rounded up to 100 kcal and at least 500, so bars compare
+ * across rows and leave room for bigger portions.
+ */
+export function calorieScale(ingredients: MealIngredient[]) {
+    const largest = Math.max(
+        0,
+        ...ingredients.map((ingredient) =>
+            ingredient.nutritionUnavailable
+                ? 0
+                : (ingredient.caloriesPer100g * ingredient.weight) / 100,
+        ),
+    );
+    return Math.max(500, Math.ceil((largest * 2) / 100) * 100);
+}

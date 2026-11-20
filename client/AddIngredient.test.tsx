@@ -1,7 +1,22 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import AddIngredient from './AddIngredient';
+import { scanNutritionLabel } from './services/nutritionPhotoService';
+
+vi.mock('./services/nutritionPhotoService', () => ({
+    scanNutritionLabel: vi.fn(),
+}));
+vi.mock('./components/IngredientCamera', () => ({
+    default: ({ onContinue }: { onContinue: (photo: string) => void }) => (
+        <button
+            type="button"
+            onClick={() => onContinue('data:image/jpeg;base64,again')}
+        >
+            Use test photo
+        </button>
+    ),
+}));
 
 vi.mock('./hooks/useMicronutrientLookup', () => ({
     useMicronutrientLookup: () => ({
@@ -85,7 +100,10 @@ describe('Add ingredient shared editor', () => {
     it('keeps a captured label visible while entering nutrition values', () => {
         render(
             <AddIngredient
-                referencePhoto="data:image/png;base64,AA=="
+                referencePhoto={{
+                    src: 'data:image/png;base64,AA==',
+                    kind: 'food',
+                }}
                 onBack={vi.fn()}
                 onSave={vi.fn()}
                 findExistingIngredient={() => undefined}
@@ -200,5 +218,91 @@ describe('Add ingredient shared editor', () => {
             screen.getByRole('textbox', { name: 'Ingredient name' }),
         ).toHaveValue('Chickpeas');
         expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    });
+
+    it('reads a label photo into the form for review', async () => {
+        vi.mocked(scanNutritionLabel).mockResolvedValue({
+            nutrition: {
+                caloriesPer100g: 54,
+                proteinPer100g: 3.3,
+                fatPer100g: 1.8,
+                calciumPer100g: 120,
+            },
+            basis: '100mL',
+            warnings: [],
+        });
+        const onSave = vi.fn();
+        render(
+            <AddIngredient
+                referencePhoto={{
+                    src: 'data:image/jpeg;base64,label',
+                    kind: 'label',
+                }}
+                onBack={vi.fn()}
+                onSave={onSave}
+                findExistingIngredient={() => undefined}
+                onEditorStateChange={vi.fn()}
+            />,
+        );
+        expect(screen.getByRole('status')).toHaveTextContent('Reading label…');
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+        expect(
+            document.querySelector('.ingredient-nutrition-numbers'),
+        ).toHaveAttribute('inert');
+        expect(await screen.findByText('Label Scanned.')).toBeInTheDocument();
+        expect(
+            document.querySelector('.ingredient-nutrition-numbers'),
+        ).not.toHaveAttribute('inert');
+        expect(scanNutritionLabel).toHaveBeenCalledOnce();
+        expect(scanNutritionLabel).toHaveBeenCalledWith(
+            'data:image/jpeg;base64,label',
+            undefined,
+        );
+        expect(
+            screen.getByRole('spinbutton', { name: 'Calories per 100 grams' }),
+        ).toHaveValue(54);
+        expect(
+            screen.getByRole('spinbutton', { name: 'Calcium per 100 g (mg)' }),
+        ).toHaveValue(120);
+        // Unread values stay blank, not zero.
+        expect(
+            screen.getByRole('spinbutton', {
+                name: 'Carbohydrate per 100 grams',
+            }),
+        ).toHaveValue(null);
+        expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('scans a label from the form, keeping the typed name', async () => {
+        vi.mocked(scanNutritionLabel).mockRejectedValueOnce(
+            new Error('Couldn’t find a nutrition label.'),
+        );
+        const { user } = setup();
+        await user.type(
+            screen.getByRole('textbox', { name: 'Ingredient name' }),
+            'Oat milk',
+        );
+        await user.click(
+            screen.getByRole('button', { name: 'Scan nutrition label' }),
+        );
+        await user.click(
+            screen.getByRole('button', { name: 'Use test photo' }),
+        );
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('Couldn’t find a nutrition label.');
+        // Try again, or type the numbers instead.
+        const panel = alert.closest('.label-scan-failed') as HTMLElement;
+        expect(
+            within(panel)
+                .getAllByRole('button')
+                .map((button) => button.textContent),
+        ).toEqual(['Scan nutrition label', 'Correct the numbers']);
+        expect(scanNutritionLabel).toHaveBeenLastCalledWith(
+            'data:image/jpeg;base64,again',
+            'Oat milk',
+        );
+        expect(
+            screen.getByRole('button', { name: 'Scan nutrition label' }),
+        ).toBeEnabled();
     });
 });

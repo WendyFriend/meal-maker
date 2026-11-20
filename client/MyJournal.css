@@ -1,10 +1,7 @@
-.page-content-saved-collection:has(> .my-journal:not([hidden])) {
-    padding-inline: var(--space-8);
-}
-
 .my-journal.saved-collection {
     max-width: 640px;
-    padding-top: 20px;
+    /* Same title area as My Recipes and My Ingredients. */
+    padding-top: 24px;
 }
 
 .my-journal .journal-day-summary-overview {
@@ -43,12 +40,67 @@
 }
 
 .journal-title-row {
-    margin-bottom: 13px;
+    margin-bottom: 28px;
+}
+
+/* Add meal: a plain coral ＋ glyph at the end of the title row, like the
+   title icons on My Recipes, with a 44px target. */
+.journal-title-row {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+}
+
+.journal-add-meal-button {
+    display: grid;
+    flex: 0 0 44px;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 9px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--coral);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color 160ms ease,
+        transform 160ms ease;
+}
+
+.journal-add-meal-button svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+}
+
+.journal-add-meal-button:active {
+    background: var(--surface-muted);
+    transform: scale(0.92);
+}
+
+.journal-add-meal-button:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: 2px;
+}
+
+.journal-add-meal-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .journal-add-meal-button {
+        transition: none;
+    }
 }
 
 .journal-title-row h1 {
+    min-width: 0;
     white-space: nowrap;
-    font-size: clamp(28px, 5vw, 34px);
 }
 
 .journal-date-row {
@@ -172,20 +224,14 @@
     display: none;
 }
 
-.journal-meals,
-.journal-food-list {
+.journal-meals {
     display: grid;
-    gap: 16px;
+    gap: 0;
     margin: 0 0 14px;
     padding: 0;
     list-style: none;
 }
 
-.journal-meals {
-    gap: 0;
-}
-
-.journal-food-list li,
 .journal-nutrition-card,
 .journal-nutrients-card {
     border: 1px solid rgb(36 69 65 / 7%);
@@ -291,53 +337,10 @@
        and any header actions overlaid beside it. */
     margin-right: calc(60px + var(--journal-meal-actions-width));
     color: var(--deep-green);
-    /* Taps reach the toggle underneath, except on the open button. */
+    /* Taps reach the toggle underneath. */
     pointer-events: none;
     -webkit-user-select: none;
     user-select: none;
-}
-
-/* With a recipe page, the name side opens the meal as a recipe and the
-   trailing chevron column expands it. */
-.journal-meal-row-split > .journal-meal-toggle {
-    justify-self: end;
-    width: 60px;
-    padding-left: 0;
-}
-
-.journal-meal-row-split > .journal-meal-open {
-    align-self: stretch;
-    justify-content: center;
-    border: 0;
-    background: transparent;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    pointer-events: auto;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-}
-
-.journal-meal-row-split > .journal-meal-open:active,
-.journal-meal-row-split > .journal-meal-toggle:active {
-    background: color-mix(in srgb, var(--warm-cream) 60%, white);
-}
-
-.journal-meal-open:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-}
-
-/* The same chevron as ingredient names, following the meal name. */
-.journal-meal-open-chevron {
-    display: inline-block;
-    margin-left: 8px;
-    vertical-align: 0.1em;
-}
-
-.journal-meal-open:hover .journal-meal-open-chevron {
-    border-color: var(--accent);
-    transform: translateX(2px) rotate(45deg);
 }
 
 .journal-meal-label small {
@@ -353,6 +356,10 @@
     font-weight: 700;
     line-height: 1.35;
     overflow-wrap: anywhere;
+}
+
+.journal-meal-label .journal-meal-name-placeholder {
+    color: var(--text-muted);
 }
 
 .journal-meal-chevron {
@@ -383,9 +390,67 @@
     font-size: 12px;
 }
 
-/* Long press lifts a meal (useLongPressReorder); no edit mode. */
+/* Long press lifts a meal (useLongPressReorder); no edit mode. The whole
+   row, name included, belongs to the press: no iOS callout or selection. */
+.journal-meal-row,
 .journal-meal-toggle {
     -webkit-touch-callout: none;
+}
+
+/* While held, the meal eases in and takes on the lifted card's white
+   surface, so the lift (and its menu) grows out of the hold instead of
+   swapping colours. The delay keeps taps and scrolls from flashing. The
+   surface stays while the meal's menu is open (`data-menu-open`), as iOS
+   keeps a row highlighted under its menu. */
+.journal-meal-card[data-pressing],
+.journal-meal-card[data-menu-open] {
+    z-index: 1;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow:
+        0 0 0 12px var(--surface),
+        0 4px 10px 12px transparent,
+        0 16px 34px 12px transparent;
+}
+
+.journal-meal-card[data-pressing] .journal-meal-toggle,
+.journal-meal-card[data-menu-open] .journal-meal-toggle {
+    background: transparent;
+}
+
+/* Let go without dragging: the card settles but keeps its surface while
+   the menu shows. */
+.journal-meal-card.journal-meal-dragging[data-reorder-settling][data-menu-open] {
+    background: var(--surface);
+    box-shadow:
+        0 0 0 12px var(--surface),
+        0 4px 10px 12px transparent,
+        0 16px 34px 12px transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .journal-meal-card {
+        transition:
+            background-color 220ms ease,
+            box-shadow 220ms ease;
+    }
+
+    .journal-meal-card[data-pressing] {
+        transition:
+            background-color 330ms ease 120ms,
+            box-shadow 330ms ease 120ms;
+    }
+
+    /* Springs back slowly at first, so as the lifted card scales up the
+       two meet without a jump. */
+    .journal-meal-card .journal-meal-row {
+        transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .journal-meal-card[data-pressing] .journal-meal-row {
+        transform: scale(0.97);
+        transition: transform 330ms cubic-bezier(0.3, 0, 0.6, 1) 120ms;
+    }
 }
 
 .journal-meals-dragging {
@@ -536,8 +601,7 @@
     list-style: none;
 }
 
-.journal-meal-ingredients li,
-.journal-food-list li {
+.journal-meal-ingredients li {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -591,6 +655,66 @@
     font-size: clamp(15px, 2.7vw, 18px);
 }
 
+/* Typing an ingredient name (adding or correcting one): the row's own type
+   on a hairline underline, like the meal name, instead of a box. The
+   negative margins absorb its height so the row never moves; 16px or more
+   so iOS never zooms in on focus. */
+.journal-ingredient-rename {
+    flex: 1;
+    min-width: 0;
+}
+
+.my-journal .create-recipe-row-main input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 34px;
+    min-height: 0;
+    margin-block: -6px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: inset 0 -1px 0 var(--border);
+    color: var(--text-h);
+    caret-color: var(--accent);
+    font-size: max(16px, clamp(15px, 2.7vw, 18px));
+    font-weight: var(--font-weight-medium);
+    line-height: 34px;
+    transition: box-shadow 150ms ease;
+}
+
+.my-journal .create-recipe-row-main input:focus,
+.my-journal .create-recipe-row-main input:focus-visible {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .my-journal .create-recipe-row-main input {
+        transition: none;
+    }
+}
+
+/* Search results (adding or renaming an ingredient) float over what is
+   below instead of being clipped by the swipe row, the card's open
+   animation or the card itself, which ends at the field while typing. */
+.journal-meal-card:has(.ingredient-suggestions),
+.journal-meal-card:has(.ingredient-suggestions) .journal-meal-expand-inner,
+.meal-ingredient-swipe:has(.journal-ingredient-rename) {
+    overflow: visible;
+}
+
+.journal-meal-card:has(.ingredient-suggestions) {
+    z-index: 3;
+}
+
+.journal-meal-ingredients li:has(.journal-ingredient-rename) {
+    position: relative;
+    z-index: 3;
+}
+
 .journal-ingredient-read-row .ingredient-info,
 .journal-ingredient-read-row .ingredient-portion-summary {
     display: flex;
@@ -606,6 +730,24 @@
     font-size: clamp(15px, 2.7vw, 18px);
 }
 
+/* Entering edit mode must not move the weight: in view mode it sits in the
+   column its field and "g" take while editing, leaving the steppers' ＋
+   column (30px + 2px gap) free, where the small Add ingredient ＋ lines up. */
+.journal-meal-ingredients
+    .journal-ingredient-read-row
+    button.ingredient-weight-edit {
+    margin-right: 22px;
+}
+
+/* Wider steppers above the phone breakpoint. */
+@media (min-width: 441px) {
+    .journal-meal-ingredients
+        .journal-ingredient-read-row
+        button.ingredient-weight-edit {
+        margin-right: 26px;
+    }
+}
+
 .journal-ingredient-read-row .ingredient-name-button {
     font-size: clamp(15px, 2.7vw, 18px);
 }
@@ -618,20 +760,12 @@
     border-bottom: 0;
 }
 
-.journal-food-list .meal-ingredient-thumbnail {
-    flex-basis: 28px;
-    width: 28px;
-    height: 28px;
-}
-
-.journal-meal-ingredients li > span:not(.meal-ingredient-thumbnail),
-.journal-food-list li > span:not(.meal-ingredient-thumbnail) {
+.journal-meal-ingredients li > span:not(.meal-ingredient-thumbnail) {
     flex: 1;
     min-width: 0;
 }
 
-.journal-meal-ingredients strong,
-.journal-food-list b {
+.journal-meal-ingredients strong {
     margin-left: auto;
     font-size: var(--font-size-md);
     font-weight: 600;
@@ -649,9 +783,114 @@
     border-bottom: 0;
 }
 
+/* Digits end where they did in view mode, next to the "g". Quiet like the
+   name fields: a hairline underline, coral while typing, no box. */
+.journal-meal-ingredients-editing .ingredient-weight-control input {
+    padding-inline: 4px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: inset 0 -1px 0 var(--border);
+    caret-color: var(--accent);
+    text-align: right;
+    transition: box-shadow 150ms ease;
+}
+
+.journal-meal-ingredients-editing .ingredient-weight-control input:focus,
+.journal-meal-ingredients-editing
+    .ingredient-weight-control
+    input:focus-visible {
+    outline: 0;
+    background: transparent;
+    box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .journal-meal-ingredients-editing .ingredient-weight-control input {
+        transition: none;
+    }
+}
+
+/* A long press on the ingredients opens the meal's menu, so no text
+   selection or callout competes with it (not while editing: fields). */
+.journal-meal-expand-pressable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 .journal-meal-ingredients-editing .ingredient-weight-control button {
     border-radius: 50%;
     background: var(--surface);
+}
+
+/* Add ingredient: a small ＋ at the trailing edge under the rows, in
+   the right thumb's reach. The button keeps a 44px target around a 30px circle. */
+.journal-add-ingredient-row {
+    display: flex;
+    justify-content: flex-end;
+    padding-block: 4px;
+}
+
+.journal-add-ingredient {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    /* Centres the circle under the weight steppers' ＋. */
+    margin-right: -7px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--coral);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.journal-add-ingredient svg {
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    padding: 6px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--coral) 12%, transparent);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    transition:
+        background-color 150ms ease,
+        transform 150ms ease;
+}
+
+.journal-add-ingredient:active svg {
+    background: color-mix(in srgb, var(--coral) 22%, transparent);
+    transform: scale(0.9);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .journal-add-ingredient:hover svg {
+        background: color-mix(in srgb, var(--coral) 18%, transparent);
+    }
+}
+
+.journal-add-ingredient:focus-visible {
+    outline: 0;
+}
+
+.journal-add-ingredient:focus-visible svg {
+    outline: 2px solid var(--coral);
+    outline-offset: 2px;
+}
+
+.journal-add-ingredient:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .journal-add-ingredient svg {
+        transition: none;
+    }
 }
 
 .journal-ingredient-composer {
@@ -722,25 +961,10 @@
     font-size: 13px;
 }
 
-.journal-food-list li {
-    min-height: 56px;
-    padding: 8px 12px;
-}
-
-.journal-food-list li > span:not(.meal-ingredient-thumbnail) {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.journal-food-list li strong {
-    color: var(--deep-green);
-    font-size: 13px;
-}
-
-.journal-food-list li small {
-    color: var(--text-muted);
-    font-size: 11px;
+.journal-food-ingredients .ingredient-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
 .journal-nutrients-card {
@@ -801,21 +1025,86 @@
     }
 }
 
-@media (max-width: 768px) {
-    .page-content-saved-collection:has(> .my-journal:not([hidden])) {
-        padding-inline: var(--space-5);
-    }
-}
-
-@media (max-width: 360px) {
-    .page-content-saved-collection:has(> .my-journal:not([hidden])) {
-        padding-inline: var(--space-4);
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
     .journal-meal-chevron,
     .journal-meal-expand {
         transition: none;
     }
+}
+
+/* Editing: the name is part of the edit, a tappable button that becomes an
+   underlined field in the same type, so nothing in the row moves. */
+.journal-meal-label.journal-meal-label-editing {
+    pointer-events: auto;
+}
+
+.journal-meal-name-button {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: clamp(13.5px, 3.7vw, 20px);
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: text;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.journal-meal-label-editing small + .journal-meal-name-button,
+.journal-meal-name-button:focus-visible {
+    outline: none;
+}
+
+.journal-meal-name-button:focus-visible {
+    box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.journal-meal-name-button:active {
+    opacity: 0.6;
+}
+
+.journal-meal-name-input {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 0 0 3px;
+    margin: 0 0 -3px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: clamp(13.5px, 3.7vw, 20px);
+    font-weight: 700;
+    line-height: 1.35;
+    resize: none;
+    overflow: hidden;
+    box-shadow: inset 0 -1px 0 var(--border);
+    caret-color: var(--accent);
+    transition: box-shadow 150ms ease;
+}
+
+.journal-meal-name-input:focus,
+.journal-meal-name-input:focus-visible {
+    outline: none;
+    box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .journal-meal-name-input {
+        transition: none;
+    }
+}
+
+.journal-meal-expand-pressable :is(dialog, [popover]) {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
 }

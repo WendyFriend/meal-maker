@@ -6,55 +6,6 @@
     line-height: 1.35;
 }
 
-/* Label scan feedback under the header (Correct the numbers adds none). */
-.nutrition-edit-hint {
-    display: grid;
-    justify-items: center;
-    gap: var(--space-2);
-    margin: -8px 0 var(--space-5);
-}
-
-.nutrition-edit-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 14px;
-    text-align: center;
-}
-
-.nutrition-edit-error {
-    color: var(--danger);
-}
-
-.nutrition-scan-again {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 40px;
-    padding: 8px 14px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--accent-bg);
-    color: var(--accent);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.nutrition-scan-again svg {
-    flex: 0 0 auto;
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
 .nutrition-identifying {
     display: flex;
     align-items: center;
@@ -63,4 +14,33 @@
     min-height: 160px;
     margin: 0;
     color: var(--text-muted);
+}
+
+/* Switching between the nutrition, food search and photo views fades in. */
+.ingredient-nutrition-sheet
+    form
+    > :is(
+        .ingredient-nutrition-content,
+        .food-match-picker,
+        .nutrition-identifying
+    ) {
+    animation: nutrition-view-in 220ms ease-out both;
+}
+
+@keyframes nutrition-view-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-nutrition-sheet
+        form
+        > :is(
+            .ingredient-nutrition-content,
+            .food-match-picker,
+            .nutrition-identifying
+        ) {
+        animation: none;
+    }
 }

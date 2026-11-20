@@ -87,7 +87,9 @@ it('adds editable ingredient rows, previews nutrition, and saves from the two-ta
     await user.type(row, 'To');
     const suggestions = screen.getByRole('listbox');
     expect(suggestions).not.toHaveTextContent(/Saved|Suggested|Custom/);
-    await user.click(within(suggestions).getByRole('option', { name: 'Tofu' }));
+    await user.click(
+        within(suggestions).getByRole('option', { name: 'Tofu, saved' }),
+    );
     const ingredientName = screen.getByRole('button', {
         name: 'View Tofu nutrition',
     });
@@ -255,6 +257,38 @@ it.each(['create', 'edit'])(
             );
     },
 );
+
+it('shows Nutrition Lab matches in any word order, with the typed name first', async () => {
+    vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                results: [
+                    {
+                        fdcId: 1,
+                        name: 'Green peas, frozen',
+                        description: 'Peas, green, frozen, unprepared',
+                        per100g: { kcal: 77 },
+                    },
+                ],
+            }),
+        }),
+    );
+    const user = userEvent.setup();
+    render(<CreateRecipe savedIngredients={[]} onSave={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    await user.type(
+        screen.getByRole('combobox', { name: 'Ingredient 1' }),
+        'forzen green peas',
+    );
+    expect(
+        await screen.findByRole('option', { name: 'Green peas, frozen' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('option')[0]).toHaveAccessibleName(
+        'Enter forzen green peas manually',
+    );
+});
 
 it('lets a recipe use an ingredient that is absent from Nutrition Lab', async () => {
     vi.stubGlobal(
@@ -485,86 +519,4 @@ it('updates the recipe nutrition preview from the ingredient sheet', async () =>
             screen.getByRole('region', { name: 'Nutrition overview' }),
         ).getByText('200'),
     ).toBeInTheDocument();
-});
-
-it('works as Add Meal with an optional name filled in from the ingredients', async () => {
-    const user = userEvent.setup();
-    const save = vi.fn().mockResolvedValue(undefined);
-    render(
-        <CreateRecipe
-            subject="meal"
-            formId="add-meal-form"
-            fallbackName={(ingredients) => `Sunday ${ingredients[0].name}`}
-            savedIngredients={[
-                {
-                    ingredientId: 'lentils-1',
-                    name: 'lentils',
-                    caloriesPer100g: 116,
-                    proteinPer100g: 9,
-                    carbohydratePer100g: 20,
-                    fatPer100g: 0.4,
-                },
-            ]}
-            onSave={save}
-        />,
-    );
-
-    expect(screen.getByText('Meal name')).toBeInTheDocument();
-    expect(screen.getByText('(optional)')).toBeInTheDocument();
-    expect(
-        screen.queryByRole('textbox', { name: 'Recipe name' }),
-    ).not.toBeInTheDocument();
-    // Plan meals keep ingredients only, so there is no Steps tab.
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-        'Ingredients',
-        'Key Nutrients',
-    ]);
-
-    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
-    await user.type(
-        screen.getByRole('combobox', { name: 'Ingredient 1' }),
-        'lentils{Enter}',
-    );
-    fireEvent.submit(document.getElementById('add-meal-form')!);
-
-    expect(save).toHaveBeenCalledWith(
-        expect.objectContaining({
-            recipeName: 'Sunday lentils',
-            instructions: [],
-        }),
-    );
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-});
-
-it('keeps a typed meal name', async () => {
-    const user = userEvent.setup();
-    const save = vi.fn().mockResolvedValue(undefined);
-    render(
-        <CreateRecipe
-            subject="meal"
-            formId="add-meal-form"
-            fallbackName={() => 'Sunday lentils'}
-            savedIngredients={[
-                {
-                    ingredientId: 'lentils-1',
-                    name: 'lentils',
-                    caloriesPer100g: 116,
-                    proteinPer100g: 9,
-                    carbohydratePer100g: 20,
-                    fatPer100g: 0.4,
-                },
-            ]}
-            onSave={save}
-        />,
-    );
-    await user.type(screen.getByRole('textbox', { name: 'Meal name' }), 'Dal');
-    await user.click(screen.getByRole('button', { name: 'Add ingredient' }));
-    await user.type(
-        screen.getByRole('combobox', { name: 'Ingredient 1' }),
-        'lentils{Enter}',
-    );
-    fireEvent.submit(document.getElementById('add-meal-form')!);
-    expect(save).toHaveBeenCalledWith(
-        expect.objectContaining({ recipeName: 'Dal' }),
-    );
 });

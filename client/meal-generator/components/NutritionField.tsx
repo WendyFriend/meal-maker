@@ -1,4 +1,4 @@
-import "./NutritionField.css";
+import './NutritionField.css';
 
 export type NutritionFieldId =
     | 'caloriesPer100g'

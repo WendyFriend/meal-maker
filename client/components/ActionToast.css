@@ -12,7 +12,7 @@
         color-mix(in srgb, #ffe3a3 66%, white)
     );
     color: var(--action-toast-text, #35271d);
-    box-shadow: 0 4px 14px rgb(105 59 21 / 10%);
+    box-shadow: var(--toast-shadow);
     font-size: 14px;
     font-weight: 650;
     line-height: 1.4;
@@ -31,7 +31,6 @@
     max-width: calc(100vw - 32px);
     min-height: 44px;
     padding: 10px 14px;
-    box-shadow: var(--shadow-md);
     pointer-events: none;
     animation: action-toast-enter 180ms ease-out both;
 }
@@ -58,7 +57,7 @@
     border: 0;
     border-radius: 10px;
     background: transparent;
-    color: var(--coral);
+    color: var(--action-toast-action, var(--coral));
     font: inherit;
     font-weight: 700;
     cursor: pointer;
@@ -73,6 +72,18 @@
 .action-toast-action:focus-visible {
     outline: 2px solid var(--coral);
     outline-offset: -2px;
+}
+
+.action-toast-text {
+    display: grid;
+    gap: 2px;
+    padding-block: 10px;
+}
+
+.action-toast-detail {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.8;
 }
 
 .action-toast-symbol {

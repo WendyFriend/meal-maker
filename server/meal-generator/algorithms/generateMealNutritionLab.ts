@@ -5,6 +5,7 @@ import type {
     MealIngredient,
 } from '../../../shared/types/types.ts';
 import { MICRONUTRIENTS } from '../../../shared/micronutrients.js';
+import { isDiet, type Diet } from '../../../shared/diets.js';
 import {
     generateMealRemote,
     parseIngredientText,
@@ -109,6 +110,16 @@ function mapIngredient(
     };
 }
 
+/**
+ * The profile's diet plus Plant based (vegan), each once. Unknown values
+ * are dropped, as NL would reject them.
+ */
+function dietary(requirements: GenerateMealRequest['requirements']) {
+    const diets = new Set<Diet>((requirements.dietary ?? []).filter(isDiet));
+    if (requirements.preferences?.includes('plant-based')) diets.add('vegan');
+    return diets.size ? { dietary: [...diets] } : {};
+}
+
 export async function generateMealWithNutritionLab(
     input: GenerateMealRequest,
     onRemoteTiming?: (durationMs: number) => void,
@@ -123,9 +134,7 @@ export async function generateMealWithNutritionLab(
             ...(input.requirements.proteinGrams === undefined
                 ? {}
                 : { proteinGrams: input.requirements.proteinGrams }),
-            ...(input.requirements.preferences?.includes('plant-based')
-                ? { dietary: ['vegan' as const] }
-                : {}),
+            ...dietary(input.requirements),
             ...(input.requirements.preferences?.includes('high-protein')
                 ? { variation: 'higher-protein' as const }
                 : {}),

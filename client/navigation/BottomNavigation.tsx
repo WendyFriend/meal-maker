@@ -1,15 +1,15 @@
-import type { Ref } from 'react';
 import type { Page } from './pages';
 import './BottomNavigation.css';
 
 const tabs: { page: Page; label: string }[] = [
     { page: 'meal-maker', label: 'Discover' },
-    { page: 'my-journal', label: 'My Plan' },
+    { page: 'my-journal', label: 'Diary' },
     { page: 'my-recipes', label: 'Recipes' },
     { page: 'my-ingredients', label: 'Ingredients' },
+    { page: 'profile', label: 'Profile' },
 ];
 
-function TabIcon({ page, active }: { page: Page | 'more'; active: boolean }) {
+function TabIcon({ page, active }: { page: Page; active: boolean }) {
     if (page === 'meal-maker')
         return (
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -71,43 +71,52 @@ function TabIcon({ page, active }: { page: Page | 'more'; active: boolean }) {
             </svg>
         );
     if (page === 'my-ingredients')
+        // A chubby carrot: round top, soft tip, ridges and two leaves.
         return (
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
                     className={
                         active ? 'bottom-navigation-icon-fill' : undefined
                     }
-                    d="M20.5 3.5C12 3.5 5 6 4.5 14.5c-.2 3.3 2.1 5.8 5.3 5.8 8.5 0 11-7.2 10.7-16.8Z"
+                    d="M10.7 7.1a4.4 4.4 0 0 1 6.2 6.2c-3.3 3.3-8.3 6.6-12 7.6a1.3 1.3 0 0 1-1.8-1.8c1-3.7 4.3-8.7 7.6-12Z"
                 />
                 <path
                     className={
                         active ? 'bottom-navigation-icon-detail' : undefined
                     }
-                    d="M3 22c4.3-6 7.8-9.4 14-13"
+                    d="m7.9 10.7 1.5 1.5m-3.7 2.1 1.3 1.3m5.6 0.1-1.4-1.4"
+                />
+                <path
+                    className={
+                        active ? 'bottom-navigation-icon-fill' : undefined
+                    }
+                    d="M16.2 6.6C14.9 4.9 15.2 2.6 17 1.8c1.3 1.5 1.3 3.7 0 5.1m.6 1c1.6-1.5 4-1.6 5.2-.3-1.2 1.6-3.5 2-5.2.9"
                 />
             </svg>
         );
+    // Profile: a person, head and shoulders.
     return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="5" cy="12" r="1.7" />
-            <circle cx="12" cy="12" r="1.7" />
-            <circle cx="19" cy="12" r="1.7" />
+            <circle
+                className={active ? 'bottom-navigation-icon-fill' : undefined}
+                cx="12"
+                cy="8"
+                r="4"
+            />
+            <path
+                className={active ? 'bottom-navigation-icon-fill' : undefined}
+                d="M4 20.5c.6-4 3.9-6.5 8-6.5s7.4 2.5 8 6.5Z"
+            />
         </svg>
     );
 }
 
 export default function BottomNavigation({
     currentPage,
-    menuOpen,
-    moreButtonRef,
     onNavigate,
-    onMore,
 }: {
     currentPage: Page;
-    menuOpen: boolean;
-    moreButtonRef: Ref<HTMLButtonElement>;
     onNavigate: (page: Page) => void;
-    onMore: () => void;
 }) {
     return (
         <nav className="bottom-navigation" aria-label="Main tabs">
@@ -128,24 +137,6 @@ export default function BottomNavigation({
                     </button>
                 );
             })}
-            <button
-                ref={moreButtonRef}
-                type="button"
-                className={`bottom-navigation-tab${menuOpen || currentPage === 'settings' ? ' bottom-navigation-tab-active' : ''}`}
-                aria-label="More"
-                aria-current={currentPage === 'settings' ? 'page' : undefined}
-                aria-expanded={menuOpen}
-                aria-controls="sidebar"
-                onClick={onMore}
-            >
-                <span className="bottom-navigation-icon">
-                    <TabIcon
-                        page="more"
-                        active={menuOpen || currentPage === 'settings'}
-                    />
-                </span>
-                <span className="bottom-navigation-label">More</span>
-            </button>
         </nav>
     );
 }

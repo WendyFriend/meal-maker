@@ -68,10 +68,6 @@
     font-size: 13px;
     font-weight: 650;
 }
-.create-recipe-name .create-recipe-optional {
-    color: var(--text-muted);
-    font-weight: 500;
-}
 .create-recipe-name input,
 .create-recipe-row-main input {
     width: 100%;
@@ -268,7 +264,9 @@
     left: -40px;
     right: auto;
     width: min(320px, calc(100vw - 48px));
-    max-height: min(300px, 38dvh);
+    /* Never under the keyboard: capped to the room above it (set while a
+       field is focused), but always about two and a half rows. */
+    max-height: min(300px, 38dvh, max(112px, var(--suggestions-room, 300px)));
     overflow-y: auto;
     gap: 0;
     padding: 4px;

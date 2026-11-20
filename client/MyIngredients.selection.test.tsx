@@ -293,10 +293,15 @@ describe('My Ingredients bulk selection', () => {
             fireEvent.click(
                 screen.getByRole('button', {
                     name: 'Confirm delete 2 ingredients',
+                    hidden: true,
                 }),
             );
         });
+        expect(screen.getByText('2 ingredients removed.')).toBeInTheDocument();
         await elapse(180);
+        // Sent only once the Undo toast expires.
+        expect(deleteMany).not.toHaveBeenCalled();
+        await elapse(5000);
         expect(deleteMany).toHaveBeenCalledExactlyOnceWith(['0', '1']);
         expect(
             screen.queryByRole('button', { name: /Broccoli/ }),
@@ -343,10 +348,11 @@ describe('My Ingredients bulk selection', () => {
             fireEvent.click(
                 screen.getByRole('button', {
                     name: 'Confirm delete 2 ingredients',
+                    hidden: true,
                 }),
             );
         });
-        await elapse(180);
+        await elapse(5180);
         expect(deleteMany).toHaveBeenCalledExactlyOnceWith(['0', '2']);
         fireEvent.change(screen.getByRole('searchbox'), {
             target: { value: '' },
@@ -356,7 +362,7 @@ describe('My Ingredients bulk selection', () => {
         ).toBeInTheDocument();
     });
 
-    it('retains the selection after a failure so the same deletion can be retried', async () => {
+    it('brings rows back with an explanation when a bulk delete fails', async () => {
         const deleteMany = vi
             .fn(async (ids: string[]) => ids)
             .mockRejectedValueOnce(new Error('Offline'));
@@ -367,36 +373,20 @@ describe('My Ingredients bulk selection', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Select Broccoli' }),
         );
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Delete 1 ingredient' }),
-        );
         await act(async () => {
             fireEvent.click(
                 screen.getByRole('button', {
                     name: 'Confirm delete 1 ingredient',
+                    hidden: true,
                 }),
             );
         });
-        await elapse(180);
+        expect(screen.getByText('Ingredient removed.')).toBeInTheDocument();
+        await elapse(5180);
+        expect(deleteMany).toHaveBeenCalledExactlyOnceWith(['0']);
         expect(screen.getByRole('alert')).toHaveTextContent('Could not delete');
         expect(
-            screen.getByRole('button', { name: 'Deselect Broccoli' }),
-        ).toHaveAttribute('aria-pressed', 'true');
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Delete 1 ingredient' }),
-        );
-        await act(async () => {
-            fireEvent.click(
-                screen.getByRole('button', {
-                    name: 'Confirm delete 1 ingredient',
-                }),
-            );
-        });
-        await elapse(180);
-        expect(deleteMany).toHaveBeenNthCalledWith(2, ['0']);
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: /Broccoli/ }),
-        ).not.toBeInTheDocument();
+            screen.getByRole('button', { name: /Broccoli/ }),
+        ).toBeInTheDocument();
     });
 });

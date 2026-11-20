@@ -1,4 +1,8 @@
-import type { MicronutrientValues } from '../micronutrients.js';
+import type {
+    MicronutrientKey,
+    MicronutrientValues,
+} from '../micronutrients.js';
+import type { Diet } from '../diets.js';
 
 export type IngredientInfo = MicronutrientValues & {
     preparationTips?: string[];
@@ -16,7 +20,7 @@ export type IngredientInfo = MicronutrientValues & {
 
 /** Per-100g values read from a photographed nutrition label. */
 export type NutritionLabelScan = {
-    productName?: string;
+    // Only what the label prints; a missing field is unknown, not zero.
     nutrition: Partial<
         Pick<
             IngredientInfo,
@@ -27,8 +31,13 @@ export type NutritionLabelScan = {
             | 'sugarPer100g'
             | 'saturatedFatPer100g'
             | 'fiberPer100g'
+            | MicronutrientKey
         >
     >;
+    // Drinks are labelled per 100 mL.
+    basis: '100g' | '100mL';
+    // Things to check, such as numbers that don't add up.
+    warnings: string[];
 };
 
 export type UserIngredient = MicronutrientValues & {
@@ -65,6 +74,8 @@ export type MealRequirements = {
     proteinGrams?: number;
     proteinPercentage?: number;
     preferences?: MealPreference[];
+    /** The user's diet from Profile, applied to every meal. */
+    dietary?: Diet[];
 };
 
 export type MealPreference =

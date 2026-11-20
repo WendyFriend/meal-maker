@@ -1,0 +1,33 @@
+/* Beside a name (chips): sized to the text, centred on the capitals. */
+.saved-mark {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 0.85em;
+    height: 0.85em;
+    margin-inline-start: 0.3em;
+    vertical-align: -0.08em;
+    fill: var(--star);
+}
+
+.saved-mark-nowrap {
+    white-space: nowrap;
+}
+
+/* The end of a list row: a fixed 20px slot, so stars line up. */
+.saved-mark.saved-mark-trailing {
+    width: 20px;
+    height: 20px;
+    margin-inline-start: auto;
+}
+
+/* After the "Added" badge, which already takes the free space. */
+.ingredient-suggestion-added-badge + .saved-mark-trailing {
+    margin-inline-start: 0;
+}
+
+.saved-mark.saved-mark-leading {
+    width: 1.1em;
+    height: 1.1em;
+    margin-inline: 0 0.3em;
+    vertical-align: -0.2em;
+}

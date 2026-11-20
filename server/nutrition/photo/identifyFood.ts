@@ -1,4 +1,5 @@
-import { askVisionJson, imageFromRequest } from '../../ai/vision.js';
+import { askVisionJson } from '../../ai/vision.js';
+import { imageFromRequest } from './imageFromRequest.js';
 
 const systemPrompt = `You identify a single food or ingredient in a photo.
 Reply with JSON only: { "name": string | null }

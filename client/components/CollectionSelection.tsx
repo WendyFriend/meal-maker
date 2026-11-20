@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import CloseIcon from './CloseIcon';
-import { CancelButton, ConfirmButton } from './ConfirmCancelButtons';
+import LoadingSpinner from './LoadingSpinner';
+import Popover from './Popover';
 import './CollectionSelection.css';
 
 export function SelectionToggle({
@@ -10,7 +11,7 @@ export function SelectionToggle({
     onClick,
 }: {
     selecting: boolean;
-    disabled: boolean;
+    disabled?: boolean;
     noun: string;
     onClick: () => void;
 }) {
@@ -29,44 +30,6 @@ export function SelectionToggle({
     );
 }
 
-export function SelectionControls({
-    visible,
-    count,
-    allVisibleSelected,
-    label,
-    disabled,
-    onToggle,
-}: {
-    visible: boolean;
-    count: number;
-    allVisibleSelected: boolean;
-    label: string;
-    disabled: boolean;
-    onToggle: () => void;
-}) {
-    return (
-        <div
-            className={`collection-selection-controls-slot${visible ? ' is-visible' : ''}`}
-            aria-hidden={!visible}
-            inert={!visible}
-        >
-            <div className="collection-selection-controls">
-                <span role="status" aria-live="polite" aria-atomic="true">
-                    {count} selected
-                </span>
-                <button
-                    type="button"
-                    onClick={onToggle}
-                    aria-pressed={allVisibleSelected}
-                    disabled={disabled || !visible}
-                >
-                    {label}
-                </button>
-            </div>
-        </div>
-    );
-}
-
 export function SelectionIndicator({ selected }: { selected: boolean }) {
     return (
         <span
@@ -82,89 +45,141 @@ export function SelectionIndicator({ selected }: { selected: boolean }) {
     );
 }
 
-export function BulkDeleteToolbar({
+/**
+ * The page title while selecting: "0 Selected", "2 Selected", in the same
+ * place and style as the title it replaces, so nothing moves.
+ */
+export function CollectionTitle({
+    id,
+    title,
+    selecting,
+    count,
+}: {
+    id: string;
+    title: string;
+    selecting: boolean;
+    count: number;
+}) {
+    return (
+        <h1 id={id} className="collection-title">
+            {selecting ? `${count} Selected` : title}
+        </h1>
+    );
+}
+
+type SelectionAction = {
+    label: string;
+    /** Inner content of a 24px SVG. */
+    icon: ReactNode;
+    busy?: boolean;
+    onClick: () => void;
+};
+
+/**
+ * Like Mail, Files and Photos: while selecting, the title row's icons are
+ * replaced in place by Select All, the actions, Delete (confirmed from a
+ * small menu on the trash icon) and ✕. Rows and the page never shift.
+ */
+export function SelectionActions({
     count,
     noun,
-    deleting,
-    error,
+    allVisibleSelected,
+    toggleAllLabel,
+    selectableCount,
+    actions = [],
+    onToggleAll,
     onDelete,
+    onCancel,
 }: {
     count: number;
     noun: string;
-    deleting: boolean;
-    error?: string;
+    allVisibleSelected: boolean;
+    /** "Select all", or "Select results" while searching. */
+    toggleAllLabel: string;
+    selectableCount: number;
+    actions?: SelectionAction[];
+    onToggleAll: () => void;
     onDelete: () => void;
+    onCancel: () => void;
 }) {
-    const [confirming, setConfirming] = useState(false);
-    const cancelRef = useRef<HTMLButtonElement>(null);
-    const deleteRef = useRef<HTMLButtonElement>(null);
-    const wasConfirming = useRef(false);
-    const confirmationId = useId();
-    useEffect(() => {
-        if (confirming) {
-            cancelRef.current?.focus();
-            wasConfirming.current = true;
-        } else if (wasConfirming.current) {
-            deleteRef.current?.focus();
-            wasConfirming.current = false;
-        }
-    }, [confirming]);
+    const busy = actions.some((action) => action.busy);
     const deleteLabel = `Delete ${count} ${noun}${count === 1 ? '' : 's'}`;
     return (
         <div
-            className="collection-bulk-toolbar"
-            role="group"
-            aria-label={`Bulk ${noun} actions`}
-            aria-describedby={confirming ? confirmationId : undefined}
-            onKeyDown={(event) => {
-                if (event.key === 'Escape' && confirming) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setConfirming(false);
-                }
-            }}
+            className="collection-selection-actions"
+            role="toolbar"
+            aria-label={`Selected ${noun} actions`}
         >
-            {error && <p role="alert">{error}</p>}
-            {confirming ? (
-                <div className="collection-bulk-confirm-row">
-                    <p
-                        id={confirmationId}
-                        className="collection-bulk-confirmation"
-                    >
-                        {deleteLabel}?
-                    </p>
-                    <div className="collection-bulk-confirm-actions">
-                        <CancelButton
-                            ref={cancelRef}
-                            label="Cancel delete"
-                            disabled={deleting}
-                            onClick={() => setConfirming(false)}
-                        />
-                        <ConfirmButton
-                            tone="danger"
-                            label={`Confirm ${deleteLabel.toLowerCase()}`}
-                            disabled={deleting || count === 0}
-                            onClick={() => {
-                                setConfirming(false);
-                                onDelete();
-                            }}
-                        />
-                    </div>
-                </div>
-            ) : (
+            <span className="collection-selection-status" role="status">
+                {count} selected
+            </span>
+            <button
+                type="button"
+                className="collection-selection-icon"
+                aria-label={toggleAllLabel}
+                title={toggleAllLabel}
+                aria-pressed={allVisibleSelected}
+                disabled={busy || selectableCount === 0}
+                onClick={onToggleAll}
+            >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m3.5 6.5 1.6 1.6 3-3.1M3.5 12.5l1.6 1.6 3-3.1M3.5 18.5l1.6 1.6 3-3.1M11 7h9.5M11 13h9.5M11 19h9.5" />
+                </svg>
+            </button>
+            {actions.map((action) => (
                 <button
-                    ref={deleteRef}
+                    key={action.label}
                     type="button"
-                    className="collection-bulk-delete"
-                    disabled={deleting || count === 0}
-                    onClick={() => setConfirming(true)}
+                    className="collection-selection-icon"
+                    aria-label={action.label}
+                    title={action.label}
+                    aria-busy={action.busy || undefined}
+                    disabled={busy || count === 0}
+                    onClick={action.onClick}
                 >
+                    {action.busy ? (
+                        <LoadingSpinner size="small" tone="inherit" />
+                    ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            {action.icon}
+                        </svg>
+                    )}
+                </button>
+            ))}
+            <Popover
+                trigger={
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" />
                     </svg>
-                    {deleting ? 'Deleting…' : deleteLabel}
-                </button>
-            )}
+                }
+                triggerClassName="collection-selection-icon collection-selection-delete"
+                triggerLabel={deleteLabel}
+                triggerTitle="Delete"
+                triggerDisabled={busy || count === 0}
+                label={`${deleteLabel}?`}
+                panelClassName="collection-delete-confirm"
+                width={240}
+            >
+                {(close) => (
+                    <button
+                        type="button"
+                        className="collection-delete-confirm-button"
+                        aria-label={`Confirm ${deleteLabel.toLowerCase()}`}
+                        onClick={() => {
+                            close();
+                            onDelete();
+                        }}
+                    >
+                        {deleteLabel}
+                    </button>
+                )}
+            </Popover>
+            <SelectionToggle
+                selecting
+                disabled={busy}
+                noun={noun}
+                onClick={onCancel}
+            />
         </div>
     );
 }

@@ -8,10 +8,13 @@ type ActionToastColors = {
     text?: string;
     iconBackground?: string;
     icon?: string;
+    action?: string;
 };
 
 type ActionToastProps = {
     message: string;
+    /** A smaller second line, such as something to check. */
+    detail?: string;
     icon?: ReactNode;
     placement?: 'inline' | 'floating';
     colors?: ActionToastColors;
@@ -24,6 +27,7 @@ type ActionToastProps = {
 /** Passive confirmation that can sit in a sheet or above app navigation. */
 export default function ActionToast({
     message,
+    detail,
     icon = <CheckIcon />,
     placement = 'inline',
     colors,
@@ -51,6 +55,7 @@ export default function ActionToast({
         '--action-toast-text': colors?.text,
         '--action-toast-icon-background': colors?.iconBackground,
         '--action-toast-icon': colors?.icon,
+        '--action-toast-action': colors?.action,
     } as CSSProperties;
 
     const toast = (
@@ -66,7 +71,14 @@ export default function ActionToast({
                     {icon}
                 </span>
             )}
-            <span>{message}</span>
+            {detail ? (
+                <span className="action-toast-text">
+                    <span>{message}</span>
+                    <span className="action-toast-detail">{detail}</span>
+                </span>
+            ) : (
+                <span>{message}</span>
+            )}
             {action && (
                 <button
                     type="button"

@@ -8,7 +8,7 @@ const TAP_SLOP = 10;
  * it, so tapping them does not count as leaving.
  */
 const PART_OF_EDIT =
-    'dialog, [popover], [role="dialog"], [role="listbox"], [role="menu"], .action-toast';
+    'dialog, [popover], [role="dialog"], [role="listbox"], [role="menu"], .action-toast, [data-part-of-edit]';
 
 /**
  * Saves an in-place edit when the person moves on instead of confirming it,
@@ -73,10 +73,17 @@ export function useSaveOnLeave({
     }, [active]);
 
     // Leaving the page (another tab, date or meal page) unmounts the edit.
-    useEffect(
-        () => () => {
-            if (latest.current.active) latest.current.onLeave();
-        },
-        [],
-    );
+    // Checked a microtask later, so StrictMode's immediate remount is not
+    // mistaken for leaving (that would drop a new, still-empty meal).
+    const mounted = useRef(false);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+            queueMicrotask(() => {
+                if (!mounted.current && latest.current.active)
+                    latest.current.onLeave();
+            });
+        };
+    }, []);
 }

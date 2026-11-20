@@ -24,7 +24,7 @@ it('supports a shorter confirmation on My Recipes', () => {
     const onClose = vi.fn();
     render(
         <ActionFeedback
-            message="Added to My Plan"
+            message="Added to My Diary"
             durationMs={1000}
             onClose={onClose}
         />,

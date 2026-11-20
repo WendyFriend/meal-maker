@@ -8,12 +8,30 @@ type IngredientNutritionSheetProps = {
     };
     onClose: () => void;
     onNutritionResolved?: (ingredient: IngredientInfo) => void;
+    /**
+     * Saves a fix from "Doesn't look right?" (another food, a label scan or
+     * corrected numbers). Without it the sheet is read-only.
+     */
+    onSave?: (
+        ingredient: IngredientInfo,
+        saveToUserIngredients: boolean,
+    ) => Promise<void>;
+    /** Renames from the title (My Diary); needs onSave too. */
+    onRename?: (
+        ingredient: IngredientInfo,
+        saveToUserIngredients: boolean,
+    ) => Promise<void>;
+    /** Guests: the ☆ asks for an account instead of saving. */
+    onStarAuthRequired?: () => boolean;
 };
 
 export default function IngredientNutritionSheet({
     ingredient,
     onClose,
     onNutritionResolved,
+    onSave,
+    onRename,
+    onStarAuthRequired,
 }: IngredientNutritionSheetProps) {
     return (
         <NutritionDialog
@@ -30,8 +48,10 @@ export default function IngredientNutritionSheet({
             }
             onClose={onClose}
             onNutritionResolved={onNutritionResolved}
-            onSave={async () => undefined}
-            editable={false}
+            onSave={onSave ?? (async () => undefined)}
+            editable={Boolean(onSave)}
+            onRename={onSave ? onRename : undefined}
+            onStarAuthRequired={onStarAuthRequired}
         />
     );
 }

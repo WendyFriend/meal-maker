@@ -1,0 +1,156 @@
+/* Edge to edge, whichever page shell holds it. */
+.page-content:has(> .meal-photo-page) {
+    max-width: none;
+    padding: 0;
+}
+
+/* At least a screen tall, so the footer sits at the bottom even when the
+   foods are few. */
+.meal-photo-page {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: min(100%, 640px);
+    min-height: calc(100svh - var(--header-height));
+    margin: 0 auto;
+}
+
+/* 61.8% of the screen's height (the golden ratio): the photo leads, and
+   the foods start above the fold. `svh` keeps it still as browser bars
+   come and go. */
+.meal-photo-page-frame {
+    position: relative;
+    display: grid;
+    height: 61.8svh;
+    overflow: hidden;
+    background: #f0f3e5;
+}
+
+.meal-photo-page-frame img {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+}
+
+/* The same photo, blurred, behind any space the whole photo leaves. */
+.meal-photo-page-backdrop {
+    object-fit: cover;
+    filter: blur(24px) saturate(1.1);
+    opacity: 0.7;
+    transform: scale(1.15);
+}
+
+/* Never cropped. */
+.meal-photo-page-image {
+    position: relative;
+    object-fit: contain;
+}
+
+.meal-photo-page-body {
+    display: grid;
+    gap: 12px;
+    padding: 20px 16px 0;
+}
+
+.meal-photo-page-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--text-h);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0;
+}
+
+.meal-photo-page-count {
+    color: var(--text-muted);
+    font-weight: var(--font-weight-medium);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Just the chips, on the page itself: no card, and they grow with their
+   foods rather than scrolling inside. */
+.meal-photo-page .selected-ingredients {
+    max-height: none;
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.meal-photo-page-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: auto;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border-hairline);
+    background: color-mix(in srgb, var(--app-chrome-bg) 82%, transparent);
+    -webkit-backdrop-filter: saturate(1.6) blur(16px);
+    backdrop-filter: saturate(1.6) blur(16px);
+}
+
+/* Room above the footer for the last chips. */
+.meal-photo-page-body {
+    padding-bottom: 24px;
+}
+
+.meal-photo-page-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 50px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent-bg);
+    color: var(--accent-strong);
+    font: inherit;
+    font-size: 17px;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color 150ms ease,
+        transform 140ms ease;
+}
+
+.meal-photo-page-remove svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.meal-photo-page-remove:active {
+    background: color-mix(in srgb, var(--accent) 18%, var(--accent-bg));
+    transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .meal-photo-page-remove:hover {
+        background: color-mix(in srgb, var(--accent) 12%, var(--accent-bg));
+    }
+}
+
+.meal-photo-page-remove:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (min-width: 641px) {
+    .meal-photo-page {
+        padding-top: 16px;
+    }
+
+    .meal-photo-page-frame {
+        border-radius: 20px;
+    }
+}

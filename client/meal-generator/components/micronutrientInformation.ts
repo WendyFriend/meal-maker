@@ -41,4 +41,9 @@ export const MICRONUTRIENT_INFORMATION = {
             'Vitamin B12 supports healthy nerves and red blood cells and helps your body make DNA. Getting enough helps prevent a type of anaemia that can cause tiredness and weakness.',
         source: 'https://ods.od.nih.gov/factsheets/VitaminB12-Consumer/',
     },
+    cholinePer100g: {
+        description:
+            'Choline helps your body make cell membranes and a messenger chemical that supports memory, mood and muscle control. It also helps your liver move fat around the body.',
+        source: 'https://ods.od.nih.gov/factsheets/Choline-Consumer/',
+    },
 } satisfies Record<MicronutrientKey, { description: string; source: string }>;

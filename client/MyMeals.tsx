@@ -1,23 +1,22 @@
 import { createPortal } from 'react-dom';
-import {
-    useEffect,
-    useEffectEvent,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Recipe } from '../shared/types/recipe';
-import { getRecipes, deleteRecipes } from './services/recipeService';
+import {
+    getRecipes,
+    deleteRecipes,
+    saveRecipe,
+} from './services/recipeService';
+import ActionToast from './components/ActionToast';
+import { successToastColors } from './components/actionToastColors';
 import defaultMealPhoto from './assets/default-meal-photo.jpg';
 import LogMealButton from './journal/LogMealButton';
 import { useCollectionSelection } from './hooks/useCollectionSelection';
 import {
+    CollectionTitle,
+    SelectionActions,
     SelectionToggle,
-    SelectionControls,
-    SelectionIndicator,
-    BulkDeleteToolbar,
 } from './components/CollectionSelection';
+import SavedCollectionRow from './components/SavedCollectionRow';
 import './components/SavedCollection.css';
 import './MyMeals.css';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -35,6 +34,7 @@ import {
 
 const SHOW_NUTRITION_KEY = 'meal-maker:show-recipe-nutrition';
 const EMPTY_UPDATED_RECIPES: Record<string, Recipe> = {};
+const EMPTY_CREATED_RECIPES: Recipe[] = [];
 
 type RecipeMenu = {
     recipe: Recipe;
@@ -62,6 +62,7 @@ export default function MyMeals({
     onCreate,
     isActive = true,
     updatedRecipes = EMPTY_UPDATED_RECIPES,
+    createdRecipes = EMPTY_CREATED_RECIPES,
     refreshKey = 0,
     onRecipesRefreshed,
 }: {
@@ -70,24 +71,40 @@ export default function MyMeals({
     onCreate?: () => void;
     isActive?: boolean;
     updatedRecipes?: Record<string, Recipe>;
+    /** Recipes just created elsewhere, newest first; shown without a reload. */
+    createdRecipes?: Recipe[];
     refreshKey?: number;
     onRecipesRefreshed?: () => void;
 }) {
     const [loadedRecipes, setRecipes] = useState<Recipe[]>([]);
-    const recipes = useMemo(
-        () =>
-            loadedRecipes.map(
-                (recipe) => (recipe.id && updatedRecipes[recipe.id]) || recipe,
-            ),
-        [loadedRecipes, updatedRecipes],
-    );
+    const recipes = useMemo(() => {
+        const loadedIds = new Set(loadedRecipes.map((recipe) => recipe.id));
+        // The list is newest first, so new recipes go on top.
+        return [
+            ...createdRecipes.filter((recipe) => !loadedIds.has(recipe.id)),
+            ...loadedRecipes,
+        ].map((recipe) => (recipe.id && updatedRecipes[recipe.id]) || recipe);
+    }, [createdRecipes, loadedRecipes, updatedRecipes]);
     const [search, setSearch] = useState('');
+    // New recipes (made elsewhere or duplicated here) are briefly highlighted once.
+    const newestId = createdRecipes[0]?.id;
+    const [highlightedIds, setHighlightedIds] = useState<ReadonlySet<string>>(
+        () => new Set(),
+    );
+    const [seenNewestId, setSeenNewestId] = useState(newestId);
+    if (newestId !== seenNewestId) {
+        setSeenNewestId(newestId);
+        if (newestId) {
+            setHighlightedIds(new Set([newestId]));
+            // A stale search could hide what was just made.
+            setSearch('');
+        }
+    }
     const [showNutrition, setShowNutrition] = useState(
         () => window.localStorage.getItem(SHOW_NUTRITION_KEY) !== 'false',
     );
     const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
     const [recipeMenu, setRecipeMenu] = useState<RecipeMenu | null>(null);
-    const lastPointerType = useRef<string | null>(null);
     const [swipeError, setSwipeError] = useState<string>();
     const [isLoading, setIsLoading] = useState(true);
     const [hasLoaded, setHasLoaded] = useState(false);
@@ -96,38 +113,30 @@ export default function MyMeals({
     const [reloadCount, setReloadCount] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const refreshingRef = useRef(false);
-    const previousActiveRef = useRef(isActive);
-    const {
-        rowRef,
-        exitClass,
-        exitStyle,
-        hiddenIds,
-        remove,
-        removeNow,
-        undoToast,
-    } = useUndoableDelete<HTMLDivElement>({
-        isActive,
-        onHidden: () => setOpenSwipeId(null),
-        commit: async (ids) => {
-            const names = recipes
-                .filter((recipe) => recipe.id && ids.includes(recipe.id))
-                .map((recipe) => recipe.recipeName);
-            try {
-                const deleted = new Set(await deleteRecipes(ids));
-                setRecipes((current) =>
-                    current.filter(
-                        (recipe) => !recipe.id || !deleted.has(recipe.id),
-                    ),
-                );
-                if (ids.some((id) => !deleted.has(id)))
-                    throw new Error('Recipe was not removed.');
-            } catch {
-                setSwipeError(
-                    `Could not delete ${names.join(', ') || 'recipe'}. Please try again.`,
-                );
-            }
-        },
-    });
+    const { rowRef, exitClass, exitStyle, hiddenIds, remove, undoToast } =
+        useUndoableDelete<HTMLDivElement>({
+            isActive,
+            onHidden: () => setOpenSwipeId(null),
+            commit: async (ids) => {
+                const names = recipes
+                    .filter((recipe) => recipe.id && ids.includes(recipe.id))
+                    .map((recipe) => recipe.recipeName);
+                try {
+                    const deleted = new Set(await deleteRecipes(ids));
+                    setRecipes((current) =>
+                        current.filter(
+                            (recipe) => !recipe.id || !deleted.has(recipe.id),
+                        ),
+                    );
+                    if (ids.some((id) => !deleted.has(id)))
+                        throw new Error('Recipe was not removed.');
+                } catch {
+                    setSwipeError(
+                        `Could not delete ${names.join(', ') || 'recipe'}. Please try again.`,
+                    );
+                }
+            },
+        });
     const onRecipesRefreshedRef = useRef(onRecipesRefreshed);
     useLayoutEffect(() => {
         onRecipesRefreshedRef.current = onRecipesRefreshed;
@@ -142,7 +151,7 @@ export default function MyMeals({
         x: number,
         y: number,
     ) {
-        if (selecting || deleting || !isActive) return;
+        if (selecting || !isActive) return;
         setOpenSwipeId(null);
         setRecipeMenu({ recipe, trigger, ...contextMenuPosition(x, y) });
     }
@@ -181,20 +190,24 @@ export default function MyMeals({
         };
     }, [reloadCount, refreshKey]);
 
+    // Rows awaiting an Undoable delete are hidden, so the empty state
+    // ignores them too.
+    const visibleRecipes = useMemo(
+        () =>
+            recipes.filter((recipe) => !recipe.id || !hiddenIds.has(recipe.id)),
+        [recipes, hiddenIds],
+    );
     const filtered = useMemo(() => {
         const query = search.trim().toLowerCase();
-        const visible = recipes.filter(
-            (recipe) => !recipe.id || !hiddenIds.has(recipe.id),
-        );
-        if (!query) return visible;
-        return visible.filter(
+        if (!query) return visibleRecipes;
+        return visibleRecipes.filter(
             (recipe) =>
                 recipe.recipeName.toLowerCase().includes(query) ||
                 recipe.ingredients.some((ingredient) =>
                     ingredient.name.toLowerCase().includes(query),
                 ),
         );
-    }, [recipes, search, hiddenIds]);
+    }, [visibleRecipes, search]);
     const nutritionSummaries = useMemo(
         () =>
             showNutrition
@@ -208,20 +221,6 @@ export default function MyMeals({
         [filtered, showNutrition],
     );
 
-    // Confirmed bulk delete: rows leave at once; failures reappear.
-    function deleteMeals(ids: string[]) {
-        setRecipeMenu(null);
-        return removeNow(ids, async () => {
-            const deleted = await deleteRecipes(ids);
-            const removed = new Set(deleted);
-            setRecipes((current) =>
-                current.filter(
-                    (recipe) => !recipe.id || !removed.has(recipe.id),
-                ),
-            );
-            return deleted;
-        });
-    }
     function deleteMeal(recipe: Recipe) {
         if (!recipe.id) return;
         setRecipeMenu(null);
@@ -230,8 +229,6 @@ export default function MyMeals({
     }
     const {
         selecting,
-        deleting,
-        error: deleteError,
         selectedItems,
         allVisibleSelected,
         selectAllLabel,
@@ -255,48 +252,98 @@ export default function MyMeals({
             setRecipeMenu(null);
             onOpenRecipe(recipe);
         },
-        onDeleteMany: deleteMeals,
-        noun: 'meal',
+        onDelete: (ids) => {
+            setRecipeMenu(null);
+            setSwipeError(undefined);
+            remove(
+                ids,
+                ids.length === 1
+                    ? 'Recipe removed.'
+                    : `${ids.length} recipes removed.`,
+            );
+        },
         search,
         isActive,
         onSelectionStart: () => {
+            setSwipeError(undefined);
             setOpenSwipeId(null);
             setRecipeMenu(null);
         },
     });
 
+    // Copies go on top (the list is newest first), highlighted and in view.
+    const [duplicating, setDuplicating] = useState(false);
+    const [duplicated, setDuplicated] = useState<{
+        key: number;
+        message: string;
+    } | null>(null);
+    async function duplicateRecipes(sources: Recipe[]) {
+        if (duplicating || !sources.length) return;
+        setRecipeMenu(null);
+        setSwipeError(undefined);
+        setDuplicating(true);
+        const taken = new Set(recipes.map((recipe) => recipe.recipeName));
+        const inputs = sources.map((recipe) => {
+            const recipeName = duplicateName(recipe.recipeName, taken);
+            taken.add(recipeName);
+            return {
+                recipeName,
+                ingredients: recipe.ingredients,
+                instructions: recipe.instructions,
+            };
+        });
+        const copies: Recipe[] = [];
+        try {
+            // Oldest first, so a reload keeps the copies in this order.
+            for (const input of [...inputs].reverse())
+                copies.unshift(await saveRecipe(input));
+        } catch {
+            const message =
+                sources.length === 1
+                    ? `Could not duplicate ${sources[0].recipeName}. Please try again.`
+                    : 'Could not duplicate the selected meals. Please try again.';
+            setSwipeError(message);
+        } finally {
+            setDuplicating(false);
+        }
+        if (!copies.length) return;
+        setRecipes((current) => [...copies, ...current]);
+        setHighlightedIds(
+            new Set(copies.flatMap((recipe) => (recipe.id ? [recipe.id] : []))),
+        );
+        setSearch('');
+        if (copies.length === sources.length) cancelSelection();
+        setDuplicated({
+            key: Date.now(),
+            message:
+                copies.length === 1
+                    ? 'Recipe duplicated.'
+                    : `${copies.length} recipes duplicated.`,
+        });
+    }
+
     function refreshMeals() {
-        if (refreshingRef.current || isLoading || deleting) return;
+        if (refreshingRef.current || isLoading) return;
         setOpenSwipeId(null);
         setRecipeMenu(null);
         refreshingRef.current = true;
         setIsRefreshing(true);
         setReloadCount((count) => count + 1);
     }
-    const refreshMealsFromEffect = useEffectEvent(refreshMeals);
 
-    // Keep a mounted list fresh when returning from another tab or app.
+    // Like My Ingredients and My Diary, switching back keeps the list as is;
+    // pull to refresh reloads it. Bring a new recipe into view.
+    const listRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        if (isActive && !previousActiveRef.current && hasLoadedRef.current) {
-            refreshMealsFromEffect();
-        }
-        previousActiveRef.current = isActive;
-    }, [isActive]);
-
-    useEffect(() => {
-        if (!isActive) return;
-        const onVisible = () => {
-            if (document.visibilityState === 'visible' && hasLoadedRef.current)
-                refreshMealsFromEffect();
-        };
-        document.addEventListener('visibilitychange', onVisible);
-        return () =>
-            document.removeEventListener('visibilitychange', onVisible);
-    }, [isActive]);
+        if (!isActive || !highlightedIds.size) return;
+        listRef.current
+            ?.querySelector('.saved-collection-row-new')
+            ?.scrollIntoView({ block: 'nearest' });
+    }, [isActive, highlightedIds]);
 
     const { containerRef, pullDistance } = usePullToRefresh({
         enabled: isActive,
-        disabled: isLoading || deleting || selecting,
+        disabled: isLoading || selecting,
         refreshing: isRefreshing,
         onRefresh: refreshMeals,
     });
@@ -304,11 +351,10 @@ export default function MyMeals({
     return (
         <section
             ref={containerRef}
-            className={`my-meals saved-collection${isActive ? ' pull-refresh-active' : ''}${selecting ? ' saved-collection-selecting' : ''}`}
+            className={`my-meals saved-collection${isActive ? ' pull-refresh-active' : ''}`}
             aria-labelledby="my-meals-heading"
             hidden={!isActive}
             inert={!isActive}
-            aria-busy={deleting}
             onKeyDown={(event) => {
                 if (event.key === 'Escape' && selecting) {
                     event.preventDefault();
@@ -323,69 +369,95 @@ export default function MyMeals({
             />
             <header className="saved-collection-intro">
                 <div className="saved-collection-title">
-                    <h1 id="my-meals-heading">My Recipes</h1>
-                    <div className="my-meals-title-actions">
-                        <button
-                            type="button"
-                            className="my-meals-nutrition-toggle"
-                            aria-label="Show nutrition"
-                            aria-pressed={showNutrition}
-                            title={
-                                showNutrition
-                                    ? 'Hide nutrition'
-                                    : 'Show nutrition'
-                            }
-                            onClick={() =>
-                                setShowNutrition((current) => !current)
-                            }
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-hidden="true"
-                                className={
+                    <CollectionTitle
+                        id="my-meals-heading"
+                        title="My Recipes"
+                        selecting={selecting}
+                        count={selectedItems.length}
+                    />
+                    {selecting ? (
+                        <SelectionActions
+                            count={selectedItems.length}
+                            noun="recipe"
+                            allVisibleSelected={allVisibleSelected}
+                            toggleAllLabel={selectAllLabel}
+                            selectableCount={selectableCount}
+                            actions={[
+                                {
+                                    label: 'Duplicate',
+                                    icon: <DuplicateIconPaths />,
+                                    busy: duplicating,
+                                    onClick: () =>
+                                        void duplicateRecipes(selectedItems),
+                                },
+                            ]}
+                            onToggleAll={toggleVisible}
+                            onDelete={deleteSelected}
+                            onCancel={cancelSelection}
+                        />
+                    ) : (
+                        <div className="my-meals-title-actions">
+                            <button
+                                type="button"
+                                className="my-meals-nutrition-toggle"
+                                aria-label="Show nutrition"
+                                aria-pressed={showNutrition}
+                                title={
                                     showNutrition
-                                        ? 'my-meals-eye-open'
-                                        : 'my-meals-eye-closed'
+                                        ? 'Hide nutrition'
+                                        : 'Show nutrition'
+                                }
+                                onClick={() =>
+                                    setShowNutrition((current) => !current)
                                 }
                             >
-                                {showNutrition ? (
-                                    <>
-                                        <path d="M2.5 12C5.3 8.5 8.4 6.8 12 6.8s6.7 1.7 9.5 5.2c-2.8 3.5-5.9 5.2-9.5 5.2S5.3 15.5 2.5 12Z" />
-                                        <circle cx="12" cy="12" r="4.9" />
-                                        <circle
-                                            cx="12"
-                                            cy="12"
-                                            r="1.7"
-                                            fill="currentColor"
-                                            stroke="none"
-                                        />
-                                    </>
-                                ) : (
-                                    <>
-                                        <path
-                                            d="M3.2 8.7C7.6 15.9 16.4 15.9 20.8 8.7"
-                                            strokeWidth="2.2"
-                                        />
-                                        <path
-                                            d="m6 12.2-1.7 2.6m4.4-.2-.9 3.1m4.2-2.2v3.4m3.3-4.3.9 3.1m2-5.5 1.7 2.6"
-                                            strokeWidth="2.2"
-                                        />
-                                    </>
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    aria-hidden="true"
+                                    className={
+                                        showNutrition
+                                            ? 'my-meals-eye-open'
+                                            : 'my-meals-eye-closed'
+                                    }
+                                >
+                                    {showNutrition ? (
+                                        <>
+                                            <path d="M2.5 12C5.3 8.5 8.4 6.8 12 6.8s6.7 1.7 9.5 5.2c-2.8 3.5-5.9 5.2-9.5 5.2S5.3 15.5 2.5 12Z" />
+                                            <circle cx="12" cy="12" r="4.9" />
+                                            <circle
+                                                cx="12"
+                                                cy="12"
+                                                r="1.7"
+                                                fill="currentColor"
+                                                stroke="none"
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <path
+                                                d="M3.2 8.7C7.6 15.9 16.4 15.9 20.8 8.7"
+                                                strokeWidth="2.2"
+                                            />
+                                            <path
+                                                d="m6 12.2-1.7 2.6m4.4-.2-.9 3.1m4.2-2.2v3.4m3.3-4.3.9 3.1m2-5.5 1.7 2.6"
+                                                strokeWidth="2.2"
+                                            />
+                                        </>
+                                    )}
+                                </svg>
+                            </button>
+                            {!isLoading &&
+                                !error &&
+                                recipes.some((recipe) => recipe.id) && (
+                                    <SelectionToggle
+                                        selecting={false}
+                                        noun="recipe"
+                                        onClick={toggleSelection}
+                                    />
                                 )}
-                            </svg>
-                        </button>
-                        {!isLoading &&
-                            !error &&
-                            recipes.some((recipe) => recipe.id) && (
-                                <SelectionToggle
-                                    selecting={selecting}
-                                    disabled={deleting}
-                                    noun="meal"
-                                    onClick={toggleSelection}
-                                />
-                            )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             </header>
             <div className="saved-collection-search-field">
@@ -409,17 +481,8 @@ export default function MyMeals({
                     }}
                     placeholder="Search meals..."
                     aria-label="Search meals"
-                    disabled={deleting}
                 />
             </div>
-            <SelectionControls
-                visible={selecting}
-                count={selectedItems.length}
-                allVisibleSelected={allVisibleSelected}
-                label={selectAllLabel}
-                disabled={deleting || selectableCount === 0}
-                onToggle={toggleVisible}
-            />
             {error && hasLoaded && (
                 <div
                     className="my-meals-error my-meals-refresh-error"
@@ -465,7 +528,7 @@ export default function MyMeals({
                     </button>
                 </div>
             ) : filtered.length ? (
-                <div className="saved-collection-list">
+                <div className="saved-collection-list" ref={listRef}>
                     {filtered.map((recipe, index) => {
                         const selected = isSelected(recipe);
                         return (
@@ -474,11 +537,7 @@ export default function MyMeals({
                                     recipe.id ?? `${recipe.recipeName}-${index}`
                                 }
                                 name={recipe.recipeName}
-                                enabled={
-                                    Boolean(recipe.id) &&
-                                    !selecting &&
-                                    !deleting
-                                }
+                                enabled={Boolean(recipe.id) && !selecting}
                                 open={
                                     isActive &&
                                     !selecting &&
@@ -488,128 +547,67 @@ export default function MyMeals({
                                 onClose={() => setOpenSwipeId(null)}
                                 onDelete={() => deleteMeal(recipe)}
                             >
-                                <div
-                                    ref={
+                                <SavedCollectionRow
+                                    rowRef={
                                         recipe.id
                                             ? rowRef(recipe.id)
                                             : undefined
                                     }
-                                    className={`saved-collection-row-wrapper${selected ? ' saved-collection-row-wrapper-selected' : ''}${exitClass(recipe.id)}`}
-                                    onPointerDownCapture={(event) => {
-                                        lastPointerType.current =
-                                            event.pointerType;
-                                    }}
-                                    onContextMenu={(event) => {
-                                        event.preventDefault();
-                                        if (lastPointerType.current === 'touch')
-                                            return;
-                                        const trigger =
-                                            event.currentTarget.querySelector<HTMLButtonElement>(
-                                                '.saved-collection-row',
-                                            );
-                                        if (trigger)
-                                            openMenu(
-                                                recipe,
-                                                trigger,
-                                                event.clientX,
-                                                event.clientY,
-                                            );
-                                    }}
+                                    className={`${recipe.id && highlightedIds.has(recipe.id) ? 'saved-collection-row-new' : ''}${exitClass(recipe.id)}`}
                                     style={exitStyle(recipe.id)}
-                                >
-                                    <button
-                                        type="button"
-                                        className="saved-collection-row"
-                                        aria-pressed={
-                                            selecting ? selected : undefined
-                                        }
-                                        aria-label={
-                                            selecting
-                                                ? `${selected ? 'Deselect' : 'Select'} ${recipe.recipeName}`
-                                                : undefined
-                                        }
-                                        disabled={deleting}
-                                        onPointerDown={(event) =>
-                                            startPress(event, recipe)
-                                        }
-                                        onPointerMove={movePress}
-                                        onPointerUp={endPress}
-                                        onPointerCancel={endPress}
-                                        onPointerLeave={endPress}
-                                        onKeyDown={(event) => {
-                                            if (
-                                                event.key === 'ContextMenu' ||
-                                                (event.shiftKey &&
-                                                    event.key === 'F10')
-                                            ) {
-                                                event.preventDefault();
-                                                const rect =
-                                                    event.currentTarget.getBoundingClientRect();
-                                                openMenu(
+                                    onAnimationEnd={(event) => {
+                                        if (
+                                            event.animationName ===
+                                            'saved-collection-row-new'
+                                        )
+                                            setHighlightedIds(new Set());
+                                    }}
+                                    name={recipe.recipeName}
+                                    detail={
+                                        showNutrition && (
+                                            <span className="my-meals-row-nutrition">
+                                                {nutritionSummaries?.get(
                                                     recipe,
-                                                    event.currentTarget,
-                                                    rect.left + 20,
-                                                    rect.bottom - 8,
-                                                );
-                                                return;
-                                            }
-                                            if (
-                                                event.key === 'Enter' ||
-                                                event.key === ' '
-                                            )
-                                                resetClickSuppression();
-                                        }}
-                                        onClick={() => clickItem(recipe)}
-                                    >
+                                                )}
+                                            </span>
+                                        )
+                                    }
+                                    media={
                                         <img
-                                            className="my-meals-row-photo"
+                                            className="meal-ingredient-thumbnail meal-ingredient-thumbnail-photo"
                                             src={defaultMealPhoto}
                                             alt=""
-                                            width="36"
-                                            height="36"
+                                            width="40"
+                                            height="40"
                                             loading="lazy"
                                             decoding="async"
                                         />
-                                        <span className="saved-collection-row-info">
-                                            <strong>{recipe.recipeName}</strong>
-                                            {showNutrition && (
-                                                <span className="my-meals-row-nutrition">
-                                                    {nutritionSummaries?.get(
-                                                        recipe,
-                                                    )}
-                                                </span>
-                                            )}
-                                        </span>
-                                    </button>
-                                    {selecting ? (
-                                        <button
-                                            type="button"
-                                            className="my-meals-row-actions my-meals-selection-action"
-                                            aria-label={`Toggle selection for ${recipe.recipeName}`}
-                                            aria-pressed={selected}
-                                            disabled={deleting}
-                                            onClick={() => clickItem(recipe)}
-                                        >
-                                            <SelectionIndicator
-                                                selected={selected}
-                                            />
-                                        </button>
-                                    ) : (
-                                        <div className="my-meals-row-actions">
-                                            <LogMealButton
-                                                meal={{
-                                                    mealName: recipe.recipeName,
-                                                    ingredients:
-                                                        recipe.ingredients,
-                                                    instructions:
-                                                        recipe.instructions,
-                                                }}
-                                                destinationLabel="My Plan"
-                                                feedbackDurationMs={1000}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
+                                    }
+                                    action={
+                                        <LogMealButton
+                                            meal={{
+                                                mealName: recipe.recipeName,
+                                                ingredients: recipe.ingredients,
+                                                instructions:
+                                                    recipe.instructions,
+                                            }}
+                                            destinationLabel="My Diary"
+                                            feedbackDurationMs={1000}
+                                        />
+                                    }
+                                    selecting={selecting}
+                                    selected={selected}
+                                    onPressStart={(event) =>
+                                        startPress(event, recipe)
+                                    }
+                                    onPressMove={movePress}
+                                    onPressEnd={endPress}
+                                    onActivate={() => clickItem(recipe)}
+                                    onKeyActivate={resetClickSuppression}
+                                    onMenu={(trigger, x, y) =>
+                                        openMenu(recipe, trigger, x, y)
+                                    }
+                                />
                             </SwipeableCollectionRow>
                         );
                     })}
@@ -623,12 +621,12 @@ export default function MyMeals({
                         <MealIcon />
                     </div>
                     <p className="saved-collection-empty-title">
-                        {recipes.length
+                        {visibleRecipes.length
                             ? 'No matching meals'
                             : 'No saved meals yet'}
                     </p>
                     <p className="saved-collection-empty-hint">
-                        {recipes.length
+                        {visibleRecipes.length
                             ? 'Try a different search.'
                             : 'Create and save a meal to see it here.'}
                     </p>
@@ -636,15 +634,7 @@ export default function MyMeals({
             )}
             {isActive &&
                 createPortal(
-                    selecting ? (
-                        <BulkDeleteToolbar
-                            count={selectedItems.length}
-                            noun="meal"
-                            deleting={deleting}
-                            error={deleteError}
-                            onDelete={deleteSelected}
-                        />
-                    ) : onCreate ? (
+                    !selecting && onCreate ? (
                         <button
                             type="button"
                             className="floating-add-button saved-collection-add-button my-meals-add-button"
@@ -669,11 +659,52 @@ export default function MyMeals({
                         if (onEditRecipe) onEditRecipe(recipeMenu.recipe);
                         else onOpenRecipe(recipeMenu.recipe);
                     }}
+                    actions={
+                        recipeMenu.recipe.id
+                            ? [
+                                  {
+                                      label: 'Duplicate',
+                                      icon: <DuplicateIconPaths />,
+                                      onSelect: () =>
+                                          void duplicateRecipes([
+                                              recipeMenu.recipe,
+                                          ]),
+                                  },
+                              ]
+                            : []
+                    }
                     onDelete={() => deleteMeal(recipeMenu.recipe)}
+                />
+            )}
+            {duplicated && (
+                <ActionToast
+                    key={duplicated.key}
+                    message={duplicated.message}
+                    placement="floating"
+                    colors={successToastColors}
+                    onClose={() => setDuplicated(null)}
                 />
             )}
             {undoToast}
         </section>
+    );
+}
+
+/** Finder-style copy names: "Curry copy", then "Curry copy 2", … */
+function duplicateName(name: string, taken: ReadonlySet<string>) {
+    const base = name.replace(/ copy(?: \d+)?$/, '');
+    for (let n = 1; ; n += 1) {
+        const candidate = `${base} copy${n === 1 ? '' : ` ${n}`}`;
+        if (!taken.has(candidate)) return candidate;
+    }
+}
+
+function DuplicateIconPaths() {
+    return (
+        <>
+            <rect x="8" y="8" width="12" height="12" rx="2.5" />
+            <path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" />
+        </>
     );
 }
 

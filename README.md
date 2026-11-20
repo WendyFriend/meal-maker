@@ -37,4 +37,4 @@ Apply SQL files from `supabase/migrations/` in the Supabase SQL editor before us
 
 Food journal entries require [the journal migration](supabase/migrations/202610290001_food_journal.sql). It creates private, per-user food snapshots with the time eaten and a date-range index. Apply it in the Supabase SQL editor before logging meals.
 
-Reordering meals in My Plan requires [the plan order migration](supabase/migrations/202611110001_journal_plan_order.sql). Apply it in the Supabase SQL editor before saving a new meal order; it adds a display position without changing the logged meal time.
+Reordering meals in My Diary requires [the plan order migration](supabase/migrations/202611110001_journal_plan_order.sql). Apply it in the Supabase SQL editor before saving a new meal order; it adds a display position without changing the logged meal time.

@@ -1,9 +1,10 @@
 import { fixMenuOption } from '../../test/fixMenu';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import type {
+    NutritionLabelScan,
     IngredientInfo,
     UserIngredient,
 } from '../../../shared/types/types';
@@ -124,13 +125,13 @@ it('offers every fix from a menu under the ingredient name', async () => {
     expect(fix).toHaveTextContent('');
     expect(fix).toHaveAttribute('title', 'Doesn’t look right?');
     expect(fix.closest('.ingredient-nutrition-name-row')).not.toBeNull();
-    expect(menu).toHaveTextContent(/^Not the ingredient you entered\?/);
+    expect(menu).toHaveTextContent(/^Doesn’t look right\?/);
     expect(
         within(menu)
             .getAllByRole('button', { hidden: true })
             .map((button) => button.textContent),
     ).toEqual([
-        'Choose a different food',
+        'Search from database',
         'Scan nutrition label',
         'Take a photo',
         'Correct the numbers',
@@ -150,7 +151,7 @@ it('offers every fix from a menu under the ingredient name', async () => {
     expect(
         document.querySelectorAll('.nutrition-fix-placeholder'),
     ).toHaveLength(2);
-    expect(document.querySelector('.nutrition-edit-hint')).toBeNull();
+    expect(document.querySelector('.label-scan')).toBeNull();
     expect(screen.queryByText(/Enter amounts per 100 g/)).toBeNull();
     expect(
         screen.getByRole('spinbutton', { name: 'Calories per 100 grams' }),
@@ -174,12 +175,12 @@ it('offers the same menu under Vitamins & minerals', async () => {
             .getAllByRole('button', { hidden: true })
             .map((button) => button.textContent),
     ).toEqual([
-        'Choose a different food',
+        'Search from database',
         'Scan nutrition label',
         'Take a photo',
         'Correct the numbers',
     ]);
-    expect(menu).not.toHaveTextContent('Not the ingredient you entered?');
+    expect(menu).not.toHaveTextContent('Doesn’t look right?');
     await user.click(bottom);
     await user.click(
         fixMenuOption('Correct the numbers', 'The numbers don’t look right?'),
@@ -378,9 +379,10 @@ it('validates required fields when the header tick is clicked', async () => {
 });
 
 it('fills values from a scanned label for review before saving', async () => {
-    vi.mocked(scanNutritionLabel).mockResolvedValue({
-        nutrition: { caloriesPer100g: 380, proteinPer100g: 13.5 },
-    });
+    let finish!: (scan: NutritionLabelScan) => void;
+    vi.mocked(scanNutritionLabel).mockReturnValue(
+        new Promise((resolve) => (finish = resolve)),
+    );
     const user = userEvent.setup();
     render(<Fixture />);
     await user.click(
@@ -388,12 +390,45 @@ it('fills values from a scanned label for review before saving', async () => {
     );
     await user.click(fixMenuOption('Scan nutrition label'));
     await user.click(screen.getByRole('button', { name: 'Use test photo' }));
+    // A spinner covers the numbers, which can't be edited meanwhile.
+    expect(screen.getByRole('status')).toHaveTextContent('Reading label…');
     expect(
-        await screen.findByText(/Filled 2 values per 100 g from the label/),
-    ).toBeInTheDocument();
+        document.querySelector('.ingredient-nutrition-numbers'),
+    ).toHaveAttribute('inert');
+    expect(
+        screen.queryByRole('spinbutton', { name: 'Calories per 100 grams' }),
+    ).toBeNull();
+    // The food's name helps Nutrition Lab read the label.
+    expect(scanNutritionLabel).toHaveBeenCalledWith(
+        'data:image/jpeg;base64,x',
+        'Broccoli',
+    );
+    await act(async () =>
+        finish({
+            nutrition: {
+                caloriesPer100g: 380,
+                proteinPer100g: 13.5,
+                calciumPer100g: 120,
+            },
+            basis: '100g',
+            warnings: ['Energy doesn’t match the macros.'],
+        }),
+    );
+    // Confirmed by a toast, with what to check.
+    const toast = document.querySelector('.nutrition-sheet-toast')!;
+    expect(toast).toHaveTextContent('Label Scanned.');
+    expect(toast).toHaveTextContent('Energy doesn’t match the macros.');
+    expect(screen.queryByRole('button', { name: 'Scan again' })).toBeNull();
+    // The ? stays beside the name to scan again.
+    expect(
+        screen.getByRole('button', { name: 'Doesn’t look right?' }),
+    ).toBeEnabled();
     expect(
         screen.getByRole('spinbutton', { name: 'Calories per 100 grams' }),
     ).toHaveValue(380);
+    expect(
+        screen.getByRole('spinbutton', { name: 'Calcium per 100 g (mg)' }),
+    ).toHaveValue(120);
     // Values the label did not show are kept.
     expect(
         screen.getByRole('spinbutton', { name: 'Total fat per 100 grams' }),
@@ -407,12 +442,47 @@ it('fills values from a scanned label for review before saving', async () => {
             caloriesPer100g: 380,
             proteinPer100g: 13.5,
             fatPer100g: 0.4,
+            calciumPer100g: 120,
         }),
         false,
     );
 });
 
-it('keeps the current values when a label cannot be read', async () => {
+it('saves scanned values when the sheet is closed', async () => {
+    vi.mocked(scanNutritionLabel).mockResolvedValue({
+        nutrition: { caloriesPer100g: 380 },
+        basis: '100g',
+        warnings: [],
+    });
+    const user = userEvent.setup();
+    render(<Fixture />);
+    await user.click(
+        screen.getByRole('button', { name: 'Doesn’t look right?' }),
+    );
+    await user.click(fixMenuOption('Scan nutrition label'));
+    await user.click(screen.getByRole('button', { name: 'Use test photo' }));
+    await screen.findByText('Label Scanned.');
+    await user.click(screen.getByRole('button', { name: 'Close sheet' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ caloriesPer100g: 380, fatPer100g: 0.4 }),
+        false,
+    );
+});
+
+it('closes an unchanged form without saving', async () => {
+    const user = userEvent.setup();
+    render(<Fixture />);
+    await user.click(
+        screen.getByRole('button', { name: 'Doesn’t look right?' }),
+    );
+    await user.click(fixMenuOption('Correct the numbers'));
+    await user.click(screen.getByRole('button', { name: 'Close sheet' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(onSave).not.toHaveBeenCalled();
+});
+
+it('explains a failed scan in place of the numbers, with ways forward', async () => {
     vi.mocked(scanNutritionLabel).mockRejectedValue(
         new Error('Could not read this label. Try a closer, well-lit photo.'),
     );
@@ -423,13 +493,34 @@ it('keeps the current values when a label cannot be read', async () => {
     );
     await user.click(fixMenuOption('Scan nutrition label'));
     await user.click(screen.getByRole('button', { name: 'Use test photo' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Could not read this label',
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Could not read this label');
+    const panel = alert.closest('.label-scan-failed') as HTMLElement;
+    expect(
+        within(panel)
+            .getAllByRole('button')
+            .map((button) => button.textContent),
+    ).toEqual([
+        'Search from database',
+        'Scan nutrition label',
+        'Take a photo',
+        'Correct the numbers',
+    ]);
+    // The numbers stay hidden, and nothing is being edited.
+    expect(
+        document.querySelector('.ingredient-nutrition-numbers'),
+    ).toHaveAttribute('inert');
+    expect(
+        screen.queryByRole('spinbutton', { name: 'Calories per 100 grams' }),
+    ).toBeNull();
+    // Correct the numbers brings them back, filled as before.
+    await user.click(
+        within(panel).getByRole('button', { name: 'Correct the numbers' }),
     );
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(
         screen.getByRole('spinbutton', { name: 'Calories per 100 grams' }),
     ).toHaveValue(34);
-    expect(screen.getByRole('button', { name: 'Scan again' })).toBeEnabled();
 });
 
 const redRice = {
@@ -494,7 +585,7 @@ it('replaces a wrong match with a food picked from search', async () => {
     await user.click(
         screen.getByRole('button', { name: 'Doesn’t look right?' }),
     );
-    await user.click(fixMenuOption('Choose a different food'));
+    await user.click(fixMenuOption('Search from database'));
     expect(screen.getByRole('searchbox', { name: 'Search foods' })).toHaveValue(
         'red rice',
     );
@@ -549,7 +640,7 @@ it('returns to the nutrition from the food picker without changes', async () => 
     await user.click(
         screen.getByRole('button', { name: 'Doesn’t look right?' }),
     );
-    await user.click(fixMenuOption('Choose a different food'));
+    await user.click(fixMenuOption('Search from database'));
     expect(
         await screen.findByText('No foods found. Try a different name.'),
     ).toBeInTheDocument();

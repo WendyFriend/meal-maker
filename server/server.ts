@@ -5,6 +5,7 @@ import { handleIngredientNutrition } from './nutrition/handleIngredientNutrition
 import { handleFoodSearch } from './nutrition/handleFoodSearch.ts';
 import { handleNutritionLabel } from './nutrition/label/readNutritionLabel.ts';
 import { handleIdentifyFood } from './nutrition/photo/identifyFood.ts';
+import { handleScanIngredients } from './nutrition/photo/scanIngredients.ts';
 
 const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
@@ -39,6 +40,17 @@ const server = createServer(async (req, res) => {
         } catch (error) {
             console.error('Nutrition label scan failed:', error);
             sendJson(res, 500, { message: 'Could not read the label.' });
+        }
+        return;
+    }
+    if (req.method === 'POST' && req.url === '/api/scan-ingredients') {
+        try {
+            const input: unknown = JSON.parse(await readRequestBody(req));
+            const result = await handleScanIngredients(input);
+            sendJson(res, result.status, result.body);
+        } catch (error) {
+            console.error('Ingredient photo scan failed:', error);
+            sendJson(res, 500, { message: 'Could not scan the photo.' });
         }
         return;
     }

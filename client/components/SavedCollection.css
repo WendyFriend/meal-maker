@@ -111,6 +111,7 @@
 }
 .saved-collection-row-wrapper {
     overflow: hidden;
+    transition: background-color 150ms ease;
 }
 .saved-collection-row-wrapper + .saved-collection-row-wrapper {
     border-top: 1px solid var(--border-hairline);
@@ -181,14 +182,16 @@
     stroke-linecap: round;
     stroke-linejoin: round;
 }
-.saved-collection-row-wrapper-selected .saved-collection-row,
-.saved-collection-row:active {
-    background: var(--accent-bg);
-}
+/* Press, hover and selection tint the whole row, including the trailing
+   action column, so a long press never shows a half-highlighted row. */
 @media (hover: hover) and (pointer: fine) {
-    .saved-collection-row:hover {
+    .saved-collection-row-wrapper:has(> .saved-collection-row:hover) {
         background: var(--warm-cream);
     }
+}
+.saved-collection-row-wrapper-selected,
+.saved-collection-row-wrapper:has(> .saved-collection-row:active) {
+    background: var(--accent-bg);
 }
 .saved-collection-row:focus-visible {
     position: relative;
@@ -286,19 +289,43 @@
 .my-ingredients .saved-collection-search-field {
     margin-bottom: 20px;
 }
-.my-ingredients .saved-collection-row-chevron {
+/* Shared by My Ingredients and My Recipes rows (SavedCollectionRow). */
+.saved-collection .saved-collection-row-chevron {
     flex-basis: 24px;
     width: 24px;
 }
-.my-ingredients .saved-collection-row-info {
+.saved-collection .saved-collection-row-info {
     justify-content: center;
 }
-.my-ingredients.saved-collection-selecting .saved-collection-row {
-    padding-right: 16px;
-}
-.my-ingredients .collection-selection-check {
+.saved-collection .collection-selection-check {
     position: static;
     box-shadow: none;
+}
+/* A trailing action (e.g. Add to My Diary) takes the chevron's place. */
+.saved-collection-row-wrapper-with-action {
+    display: flex;
+    align-items: center;
+}
+.saved-collection-row-wrapper-with-action .saved-collection-row {
+    flex: 1;
+    padding-right: 4px;
+}
+.saved-collection-row-action {
+    display: grid;
+    flex: 0 0 44px;
+    place-items: center;
+    align-self: stretch;
+    margin-right: 8px;
+}
+.saved-collection-row-action .journal-log-trigger {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    border-radius: 11px;
+}
+.saved-collection-row-action .journal-log-trigger svg {
+    width: 20px;
+    height: 20px;
 }
 @media (max-width: 640px) {
     .saved-collection-add-button.floating-add-button {
@@ -314,8 +341,11 @@
     .saved-collection-row {
         padding-inline: 12px;
     }
-    .my-ingredients.saved-collection-selecting .saved-collection-row {
-        padding-right: 12px;
+    .saved-collection-row-wrapper-with-action .saved-collection-row {
+        padding-right: 4px;
+    }
+    .saved-collection-row-action {
+        margin-right: 4px;
     }
 }
 @media (max-width: 360px) {
@@ -386,5 +416,25 @@
 @media (prefers-reduced-motion: reduce) {
     .collection-row-exiting {
         animation: none;
+    }
+}
+
+/* A recipe just created elsewhere: a soft accent wash that fades once. */
+.saved-collection-row-new {
+    animation: saved-collection-row-new 1.6s ease-out;
+}
+
+@keyframes saved-collection-row-new {
+    from {
+        background-color: color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+    to {
+        background-color: transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .saved-collection-row-new {
+        animation-duration: 1ms;
     }
 }

@@ -5,6 +5,7 @@ import type {
 } from '../../shared/types/journal';
 import { localDayBounds } from '../journal/nutrition';
 import { notifyJournalChanged } from '../journal/changes';
+import { MissingJournalEntryError } from './journalErrors';
 
 type JournalRow = {
     id: string;
@@ -121,8 +122,11 @@ export async function updateJournalEntryIngredients(
         .update({ ingredients })
         .eq('id', id)
         .select()
-        .single();
+        // No row means the meal was deleted elsewhere; report that plainly
+        // instead of a 406 from `.single()`.
+        .maybeSingle();
     if (error) throw error;
+    if (!data) throw new MissingJournalEntryError();
     notifyJournalChanged(source);
     return toEntry(data as JournalRow);
 }
@@ -140,8 +144,9 @@ export async function updateJournalEntryName(
         .update({ meal_name: name })
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
     if (error) throw error;
+    if (!data) throw new MissingJournalEntryError();
     notifyJournalChanged(source);
     return toEntry(data as JournalRow);
 }
@@ -154,8 +159,9 @@ export async function deleteJournalEntry(
         .from('journal_entries')
         .delete()
         .eq('id', id)
+        // Already gone (e.g. deleted on another device) counts as removed.
         .select('id')
-        .single();
+        .maybeSingle();
     if (error) throw error;
     notifyJournalChanged(source);
 }

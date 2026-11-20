@@ -8,6 +8,9 @@ import IngredientPage from './IngredientPage';
 import checkmarkAnimation from './assets/animations/checkmark.svg';
 import './AddIngredient.css';
 
+/** A photo taken from Add Ingredient; a label photo is read into the form. */
+export type IngredientPhoto = { src: string; kind: 'food' | 'label' };
+
 const emptyIngredient: IngredientNutrition = {
     name: '',
     caloriesPer100g: 0,
@@ -25,7 +28,7 @@ export default function AddIngredient({
     onEditorStateChange,
 }: {
     initialIngredient?: IngredientInfo;
-    referencePhoto?: string;
+    referencePhoto?: IngredientPhoto;
     onBack: () => void;
     onSave: (ingredient: IngredientInfo) => Promise<void>;
     findExistingIngredient: (name: string) => string | undefined;
@@ -43,7 +46,7 @@ export default function AddIngredient({
                 <details className="add-ingredient-reference" open>
                     <summary>Photo reference</summary>
                     <img
-                        src={referencePhoto}
+                        src={referencePhoto.src}
                         alt="Captured ingredient reference"
                     />
                 </details>
@@ -51,6 +54,11 @@ export default function AddIngredient({
             <IngredientPage
                 creating
                 ingredient={initialIngredient}
+                labelPhoto={
+                    referencePhoto?.kind === 'label'
+                        ? referencePhoto.src
+                        : undefined
+                }
                 onCancel={onBack}
                 onEditorStateChange={onEditorStateChange}
                 findExistingIngredient={findExistingIngredient}

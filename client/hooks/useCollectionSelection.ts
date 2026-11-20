@@ -5,8 +5,7 @@ export function useCollectionSelection<T>({
     visibleItems,
     getId,
     onOpen,
-    onDeleteMany,
-    noun,
+    onDelete,
     search,
     isActive,
     onSelectionStart,
@@ -15,19 +14,16 @@ export function useCollectionSelection<T>({
     visibleItems: T[];
     getId: (item: T) => string;
     onOpen: (item: T) => void;
-    onDeleteMany: (ids: string[]) => Promise<string[]>;
-    noun: string;
+    /** Removes the rows at once (with Undo); selection then ends. */
+    onDelete: (ids: string[]) => void;
     search: string;
     isActive: boolean;
     onSelectionStart?: () => void;
 }) {
     const [selection, setSelection] = useState<Set<string> | null>(null);
-    const [deleting, setDeleting] = useState(false);
-    const [error, setError] = useState<string>();
     const timer = useRef<number | null>(null);
     const pressStart = useRef<{ x: number; y: number } | null>(null);
     const suppressClick = useRef(false);
-    const pending = useRef(false);
     const selecting = selection !== null;
     const selectedItems = items.filter((item) => selection?.has(getId(item)));
     const selectable = visibleItems.filter((item) => getId(item));
@@ -51,7 +47,6 @@ export function useCollectionSelection<T>({
         if (
             event.button !== 0 ||
             event.isPrimary === false ||
-            pending.current ||
             !isActive ||
             !getId(item)
         )
@@ -62,7 +57,6 @@ export function useCollectionSelection<T>({
         pressStart.current = { x: event.clientX, y: event.clientY };
         timer.current = window.setTimeout(() => {
             suppressClick.current = true;
-            setError(undefined);
             onSelectionStart?.();
             setSelection(new Set([getId(item)]));
             endPress();
@@ -83,7 +77,6 @@ export function useCollectionSelection<T>({
             suppressClick.current = false;
             return;
         }
-        if (pending.current) return;
         if (!selecting) {
             onOpen(item);
             return;
@@ -98,21 +91,17 @@ export function useCollectionSelection<T>({
         });
     }
     function cancelSelection() {
-        if (pending.current) return;
         endPress();
         setSelection(null);
-        setError(undefined);
     }
     function toggleSelection() {
         if (selecting) cancelSelection();
         else {
-            setError(undefined);
             onSelectionStart?.();
             setSelection(new Set());
         }
     }
     function toggleVisible() {
-        if (pending.current) return;
         setSelection((current) => {
             const next = new Set(current);
             for (const item of selectable) {
@@ -123,28 +112,10 @@ export function useCollectionSelection<T>({
             return next;
         });
     }
-    async function deleteSelected() {
-        if (!selectedItems.length || pending.current) return;
-        const ids = selectedItems.map(getId);
-        pending.current = true;
-        setDeleting(true);
-        setError(undefined);
-        try {
-            const deleted = new Set(await onDeleteMany(ids));
-            const remaining = ids.filter((id) => !deleted.has(id));
-            setSelection(remaining.length ? new Set(remaining) : null);
-            if (remaining.length)
-                setError(
-                    `Some ${noun}s could not be deleted. Please try again.`,
-                );
-        } catch {
-            setError(
-                `Could not delete the selected ${noun}s. Please try again.`,
-            );
-        } finally {
-            pending.current = false;
-            setDeleting(false);
-        }
+    function deleteSelected() {
+        if (!selectedItems.length) return;
+        onDelete(selectedItems.map(getId));
+        cancelSelection();
     }
     useEffect(
         () => () => {
@@ -157,8 +128,6 @@ export function useCollectionSelection<T>({
 
     return {
         selecting,
-        deleting,
-        error,
         selectedItems,
         allVisibleSelected,
         selectAllLabel,

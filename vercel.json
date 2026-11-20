@@ -1,5 +1,6 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
+    "regions": ["syd1"],
     "redirects": [
         {
             "source": "/(.*)",
@@ -16,9 +17,11 @@
         }
     ],
     "rewrites": [
+        { "source": "/my-diary", "destination": "/index.html" },
         { "source": "/my-plan", "destination": "/index.html" },
         { "source": "/my-recipes", "destination": "/index.html" },
         { "source": "/my-ingredients", "destination": "/index.html" },
+        { "source": "/profile", "destination": "/index.html" },
         { "source": "/settings", "destination": "/index.html" }
     ]
 }

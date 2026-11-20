@@ -1,4 +1,7 @@
-import type { IngredientInfo } from '../../../shared/types/types';
+import type {
+    IngredientInfo,
+    NutritionLabelScan,
+} from '../../../shared/types/types';
 import {
     MICRONUTRIENTS,
     type MicronutrientKey,
@@ -44,6 +47,23 @@ export function nutritionForm(ingredient: IngredientInfo): NutritionForm {
         micros: Object.fromEntries(
             MICRONUTRIENTS.map(({ key }) => [key, amountText(ingredient[key])]),
         ),
+    };
+}
+
+/** A label scan's values as form text; fields it didn't read are left out. */
+export function labelFormValues(nutrition: NutritionLabelScan['nutrition']): {
+    macros: Partial<NutritionForm['macros']>;
+    micros: NutritionForm['micros'];
+} {
+    const text = <K extends keyof typeof nutrition>(keys: readonly K[]) =>
+        Object.fromEntries(
+            keys
+                .filter((key) => nutrition[key] !== undefined)
+                .map((key) => [key, String(nutrition[key])]),
+        );
+    return {
+        macros: text(MACRO_FIELDS),
+        micros: text(MICRONUTRIENTS.map(({ key }) => key)),
     };
 }
 

@@ -19,6 +19,7 @@ export default function Popover({
     triggerLabel,
     triggerTitle,
     triggerRef,
+    triggerDisabled,
     label,
     panelClassName,
     width = 300,
@@ -32,6 +33,7 @@ export default function Popover({
     /** Tooltip, for icon-only triggers. */
     triggerTitle?: string;
     triggerRef?: RefObject<HTMLButtonElement | null>;
+    triggerDisabled?: boolean;
     /** Accessible name of the panel. */
     label: string;
     panelClassName?: string;
@@ -78,6 +80,7 @@ export default function Popover({
                 popoverTarget={id}
                 aria-label={triggerLabel}
                 title={triggerTitle}
+                disabled={triggerDisabled}
             >
                 {trigger}
             </button>

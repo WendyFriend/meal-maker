@@ -75,6 +75,20 @@
     user-select: none;
 }
 
+/* Closing slides all the way down at an iOS-like pace while the dimming
+   fades, so dismissing never feels abrupt. */
+.sliding-sheet[data-phase='closing'] {
+    transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sliding-sheet::backdrop {
+    transition: opacity 300ms ease;
+}
+
+.sliding-sheet[data-phase='closing']::backdrop {
+    opacity: 0;
+}
+
 .sliding-sheet-header {
     position: relative;
     display: flex;
@@ -124,7 +138,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sliding-sheet {
+    .sliding-sheet,
+    .sliding-sheet[data-phase='closing'],
+    .sliding-sheet::backdrop {
         animation: none;
         transition: none;
     }

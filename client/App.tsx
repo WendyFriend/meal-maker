@@ -1,4 +1,4 @@
-import PageHeader from './navigation/PageHeader';
+import PageHeader, { type HeaderEditActions } from './navigation/PageHeader';
 import NavigationPanel from './navigation/NavigationPanel';
 import BottomNavigation from './navigation/BottomNavigation';
 import {
@@ -30,7 +30,7 @@ import IngredientDetail from './IngredientDetail';
 import MyMeals from './MyMeals';
 import type { DetailEditorHandle } from './components/DetailEditorHandle';
 import MyJournal from './MyJournal';
-import Settings from './Settings';
+import Profile from './Profile';
 import RecipeDetail, { type RecipeNameEditor } from './RecipeDetail';
 import CreateRecipe from './CreateRecipe';
 import { saveRecipe, updateRecipe } from './services/recipeService';
@@ -53,7 +53,7 @@ import {
 } from './services/ingredientService';
 import type { Recipe } from '../shared/types/recipe';
 import NutritionDialog from './meal-generator/components/NutritionDialog';
-import AddIngredient from './AddIngredient';
+import AddIngredient, { type IngredientPhoto } from './AddIngredient';
 import {
     isUserIngredient,
     mergeIngredientNutrition,
@@ -65,13 +65,19 @@ import LoadingSpinner from './components/LoadingSpinner';
 import cookingLoader from './assets/animations/cooking-loader.svg';
 import { IngredientCollectionContext } from './ingredients/IngredientCollectionContext';
 import Brand from './components/Brand';
+import { useUndoToast } from './hooks/useUndoToast';
+import MealPhotoPage from './meal-generator/components/MealPhotoPage';
+import {
+    prunePhotos,
+    renameInPhotos,
+    withCorrectedPhotoName,
+    type MealPhoto,
+} from './meal-generator/mealPhotos';
 import { findCommonQuickAddIngredient } from './meal-generator/components/commonQuickAddIngredients';
 import {
-    saveJournalEntry,
     updateJournalEntryIngredients,
     updateJournalEntryName,
 } from './services/journalService';
-import { defaultMealName } from './journal/planMeal';
 
 function findIngredientByName<T extends IngredientInfo>(
     ingredients: T[],
@@ -83,6 +89,9 @@ function findIngredientByName<T extends IngredientInfo>(
             normalizeIngredientName(ingredient.name) === normalizedName,
     );
 }
+
+/** Shared so a guest's empty list keeps one identity across renders. */
+const NO_INGREDIENTS: UserIngredient[] = [];
 
 function initialPage(): Page {
     return mainPageFromPath(window.location.pathname) ?? 'meal-maker';
@@ -96,7 +105,6 @@ function App() {
     });
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
-    const moreButtonRef = useRef<HTMLButtonElement>(null);
     const lastMenuTriggerRef = useRef<HTMLButtonElement>(null);
 
     const [currentPage, setCurrentPage] = useState<Page>(initialPage);
@@ -111,9 +119,14 @@ function App() {
         number | null
     >(null);
 
-    const [userIngredients, setUserIngredients] = useState<UserIngredient[]>(
-        [],
-    );
+    const [loadedUserIngredients, setUserIngredients] = useState<
+        UserIngredient[]
+    >([]);
+    const userId = user?.id;
+    // Saved ingredients belong to the signed-in account: a session that ends
+    // without Sign out (expiry, another tab) must not leave them in search
+    // results or as ★ for a guest.
+    const userIngredients = userId ? loadedUserIngredients : NO_INGREDIENTS;
     const [ingredientsRefreshing, setIngredientsRefreshing] = useState(false);
     const [ingredientsRefreshError, setIngredientsRefreshError] = useState('');
     const ingredientsRefreshPending = useRef(false);
@@ -123,13 +136,16 @@ function App() {
     const [addIngredientDraft, setAddIngredientDraft] =
         useState<IngredientInfo>();
     const [addIngredientReferencePhoto, setAddIngredientReferencePhoto] =
-        useState<string>();
+        useState<IngredientPhoto>();
     const [ingredientEditor, setIngredientEditor] = useState({
         editing: false,
         saving: false,
     });
     const [recipeNameEditor, setRecipeNameEditor] =
         useState<RecipeNameEditor | null>(null);
+    // ✕ / ✓ for a My Diary meal being edited.
+    const [diaryEditActions, setDiaryEditActions] =
+        useState<HeaderEditActions | null>(null);
     const isEditingIngredient =
         currentPage === 'add-ingredient' ||
         (currentPage === 'ingredient-detail' && ingredientEditor.editing);
@@ -137,6 +153,7 @@ function App() {
         Record<string, Recipe>
     >({});
     const [recipesRefreshKey, setRecipesRefreshKey] = useState(0);
+    const [createdRecipes, setCreatedRecipes] = useState<Recipe[]>([]);
     const [hasVisitedRecipes, setHasVisitedRecipes] = useState(
         currentPage === 'my-recipes',
     );
@@ -151,6 +168,7 @@ function App() {
     const ingredientDetailRef = useRef<DetailEditorHandle>(null);
     const pendingIngredientEdit = useRef(false);
     const ingredientListScroll = useRef(0);
+    const mealMakerScroll = useRef(0);
     const previousPage = useRef<Page>(currentPage);
     // Nutrition edits kept for this meal when "Save to Ingredients" is unchecked.
     const [thisMealIngredients, setThisMealIngredients] = useState<
@@ -163,6 +181,10 @@ function App() {
     const [proteinGramsGoal, setProteinGramsGoal] = useState<
         number | undefined
     >(guestAccess.initialDraft.proteinGramsGoal);
+    const [mealPhotos, setMealPhotos] = useState<MealPhoto[]>([]);
+    const [openPhotoId, setOpenPhotoId] = useState<string>();
+    const openPhoto = mealPhotos.find((photo) => photo.id === openPhotoId);
+    const photoUndo = useUndoToast();
     const [mealPreferences, setMealPreferences] = useState<MealPreference[]>(
         guestAccess.initialDraft.mealPreferences ?? [],
     );
@@ -178,15 +200,10 @@ function App() {
 
     // Recipe opened from the My Meals list; shown on the detail page.
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
-    // The plan day (and listed-last time) a manually entered meal goes to.
-    // A My Plan meal opened as a recipe (it may not be in My Recipes).
+    // A My Diary meal opened as a recipe (it may not be in My Recipes).
     const [planMealRecipe, setPlanMealRecipe] = useState<
         Recipe & { entryId: string }
     >();
-    const [planMealTarget, setPlanMealTarget] = useState<{
-        day: string;
-        eatenAt: string;
-    }>();
     const [editRecipeOnOpen, setEditRecipeOnOpen] = useState(false);
 
     // Scroll target for the generated recipe; scrolls smoothly once the
@@ -276,7 +293,7 @@ function App() {
         usesIngredientsTheme ||
         currentPage === 'my-recipes' ||
         currentPage === 'my-journal' ||
-        currentPage === 'settings';
+        currentPage === 'profile';
     const selectedSavedIngredient = userIngredients.find(
         ({ ingredientId }) => ingredientId === selectedSavedIngredientId,
     );
@@ -287,7 +304,16 @@ function App() {
     useLayoutEffect(() => {
         const scroller =
             document.querySelector<HTMLElement>('.page-transition');
-        if (
+        if (scroller && currentPage === 'meal-photo') {
+            scroller.scrollTop = 0;
+        } else if (
+            scroller &&
+            currentPage === 'meal-maker' &&
+            previousPage.current === 'meal-photo'
+        ) {
+            // Back where the photo was tapped.
+            scroller.scrollTop = mealMakerScroll.current;
+        } else if (
             scroller &&
             (currentPage === 'ingredient-detail' ||
                 currentPage === 'add-ingredient')
@@ -327,7 +353,6 @@ function App() {
         ingredientDetailRef.current.edit();
     }, [currentPage, selectedSavedIngredientId]);
 
-    const userId = user?.id;
     const refreshUserIngredients = useCallback(async () => {
         if (!userId || ingredientsRefreshPending.current) return;
         ingredientsRefreshPending.current = true;
@@ -379,8 +404,8 @@ function App() {
                 detailPage &&
                 subPageParent[detailPage] === mainPage &&
                 (detailPage !== 'recipe-detail' || selectedRecipe) &&
-                (detailPage !== 'add-meal' || planMealTarget) &&
                 (detailPage !== 'plan-meal-detail' || planMealRecipe) &&
+                (detailPage !== 'meal-photo' || openPhoto) &&
                 (detailPage !== 'ingredient-detail' ||
                     selectedSavedIngredientId);
             const nextPage = canRestoreDetail ? detailPage : mainPage;
@@ -402,8 +427,8 @@ function App() {
         currentPage,
         selectedRecipe,
         selectedSavedIngredientId,
-        planMealTarget,
         planMealRecipe,
+        openPhoto,
     ]);
 
     function navigateToPage(page: Page) {
@@ -487,8 +512,9 @@ function App() {
     }
 
     async function createRecipe(recipe: Parameters<typeof saveRecipe>[0]) {
-        await saveRecipe(recipe);
-        setRecipesRefreshKey((current) => current + 1);
+        const created = await saveRecipe(recipe);
+        // Shown on My Recipes at once, without reloading the list.
+        setCreatedRecipes((current) => [created, ...current]);
         navigateToPage('my-recipes');
     }
 
@@ -514,17 +540,6 @@ function App() {
         };
         setPlanMealRecipe(updated);
         return updated;
-    }
-
-    /** Saves a hand-entered meal to the plan only, not to My Recipes. */
-    async function addPlanMeal(meal: Parameters<typeof saveRecipe>[0]) {
-        if (!planMealTarget) return;
-        await saveJournalEntry({
-            eatenAt: planMealTarget.eatenAt,
-            mealName: meal.recipeName,
-            ingredients: meal.ingredients,
-        });
-        navigateToPage('my-journal');
     }
 
     async function createUserIngredient(ingredient: IngredientInfo) {
@@ -565,10 +580,19 @@ function App() {
     }
 
     async function handleIngredientSave(
-        savedIngredient: UserIngredient | IngredientInfo,
+        edited: UserIngredient | IngredientInfo,
         saveToUserIngredients: boolean,
     ) {
         if (selectedIngredientIndex === null) return;
+        const currentName = ingredients[selectedIngredientIndex];
+        const savedIngredient = withCorrectedPhotoName(edited, {
+            currentName,
+            previousFdcId:
+                getIngredientInfoFromStoredData(currentName).nutritionSource
+                    ?.fdcId,
+            ingredients,
+            photos: mealPhotos,
+        });
 
         try {
             // Edits to a saved ingredient also update My Ingredients.
@@ -599,6 +623,11 @@ function App() {
             });
 
             // Always update the current meal ingredient
+            const renamedFrom = ingredients[selectedIngredientIndex];
+            if (renamedFrom !== undefined)
+                setMealPhotos((photos) =>
+                    renameInPhotos(photos, renamedFrom, savedIngredient.name),
+                );
             setIngredients((ingredientNames) =>
                 ingredientNames.map((ingredientName, index) =>
                     index === selectedIngredientIndex
@@ -612,15 +641,110 @@ function App() {
         }
     }
 
+    async function handleIngredientRename(
+        renamed: IngredientInfo,
+        saveToUserIngredients: boolean,
+    ) {
+        if (selectedIngredientIndex === null) return;
+        const key = normalizeIngredientName(renamed.name);
+        if (
+            ingredients.some(
+                (name, index) =>
+                    index !== selectedIngredientIndex &&
+                    normalizeIngredientName(name) === key,
+            )
+        )
+            throw new Error(`${renamed.name} is already in your ingredients.`);
+        if (saveToUserIngredients) await saveSheetIngredient(renamed);
+        await handleIngredientSave(renamed, false);
+    }
+
+    /** Changes the chips; a photo goes once none of its chips are left. */
+    function changeIngredients(next: string[]) {
+        setIngredients(next);
+        setMealPhotos((photos) => prunePhotos(photos, next));
+    }
+
     function removeIngredient(ingredientName: string) {
+        removeIngredients([ingredientName]);
+    }
+
+    function removeIngredients(names: string[]) {
+        const removed = new Set(names);
         setIngredients((ingredients) =>
-            ingredients.filter((ingredient) => ingredient !== ingredientName),
+            ingredients.filter((ingredient) => !removed.has(ingredient)),
         );
-        setThisMealIngredients((ingredients) =>
-            ingredients.filter(
-                (ingredient) => ingredient.name !== ingredientName,
+        setMealPhotos((photos) =>
+            prunePhotos(
+                photos,
+                ingredients.filter((ingredient) => !removed.has(ingredient)),
             ),
         );
+        setThisMealIngredients((ingredients) =>
+            ingredients.filter((ingredient) => !removed.has(ingredient.name)),
+        );
+    }
+
+    /** The meal's ingredients found in a photo. */
+    function photoFoods(photo: MealPhoto) {
+        const own = new Set(photo.ingredients.map(normalizeIngredientName));
+        return ingredients.filter((name) =>
+            own.has(normalizeIngredientName(name)),
+        );
+    }
+
+    function openMealPhoto(id: string) {
+        mealMakerScroll.current =
+            document.querySelector('.page-transition')?.scrollTop ?? 0;
+        setOpenPhotoId(id);
+        navigateToPage('meal-photo');
+    }
+
+    function removePhotoFood(photo: MealPhoto, name: string) {
+        removeIngredient(name);
+        // Its last food gone, the photo goes too: back to Meal Maker.
+        if (photoFoods(photo).every((food) => food === name))
+            navigateToPage('meal-maker');
+    }
+
+    /**
+     * Removes a photo with its foods, at once like a chip, and offers Undo
+     * since it can take many foods with it.
+     */
+    function removeMealPhoto(photo: MealPhoto) {
+        const foods = photoFoods(photo);
+        const removed = new Set(foods);
+        const nutrition = thisMealIngredients.filter((ingredient) =>
+            removed.has(ingredient.name),
+        );
+        const index = mealPhotos.findIndex((shown) => shown.id === photo.id);
+        removeIngredients(foods);
+        setMealPhotos((photos) =>
+            photos.filter((shown) => shown.id !== photo.id),
+        );
+        if (currentPage === 'meal-photo') navigateToPage('meal-maker');
+        photoUndo.show('Photo removed.', () => {
+            setIngredients((current) => [
+                ...current,
+                ...foods.filter((name) => !current.includes(name)),
+            ]);
+            setThisMealIngredients((current) => [
+                ...current,
+                ...nutrition.filter(
+                    (ingredient) =>
+                        !current.some((item) => item.name === ingredient.name),
+                ),
+            ]);
+            setMealPhotos((photos) =>
+                photos.some((shown) => shown.id === photo.id)
+                    ? photos
+                    : [
+                          ...photos.slice(0, index),
+                          photo,
+                          ...photos.slice(index),
+                      ],
+            );
+        });
     }
 
     function cacheMealIngredientNutritionByName(
@@ -751,7 +875,19 @@ function App() {
         }
     }
 
+    /** Back to a clean guest workspace after the account is gone. */
     async function handleSignOut() {
+        resetWorkspace();
+        await signOut();
+        guestAccess.showLanding();
+    }
+
+    function handleAccountDeleted() {
+        resetWorkspace();
+        guestAccess.showLanding();
+    }
+
+    function resetWorkspace() {
         setIsSidebarOpen(false);
         const scroller = document.querySelector<HTMLElement>(
             '.page-transition-meal-maker',
@@ -762,6 +898,7 @@ function App() {
         setPageDirection('none');
         setUserIngredients([]);
         setIngredients([]);
+        setMealPhotos([]);
         setThisMealIngredients([]);
         setSelectedIngredientIndex(null);
         setCaloriesGoal(undefined);
@@ -771,8 +908,6 @@ function App() {
         setOriginalMeal(undefined);
         setError(undefined);
         guestAccess.reset();
-        await signOut();
-        guestAccess.showLanding();
     }
 
     function findExistingIngredient(name: string): string | undefined {
@@ -793,6 +928,55 @@ function App() {
         return true;
     }
 
+    function renderMealIngredientSheet() {
+        if (selectedIngredientIndex === null) return null;
+        return (
+            <NutritionDialog
+                ingredientInfo={getIngredientInfoFromStoredData(
+                    ingredients[selectedIngredientIndex],
+                )}
+                onClose={() => setSelectedIngredientIndex(null)}
+                onSave={handleIngredientSave}
+                // Renames the chip (and a saved ingredient, as in
+                // My Diary), keeping its nutrition.
+                onRename={handleIngredientRename}
+                onStarAuthRequired={() =>
+                    requestGuestAccount('save-ingredient')
+                }
+                onNutritionResolved={(nutrition) =>
+                    cacheMealIngredientNutrition(
+                        selectedIngredientIndex,
+                        nutrition,
+                    )
+                }
+            />
+        );
+    }
+
+    /** Meal Maker's photo page, for guests too. */
+    function renderMealPhotoPage() {
+        if (currentPage !== 'meal-photo' || !openPhoto) return null;
+        return (
+            <>
+                <MealPhotoPage
+                    photo={openPhoto}
+                    ingredients={ingredients}
+                    isSaved={(name) =>
+                        Boolean(findIngredientByName(userIngredients, name))
+                    }
+                    onOpenIngredient={(name) =>
+                        setSelectedIngredientIndex(ingredients.indexOf(name))
+                    }
+                    onRemoveIngredient={(name) =>
+                        removePhotoFood(openPhoto, name)
+                    }
+                    onRemovePhoto={() => removeMealPhoto(openPhoto)}
+                />
+                {renderMealIngredientSheet()}
+            </>
+        );
+    }
+
     function renderMealMakerWorkspace() {
         return (
             <div className="meal-maker-screen">
@@ -801,11 +985,20 @@ function App() {
                         ref={mealFormRef}
                         ingredients={ingredients}
                         savedIngredients={userIngredients}
-                        onIngredientsChange={setIngredients}
+                        onIngredientsChange={changeIngredients}
                         onIngredientNutritionSelected={
                             cacheMealIngredientNutritionByName
                         }
                         onRemoveIngredient={removeIngredient}
+                        photos={mealPhotos}
+                        onPhotosChange={setMealPhotos}
+                        onOpenPhoto={openMealPhoto}
+                        onRemovePhoto={(id) => {
+                            const photo = mealPhotos.find(
+                                (shown) => shown.id === id,
+                            );
+                            if (photo) removeMealPhoto(photo);
+                        }}
                         onIngredientClick={openMealIngredient}
                         calories={caloriesGoal}
                         onCaloriesChange={setCaloriesGoal}
@@ -818,21 +1011,7 @@ function App() {
                     />
                 </section>
 
-                {selectedIngredientIndex !== null && (
-                    <NutritionDialog
-                        ingredientInfo={getIngredientInfoFromStoredData(
-                            ingredients[selectedIngredientIndex],
-                        )}
-                        onClose={() => setSelectedIngredientIndex(null)}
-                        onSave={handleIngredientSave}
-                        onNutritionResolved={(nutrition) =>
-                            cacheMealIngredientNutrition(
-                                selectedIngredientIndex,
-                                nutrition,
-                            )
-                        }
-                    />
-                )}
+                {renderMealIngredientSheet()}
 
                 {isGenerating && (
                     <div
@@ -873,6 +1052,10 @@ function App() {
                             originalMeal={originalMeal}
                             onChange={setMeal}
                             onAuthRequired={requestGuestAccount}
+                            editableIngredientNutrition
+                            onIngredientStarAuthRequired={() =>
+                                requestGuestAccount('save-ingredient')
+                            }
                             onSavedRecipesChange={() =>
                                 setRecipesRefreshKey((current) => current + 1)
                             }
@@ -892,23 +1075,46 @@ function App() {
             <div className="app app-public">
                 <header className="page-header page-header-meal-maker">
                     <div className="page-header-inner">
+                        {currentPage === 'meal-photo' && (
+                            <button
+                                type="button"
+                                className="page-header-back"
+                                onClick={() => navigateToPage('meal-maker')}
+                                aria-label="Back"
+                            >
+                                ‹
+                            </button>
+                        )}
                         <Brand className="page-header-brand" />
                     </div>
                 </header>
                 <div className="page-transition page-transition-meal-maker">
                     <main className="page-content page-content-meal-maker">
-                        <div className="meal-maker-screen">
-                            <MealMakerIntro
-                                onTryMealMaker={() =>
-                                    guestAccess.enterMealMaker(scrollToMealForm)
-                                }
-                                onSignIn={() => requestGuestAccount('sign-in')}
-                                onSignUp={() => requestGuestAccount('sign-up')}
-                            />
-                        </div>
-                        {renderMealMakerWorkspace()}
+                        {currentPage === 'meal-photo' && openPhoto ? (
+                            renderMealPhotoPage()
+                        ) : (
+                            <>
+                                <div className="meal-maker-screen">
+                                    <MealMakerIntro
+                                        onTryMealMaker={() =>
+                                            guestAccess.enterMealMaker(
+                                                scrollToMealForm,
+                                            )
+                                        }
+                                        onSignIn={() =>
+                                            requestGuestAccount('sign-in')
+                                        }
+                                        onSignUp={() =>
+                                            requestGuestAccount('sign-up')
+                                        }
+                                    />
+                                </div>
+                                {renderMealMakerWorkspace()}
+                            </>
+                        )}
                     </main>
                 </div>
+                {photoUndo.undoToast}
                 {guestAccess.accountAction && (
                     <AccountRequiredDialog
                         action={guestAccess.accountAction}
@@ -924,6 +1130,10 @@ function App() {
             value={{
                 ingredients: userIngredients,
                 save: saveSheetIngredient,
+                remove: async (ingredientId) => {
+                    await deleteUserIngredients([ingredientId]);
+                },
+                open: () => navigateToPage('my-ingredients'),
             }}
         >
             <div className="app">
@@ -935,7 +1145,12 @@ function App() {
                         currentPage === 'recipe-detail' ||
                         currentPage === 'plan-meal-detail' ||
                         currentPage === 'create-recipe' ||
-                        currentPage === 'add-meal'
+                        currentPage === 'meal-photo'
+                    }
+                    editActions={
+                        currentPage === 'my-journal' && diaryEditActions
+                            ? diaryEditActions
+                            : undefined
                     }
                     editor={
                         isEditingIngredient
@@ -1043,10 +1258,7 @@ function App() {
                                 key={`journal-${user.id}`}
                                 isActive={currentPage === 'my-journal'}
                                 savedIngredients={userIngredients}
-                                onEnterMeal={(target) => {
-                                    setPlanMealTarget(target);
-                                    navigateToPage('add-meal');
-                                }}
+                                onEditActionsChange={setDiaryEditActions}
                                 onOpenMeal={(entry) => {
                                     setPlanMealRecipe({
                                         entryId: entry.id,
@@ -1061,16 +1273,27 @@ function App() {
                             />
                         )}
 
-                        {currentPage === 'settings' && <Settings />}
+                        {currentPage === 'profile' && (
+                            <Profile
+                                key={`profile-${user.id}`}
+                                onSignOut={handleSignOut}
+                                onAccountDeleted={handleAccountDeleted}
+                            />
+                        )}
 
                         {(isRecipesPage || hasVisitedRecipes) && (
                             <MyMeals
                                 key={user.id}
                                 isActive={currentPage === 'my-recipes'}
                                 updatedRecipes={updatedRecipes}
+                                createdRecipes={createdRecipes}
                                 onRecipesRefreshed={
-                                    Object.keys(updatedRecipes).length
-                                        ? () => setUpdatedRecipes({})
+                                    Object.keys(updatedRecipes).length ||
+                                    createdRecipes.length
+                                        ? () => {
+                                              setUpdatedRecipes({});
+                                              setCreatedRecipes([]);
+                                          }
                                         : undefined
                                 }
                                 refreshKey={recipesRefreshKey}
@@ -1099,6 +1322,8 @@ function App() {
                             />
                         )}
 
+                        {renderMealPhotoPage()}
+
                         {currentPage === 'plan-meal-detail' &&
                             planMealRecipe && (
                                 <RecipeDetail
@@ -1121,39 +1346,18 @@ function App() {
                                 onSave={createRecipe}
                             />
                         )}
-
-                        {currentPage === 'add-meal' && planMealTarget && (
-                            <CreateRecipe
-                                key={planMealTarget.eatenAt}
-                                subject="meal"
-                                formId="add-meal-form"
-                                savedIngredients={userIngredients}
-                                fallbackName={(ingredients) =>
-                                    defaultMealName(
-                                        planMealTarget.day,
-                                        ingredients,
-                                    )
-                                }
-                                onSave={addPlanMeal}
-                            />
-                        )}
                     </main>
                 </div>
                 {pageConfig[currentPage].type === 'main' && (
                     <BottomNavigation
                         currentPage={currentPage}
-                        menuOpen={isSidebarOpen}
-                        moreButtonRef={moreButtonRef}
                         onNavigate={(page) => {
                             if (page === 'meal-maker') navigateToMeal();
                             else navigateToPage(page);
                         }}
-                        onMore={() => {
-                            lastMenuTriggerRef.current = moreButtonRef.current;
-                            setIsSidebarOpen(true);
-                        }}
                     />
                 )}
+                {photoUndo.undoToast}
             </div>
         </IngredientCollectionContext>
     );

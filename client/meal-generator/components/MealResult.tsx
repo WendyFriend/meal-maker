@@ -1,10 +1,12 @@
 import {
+    calorieScale,
     hasUnavailableNutrition,
     knownNutritionIngredients,
     totalFiber,
     totalNutrition,
 } from '../../utils/nutrition';
 import {
+    useContext,
     useId,
     useLayoutEffect,
     useMemo,
@@ -13,6 +15,7 @@ import {
     type ReactNode,
 } from 'react';
 import './MealResult.css';
+import { useAutoGrowTextarea } from '../../hooks/useAutoGrowTextarea';
 import LogMealButton, {
     type JournalControl,
 } from '../../journal/LogMealButton';
@@ -34,6 +37,8 @@ import IngredientSection from '../../components/IngredientSection';
 import type { IngredientSectionFeedback } from '../../hooks/useIngredientSectionSave';
 import type { RecipeNutritionEnrichment } from '../../utils/recipeNutrition';
 import useMealBookmark from '../../hooks/useMealBookmark';
+import { IngredientCollectionContext } from '../../ingredients/IngredientCollectionContext';
+import { fromSheet } from '../../utils/mealIngredient';
 
 type MealResultProps = {
     meal: GenerateMealResponse;
@@ -72,6 +77,14 @@ type MealResultProps = {
     /** "card" raises the overview, as on detail and create pages. */
     summaryVariant?: 'band' | 'card';
     showPartialNutrition?: boolean;
+    /**
+     * Lets ingredient sheets fix the match or numbers ("Doesn’t look
+     * right?"), rename from the title and star to My Ingredients, as on
+     * My Diary; fixes change this meal only.
+     */
+    editableIngredientNutrition?: boolean;
+    /** Guests: the sheet's ☆ asks for an account instead of saving. */
+    onIngredientStarAuthRequired?: () => boolean;
 };
 
 const detailTabs = [
@@ -111,7 +124,35 @@ export default function MealResult({
     creating = false,
     summaryVariant = 'band',
     showPartialNutrition = false,
+    editableIngredientNutrition = false,
+    onIngredientStarAuthRequired,
 }: MealResultProps) {
+    const ingredientCollection = useContext(IngredientCollectionContext);
+    // Sheet saves resolve after a request; apply them to the latest meal.
+    const latestMeal = useRef(meal);
+    useLayoutEffect(() => {
+        latestMeal.current = meal;
+    }, [meal]);
+
+    async function saveSheetNutrition(
+        index: number,
+        corrected: IngredientInfo,
+        saveToUserIngredients: boolean,
+        rename = false,
+    ) {
+        if (saveToUserIngredients) await ingredientCollection?.save(corrected);
+        const current = latestMeal.current;
+        if (!current.ingredients[index]) return;
+        onChange({
+            ...current,
+            ingredients: current.ingredients.map((ingredient, itemIndex) =>
+                itemIndex === index
+                    ? fromSheet(ingredient, corrected, rename)
+                    : ingredient,
+            ),
+        });
+    }
+
     const nutritionIngredients = useMemo(
         () =>
             showPartialNutrition
@@ -148,33 +189,7 @@ export default function MealResult({
     }, [editingName]);
 
     // The name field grows with its text, wrapping exactly like the heading.
-    useLayoutEffect(() => {
-        const input = nameInputRef.current;
-        if (!editingName || !input) return;
-        const fit = () => {
-            input.style.height = 'auto';
-            // scrollHeight is rounded; size by whole lines so the field is
-            // exactly as tall as the heading it replaces.
-            const style = getComputedStyle(input);
-            const lineHeight = parseFloat(style.lineHeight);
-            const padding =
-                parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-            const lines = Math.max(
-                1,
-                Math.round((input.scrollHeight - padding) / lineHeight),
-            );
-            input.style.height = Number.isFinite(lines * lineHeight)
-                ? `${lines * lineHeight + padding}px`
-                : `${input.scrollHeight}px`;
-        };
-        fit();
-        const observer =
-            typeof ResizeObserver === 'undefined'
-                ? undefined
-                : new ResizeObserver(fit);
-        observer?.observe(input.parentElement ?? input);
-        return () => observer?.disconnect();
-    }, [editingName, meal.mealName]);
+    useAutoGrowTextarea(nameInputRef, editingName, meal.mealName);
 
     const macroCalories = useMemo(
         () => ({
@@ -207,17 +222,9 @@ export default function MealResult({
 
     // Freeze the comparison scale for this meal so editing one weight cannot
     // resize another ingredient's bar. Leave headroom for portion adjustments.
-    const [ingredientCalorieScale] = useState(() => {
-        const largest = Math.max(
-            0,
-            ...(originalMeal ?? meal).ingredients.map((ingredient) =>
-                ingredient.nutritionUnavailable
-                    ? 0
-                    : (ingredient.caloriesPer100g * ingredient.weight) / 100,
-            ),
-        );
-        return Math.max(500, Math.ceil((largest * 2) / 100) * 100);
-    });
+    const [ingredientCalorieScale] = useState(() =>
+        calorieScale((originalMeal ?? meal).ingredients),
+    );
 
     const [weightDrafts, setWeightDrafts] = useState<Record<number, string>>(
         {},
@@ -420,7 +427,7 @@ export default function MealResult({
                             <LogMealButton
                                 meal={meal}
                                 control={journalControl}
-                                destinationLabel="My Plan"
+                                destinationLabel="My Diary"
                                 onAuthRequired={() =>
                                     onAuthRequired?.('my-day') ?? false
                                 }
@@ -554,6 +561,30 @@ export default function MealResult({
                                                       resolved,
                                                   )
                                             : undefined
+                                    }
+                                    onSaveNutrition={
+                                        editableIngredientNutrition
+                                            ? (corrected, save) =>
+                                                  saveSheetNutrition(
+                                                      index,
+                                                      corrected,
+                                                      save,
+                                                  )
+                                            : undefined
+                                    }
+                                    onRenameNutrition={
+                                        editableIngredientNutrition
+                                            ? (renamed, save) =>
+                                                  saveSheetNutrition(
+                                                      index,
+                                                      renamed,
+                                                      save,
+                                                      true,
+                                                  )
+                                            : undefined
+                                    }
+                                    onStarAuthRequired={
+                                        onIngredientStarAuthRequired
                                     }
                                     weightControls={
                                         showWeightControls

@@ -92,3 +92,34 @@ export type MealMakerGenerateResponse = {
     ingredients: MealMakerGeneratedIngredient[];
     instructions: string[];
 };
+
+/** One cell of a nutrition label. "<1 g" has `value` 1 and `lessThan`. */
+export type MealMakerLabelAmount = {
+    text: string;
+    value: number | null;
+    unit: string | null;
+    lessThan: boolean;
+};
+
+// POST /labels/read?ingredient=1: values the label doesn't print are null
+// (or left out of `ingredient`), never 0.
+export type MealMakerLabelResponse = {
+    labelFound: boolean;
+    servingSize: string | null;
+    per100: Partial<Record<string, MealMakerLabelAmount | null>>;
+    warnings?: string[];
+    ingredient?: Record<string, unknown> & {
+        micronutrientsPer100g?: Record<string, unknown>;
+    };
+    basis?: '100g' | '100mL' | null;
+};
+
+/** `POST /ingredients/scan`: the foods seen in a photo, matched. */
+export type MealMakerIngredientScanResponse = {
+    photoHasFood: boolean;
+    ingredients?: {
+        said?: string | null;
+        quantity?: string | null;
+        food?: MealMakerFood | null;
+    }[];
+};

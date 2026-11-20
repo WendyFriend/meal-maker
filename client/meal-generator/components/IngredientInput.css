@@ -272,86 +272,53 @@
     }
 }
 
-.meal-maker-action-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-    max-width: 340px;
-    margin: 18px auto 0;
-}
-
-@media (max-width: 600px) {
-    .ingredient-input:has(.ingredient-input-control input:focus)
-        .meal-maker-action-row {
-        max-width: none;
-        margin-top: 8px;
-    }
-
-    .ingredient-input:has(.ingredient-input-control input:focus)
-        .meal-maker-action-row
-        button {
-        flex-direction: row;
-        justify-content: center;
-        gap: 4px;
-        min-height: 44px;
-        font-size: 12px;
-    }
-
-    .ingredient-input:has(.ingredient-input-control input:focus)
-        .meal-maker-action-icon {
-        flex: 0 0 28px;
-        width: 28px;
-        height: 28px;
-    }
-
-    .ingredient-input:has(.ingredient-input-control input:focus)
-        .meal-maker-action-icon
-        svg {
-        width: 17px;
-        height: 17px;
-    }
-}
-
-.meal-maker-action-row button {
+/* Voice, Photo and Favourites sit inside the field's trailing edge, like a
+   search bar's mic, so nothing between the field and the chips takes space
+   while the keyboard is up. */
+.ingredient-input-actions {
+    position: absolute;
+    top: 50%;
+    right: 4px;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--text-h-strong);
-    font: inherit;
-    font-size: 14px;
-    font-weight: var(--font-weight-medium);
-    line-height: 1.25;
-    cursor: pointer;
+    transform: translateY(-50%);
 }
 
-.meal-maker-action-icon {
+.ingredient-input-action {
     display: grid;
     place-items: center;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: #fff0e5;
-    color: #287c24;
+    width: 40px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--coral);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color 150ms ease,
+        transform 100ms ease;
 }
 
-.meal-maker-action-photo {
-    color: #ff624e;
-    background: #fff0e9;
-}
-.meal-maker-action-favourite {
-    color: #f4c543;
-    background: #fff6dd;
+.ingredient-input-action:active {
+    background: var(--accent-bg);
+    transform: scale(0.92);
 }
 
-.meal-maker-action-icon svg {
-    width: 29px;
-    height: 29px;
+@media (hover: hover) and (pointer: fine) {
+    .ingredient-input-action:hover {
+        background: var(--accent-bg);
+    }
+}
+
+.ingredient-input-action:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+}
+
+.ingredient-input-action svg {
+    width: 21px;
+    height: 21px;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;
@@ -359,14 +326,13 @@
     stroke-linejoin: round;
 }
 
-.meal-maker-action-favourite svg {
-    fill: currentColor;
-    stroke: #a97814;
-    stroke-width: 1.2;
+/* Typed text stops before the trailing actions. */
+.ingredient-input .ingredient-input-control input {
+    padding-right: 128px;
 }
 
-.meal-maker-action-row button:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: 3px;
-    border-radius: 8px;
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-input-action {
+        transition: none;
+    }
 }

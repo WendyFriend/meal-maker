@@ -239,3 +239,142 @@
         animation: none;
     }
 }
+
+/* Photos taken with Photo, in a row above the chips. Tapping one lists
+   the ingredients found in it. */
+.ingredient-photos {
+    display: flex;
+    flex: 0 0 100%;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.ingredient-photo-tile {
+    position: relative;
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 12px;
+    background: #f0f3e5;
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 6%);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 140ms ease;
+    animation: ingredient-chip-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ingredient-photo-tile:active {
+    transform: scale(0.96);
+}
+
+.ingredient-photo-tile:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.ingredient-photo-tile img {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ingredient-photo-tile .loading-spinner {
+    grid-area: 1 / 1;
+}
+
+.ingredient-photo-tile-scanning {
+    cursor: default;
+}
+
+.ingredient-photo-tile-scanning img {
+    filter: brightness(0.7);
+}
+
+/* A photo with its ✕ on the corner, removed like a chip. */
+.ingredient-photo-item {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.ingredient-photo-remove {
+    position: absolute;
+    /* Inside the corner: the chips' scroll area would clip it outside. */
+    top: 4px;
+    right: 4px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 55%);
+    color: #fff;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 140ms ease;
+}
+
+/* A 34px target around the small mark, within the photo. */
+.ingredient-photo-remove::before {
+    position: absolute;
+    inset: -4px -4px -8px -8px;
+    content: '';
+}
+
+.ingredient-photo-remove svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 3;
+}
+
+.ingredient-photo-remove:active {
+    transform: scale(0.9);
+}
+
+.ingredient-photo-remove:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .ingredient-photo-remove:hover {
+        background: var(--coral);
+    }
+}
+
+/* How many foods the photo stands for. */
+.ingredient-photo-count {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    min-width: 20px;
+    height: 20px;
+    box-sizing: border-box;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 55%);
+    color: #fff;
+    font-size: 12px;
+    font-weight: var(--font-weight-medium);
+    line-height: 20px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-photo-tile {
+        animation: none;
+    }
+}

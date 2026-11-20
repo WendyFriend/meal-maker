@@ -1,23 +1,33 @@
 import type { DetailEditorHandle } from './components/DetailEditorHandle';
-import { useImperativeHandle, useState, type Ref, type FormEvent } from 'react';
+import {
+    useEffect,
+    useImperativeHandle,
+    useRef,
+    useState,
+    type Ref,
+    type FormEvent,
+} from 'react';
 import type {
     IngredientInfo,
     IngredientNutrition,
 } from '../shared/types/types';
 import IngredientNutritionContent from './meal-generator/components/IngredientNutritionContent';
 import type { NutritionFieldId } from './meal-generator/components/NutritionField';
+import {
+    MACRO_FIELDS as fields,
+    labelFormValues,
+} from './meal-generator/components/nutritionForm';
+import {
+    LabelScanButton,
+    LabelScanCamera,
+    LabelScanFailed,
+    LabelScanReading,
+    LabelScanToast,
+} from './components/LabelScan';
+import { NutritionFixOptions } from './meal-generator/components/NutritionFixMenu';
+import { useLabelScan } from './hooks/useLabelScan';
 import './IngredientDetail.css';
 import type { MicronutrientKey } from '../shared/micronutrients';
-
-const fields: readonly NutritionFieldId[] = [
-    'caloriesPer100g',
-    'proteinPer100g',
-    'carbohydratePer100g',
-    'fatPer100g',
-    'sugarPer100g',
-    'saturatedFatPer100g',
-    'fiberPer100g',
-];
 const requiredFields = new Set<NutritionFieldId>([
     'caloriesPer100g',
     'proteinPer100g',
@@ -38,8 +48,11 @@ export default function IngredientPage({
     onCancel,
     findExistingIngredient,
     onEditorStateChange,
+    labelPhoto,
 }: {
     onEditorStateChange: (state: { editing: boolean; saving: boolean }) => void;
+    /** A nutrition label photo to read into the new ingredient's form. */
+    labelPhoto?: string;
     ref?: Ref<DetailEditorHandle>;
     ingredient: IngredientInfo;
     onSave: (ingredient: IngredientNutrition) => Promise<void>;
@@ -66,6 +79,35 @@ export default function IngredientPage({
     const [saved, setSaved] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>();
+    const [camera, setCamera] = useState(false);
+    // Why a label couldn't be read, shown in place of the numbers.
+    const [scanError, setScanError] = useState<string | null>(null);
+    // Label values fill the form for review; nothing saves until Save.
+    const labelScan = useLabelScan({
+        onFill: (nutrition) => {
+            const { macros, micros } = labelFormValues(nutrition);
+            setDraft(
+                (current) =>
+                    current && {
+                        ...current,
+                        values: { ...current.values, ...macros },
+                        micronutrients: {
+                            ...current.micronutrients,
+                            ...micros,
+                        },
+                    },
+            );
+        },
+        onError: setScanError,
+    });
+    const { read: readLabel } = labelScan;
+    const scannedPhoto = useRef<string>(undefined);
+    useEffect(() => {
+        if (!labelPhoto || !creating || scannedPhoto.current === labelPhoto)
+            return;
+        scannedPhoto.current = labelPhoto;
+        void readLabel(labelPhoto);
+    }, [labelPhoto, creating, readLabel]);
 
     function beginEdit() {
         setError(undefined);
@@ -86,13 +128,15 @@ export default function IngredientPage({
             return;
         }
         onEditorStateChange({ editing: false, saving: false });
+        labelScan.reset();
+        setScanError(null);
         setDraft(null);
         setError(undefined);
     }
 
     async function save(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!draft || saving || saved) return;
+        if (!draft || saving || saved || labelScan.reading) return;
         const name = draft.name.trim();
         if (
             !name ||
@@ -147,6 +191,7 @@ export default function IngredientPage({
                 setSaved(true);
                 onEditorStateChange({ editing: true, saving: true });
             } else {
+                labelScan.reset();
                 setDraft(null);
                 onEditorStateChange({ editing: false, saving: false });
             }
@@ -185,6 +230,30 @@ export default function IngredientPage({
                 <IngredientNutritionContent
                     ingredient={ingredient}
                     headingLevel="h1"
+                    afterHeader={
+                        draft && (
+                            <LabelScanButton
+                                disabled={saving || saved}
+                                hidden={labelScan.reading || Boolean(scanError)}
+                                onClick={() => setCamera(true)}
+                            />
+                        )
+                    }
+                    nutritionCover={
+                        labelScan.reading ? (
+                            <LabelScanReading />
+                        ) : scanError ? (
+                            <LabelScanFailed message={scanError}>
+                                <NutritionFixOptions
+                                    only={['label', 'values']}
+                                    onChoose={(fix) => {
+                                        setScanError(null);
+                                        if (fix === 'label') setCamera(true);
+                                    }}
+                                />
+                            </LabelScanFailed>
+                        ) : undefined
+                    }
                     editor={
                         draft
                             ? {
@@ -228,12 +297,39 @@ export default function IngredientPage({
                 />
                 {draft && (
                     <div className="ingredient-detail-save-bar">
-                        <button type="submit" disabled={saving || saved}>
+                        <button
+                            type="submit"
+                            disabled={saving || saved || labelScan.reading}
+                        >
                             {saved ? 'Saved' : saving ? 'Saving…' : 'Save'}
                         </button>
                     </div>
                 )}
             </form>
+            {camera && (
+                <LabelScanCamera
+                    backLabel={
+                        creating
+                            ? 'Back to Add Ingredient'
+                            : 'Back to ingredient'
+                    }
+                    onClose={() => setCamera(false)}
+                    onPhoto={(photo) => {
+                        setCamera(false);
+                        setError(undefined);
+                        setScanError(null);
+                        void labelScan.read(photo, draft?.name);
+                    }}
+                />
+            )}
+            {labelScan.result && (
+                <LabelScanToast
+                    key={labelScan.result.id}
+                    placement="floating"
+                    result={labelScan.result}
+                    onClose={labelScan.dismissResult}
+                />
+            )}
         </section>
     );
 }

@@ -1,18 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { JournalEntry } from '../shared/types/journal';
-import type { UserIngredient } from '../shared/types/types';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type MouseEvent as ReactMouseEvent,
+    type PointerEvent as ReactPointerEvent,
+    type ReactNode,
+} from 'react';
+import type { HeaderEditActions } from './navigation/PageHeader';
+import type { JournalEntry, JournalEntryInput } from '../shared/types/journal';
+import type { MealIngredient, UserIngredient } from '../shared/types/types';
 import LoadingSpinner from './components/LoadingSpinner';
 import CollectionContextMenu from './components/CollectionContextMenu';
 import { contextMenuPosition } from './components/contextMenuPosition';
 import SwipeableCollectionRow from './components/SwipeableCollectionRow';
 import MealMicronutrients from './meal-generator/components/MealMicronutrients';
-import IngredientThumbnail from './meal-generator/components/IngredientThumbnail';
 import NutritionOverview from './meal-generator/components/NutritionOverview';
 import { localDateValue } from './journal/nutrition';
 import { subscribeJournalChanges } from './journal/changes';
 import PlanCalendar from './journal/PlanCalendar';
 import JournalMealIngredients from './journal/JournalMealIngredients';
+import { combineFoods } from './journal/foodList';
+import IngredientSectionRow from './components/IngredientSectionRow';
 import {
+    calorieScale,
     hasUnavailableNutrition,
     knownNutritionIngredients,
     totalFiber,
@@ -24,16 +36,19 @@ import {
     reorderJournalEntries,
     saveJournalEntry,
     updateJournalEntryIngredients,
+    updateJournalEntryName,
 } from './services/journalService';
+import { MissingJournalEntryError } from './services/journalErrors';
 import PullRefreshIndicator from './components/PullRefreshIndicator';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { useUndoableDelete } from './hooks/useUndoableDelete';
+import { useUndoToast } from './hooks/useUndoToast';
 import { useLongPressReorder } from './hooks/useLongPressReorder';
-import AddRowButton from './components/AddRowButton';
 import ActionToast from './components/ActionToast';
 import { successToastColors } from './components/actionToastColors';
 import AddMealSheet from './journal/AddMealSheet';
-import { nextPlanTime } from './journal/planMeal';
+import MealNameField from './journal/MealNameField';
+import { defaultMealName, nextPlanTime } from './journal/planMeal';
 import type { Recipe } from '../shared/types/recipe';
 import './components/SavedCollection.css';
 import './MyJournal.css';
@@ -65,38 +80,51 @@ function macroPercentages(ingredients: JournalEntry['ingredients']) {
     };
 }
 
-function displayWeight(weight: number) {
-    return `${Number(weight.toFixed(1))} g`;
+/** Move Up, Move Down and Delete, with a separator. */
+/** A meal menu's height: 44px items plus Delete's divider. */
+function mealMenuHeight(items: number) {
+    return items * 44 + 19;
 }
 
-/** Move Up, Move Down and Delete, with a separator. */
-const MEAL_MENU_HEIGHT = 151;
+/** Surfaces opened from a meal (sheets, popups, menus, toasts). */
+const MEAL_OVERLAYS =
+    'dialog, [popover], [role="dialog"], [role="menu"], [role="listbox"], .action-toast';
 
-/** "Meal N" over the name, optionally followed by the open chevron. */
+/** A meal created in place at the end of the list, not yet saved. */
+type NewMeal = {
+    entry: JournalEntry;
+    day: string;
+    initialDraft: MealIngredient[];
+};
+
+/** "Meal N" over the name. */
 function MealLabelText({
     number,
     name,
-    chevron,
+    placeholder = false,
+    nameEditor,
 }: {
     number: number;
     name: string;
-    chevron?: 'shown' | 'space';
+    /** A new meal's name until saving names it. */
+    placeholder?: boolean;
+    /** Shown in the name's place while renaming. */
+    nameEditor?: ReactNode;
 }) {
     return (
         <>
             <small>Meal {number}</small>
-            <strong>
-                {name}
-                {chevron && (
-                    <>
-                        {'\u2060'}
-                        <span
-                            className={`journal-meal-open-chevron ingredient-name-chevron${chevron === 'space' ? ' ingredient-name-chevron-space' : ''}`}
-                            aria-hidden="true"
-                        />
-                    </>
-                )}
-            </strong>
+            {nameEditor ?? (
+                <strong
+                    className={
+                        placeholder
+                            ? 'journal-meal-name-placeholder'
+                            : undefined
+                    }
+                >
+                    {name}
+                </strong>
+            )}
         </>
     );
 }
@@ -104,15 +132,18 @@ function MealLabelText({
 export default function MyJournal({
     isActive = true,
     savedIngredients = [],
-    onEnterMeal,
     onOpenMeal,
+    onEditActionsChange,
 }: {
     isActive?: boolean;
     savedIngredients?: UserIngredient[];
-    /** Opens Add Meal to enter a meal by hand for `day`, listed last. */
-    onEnterMeal?: (target: { day: string; eatenAt: string }) => void;
     /** Opens the meal as a recipe page. */
     onOpenMeal?: (entry: JournalEntry) => void;
+    /**
+     * Shows a meal edit's ✕ / ✓ in the app header (null when it ends).
+     * Without it, they stay in the meal's own row.
+     */
+    onEditActionsChange?: (actions: HeaderEditActions | null) => void;
 }) {
     const [day, setDay] = useState(() => localDateValue());
     const [calendarOpen, setCalendarOpen] = useState(false);
@@ -123,6 +154,46 @@ export default function MyJournal({
     const [editingEntryIds, setEditingEntryIds] = useState<ReadonlySet<string>>(
         () => new Set(),
     );
+    // The meal whose ✕ / ✓ are in the app header; another meal ending its
+    // edit (e.g. saved on leave as this one starts) never clears them.
+    const headerEditOwner = useRef<string | null>(null);
+    const onEditActionsChangeRef = useRef(onEditActionsChange);
+    useLayoutEffect(() => {
+        onEditActionsChangeRef.current = onEditActionsChange;
+    });
+    const setHeaderEditActions = useCallback(
+        (
+            id: string,
+            isNew: boolean,
+            actions: {
+                saving: boolean;
+                onCancel: () => void;
+                onSave: () => void;
+            } | null,
+        ) => {
+            if (!actions) {
+                if (headerEditOwner.current !== id) return;
+                headerEditOwner.current = null;
+                onEditActionsChangeRef.current?.(null);
+                return;
+            }
+            headerEditOwner.current = id;
+            onEditActionsChangeRef.current?.({
+                ...actions,
+                title: isNew ? 'New Meal' : 'Edit Meal',
+                cancelLabel: 'Cancel ingredients changes',
+                saveLabel: 'Save ingredients changes',
+                savingLabel: 'Saving ingredients changes',
+            });
+        },
+        [],
+    );
+    // Moving to another tab hands the header back.
+    useEffect(() => {
+        if (isActive || !headerEditOwner.current) return;
+        headerEditOwner.current = null;
+        onEditActionsChangeRef.current?.(null);
+    }, [isActive]);
     const setEntryEditing = useCallback((id: string, editing: boolean) => {
         setEditingEntryIds((current) => {
             if (current.has(id) === editing) return current;
@@ -154,8 +225,19 @@ export default function MyJournal({
     const [orderError, setOrderError] = useState('');
     const [addingMeal, setAddingMeal] = useState(false);
     const [mealAdded, setMealAdded] = useState(0);
+    const [newMeal, setNewMeal] = useState<NewMeal | null>(null);
+    // A created meal keeps its new-meal row key, so the card (and its save
+    // spinner and nutrition follow-up) stays mounted when it is replaced.
+    const [rowKeys, setRowKeys] = useState<Record<string, string>>({});
+    const rowKey = (id: string) => rowKeys[id] ?? id;
+    // Meals saved in place of a row with no database record (a new meal's
+    // key, or a meal deleted on another device), by that row's id.
+    const replacements = useRef(new Map<string, Promise<JournalEntry>>());
+    const discardToast = useUndoToast();
     const journalChangeSource = useRef(Symbol('my-journal'));
     const lastPointerType = useRef('mouse');
+    // Where a long press on a meal's ingredients started (null on its row).
+    const pressPoint = useRef<{ x: number; y: number } | null>(null);
     const mealListRef = useRef<HTMLOListElement>(null);
     const [result, setResult] = useState<{
         day: string;
@@ -170,9 +252,34 @@ export default function MyJournal({
         x: number;
         y: number;
         trigger: HTMLElement | null;
+        /** Opened by a touch hold: drag reorders, so no Move Up/Down. */
+        touch: boolean;
     } | null>(null);
     const closeMealMenu = useCallback(() => setMealMenu(null), []);
+    // Bumped by the menu's Edit; the meal starts editing when it changes.
+    const [editRequests, setEditRequests] = useState<Record<string, number>>(
+        {},
+    );
     const [removeError, setRemoveError] = useState('');
+    // A meal's name changed while editing it (by row key): part of the edit,
+    // so ✓ or leaving saves it with the ingredients and ✕ drops it.
+    const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
+    const nameDraftsRef = useRef(nameDrafts);
+    const setNameDraft = useCallback((key: string, name?: string) => {
+        const next = { ...nameDraftsRef.current };
+        if (name === undefined) delete next[key];
+        else next[key] = name;
+        nameDraftsRef.current = next;
+        setNameDrafts(next);
+    }, []);
+    // The meal whose name field is open, and its name when it opened (Esc).
+    const [renamingKey, setRenamingKey] = useState<string | null>(null);
+    const renamingKeyRef = useRef(renamingKey);
+    const renameOrigin = useRef('');
+    const openRename = useCallback((key: string | null) => {
+        renamingKeyRef.current = key;
+        setRenamingKey(key);
+    }, []);
     const {
         rowRef,
         exitClass,
@@ -251,12 +358,12 @@ export default function MyJournal({
             .catch(() => {
                 if (!active || requestId !== requestIdRef.current) return;
                 if (refreshingRef.current)
-                    setRefreshError('Could not refresh your plan.');
+                    setRefreshError('Could not refresh your diary.');
                 else
                     setResult({
                         day,
                         entries: [],
-                        error: 'Could not load your plan. Please try again.',
+                        error: 'Could not load your diary. Please try again.',
                     });
             })
             .finally(() => {
@@ -273,23 +380,65 @@ export default function MyJournal({
     const entries = (current?.entries ?? []).filter(
         (entry) => !hiddenIds.has(entry.id),
     );
+    const shownNewMeal =
+        current && !current.error && newMeal?.day === day ? newMeal : null;
+    // The new meal is listed last but is not part of the day's totals or
+    // order until it is saved.
+    const listedMeals = shownNewMeal
+        ? [...entries, shownNewMeal.entry]
+        : entries;
+    function openAddMeal() {
+        setOpenSwipeId(null);
+        setAddingMeal(true);
+    }
     // Long press lifts a meal; dropping it saves the new order straight away.
-    const { liftedId, pressProps, projectedIndex } = useLongPressReorder({
-        listRef: mealListRef,
-        enabled: isActive && view === 'meals' && entries.length > 1,
-        onLift: () => {
-            // The saved order must list every meal, so settle any removal.
-            finishRemoval();
-            setOpenSwipeId(null);
-            setMealMenu(null);
-        },
-        onReorder: (id, to) => {
-            const ids = entries.map((entry) => entry.id);
-            ids.splice(ids.indexOf(id), 1);
-            ids.splice(to, 0, id);
-            saveMealOrder(ids);
-        },
-    });
+    const { liftedId, pressProps, projectedIndex, holdNow } =
+        useLongPressReorder({
+            listRef: mealListRef,
+            // A lone meal still opens its menu on a long press.
+            enabled: isActive && view === 'meals' && entries.length > 0,
+            // Held and let go without dragging: the meal's menu, as on iOS.
+            onHold: (id) => {
+                const entry = entries.find((item) => item.id === id);
+                const row = mealListRef.current?.querySelector<HTMLElement>(
+                    `[data-reorder-id="${CSS.escape(id)}"] .journal-meal-row`,
+                );
+                if (!entry || !row) return;
+                const bounds = row.getBoundingClientRect();
+                const touch = lastPointerType.current === 'touch';
+                // Held on the ingredients: the menu opens where the finger
+                // was, not at the (possibly far away) title.
+                const point = pressPoint.current;
+                setOpenSwipeId(null);
+                setMealMenu({
+                    entry,
+                    touch,
+                    trigger:
+                        row.querySelector<HTMLElement>(
+                            '.journal-meal-toggle',
+                        ) ?? row,
+                    ...contextMenuPosition(
+                        point?.x ?? bounds.left + 16,
+                        point?.y ?? bounds.bottom,
+                        mealMenuHeight(
+                            mealMenuActions(entry, touch).length + 1,
+                        ),
+                    ),
+                });
+            },
+            onLift: () => {
+                // The saved order must list every meal, so settle any removal.
+                finishRemoval();
+                setOpenSwipeId(null);
+                setMealMenu(null);
+            },
+            onReorder: (id, to) => {
+                const ids = entries.map((entry) => entry.id);
+                ids.splice(ids.indexOf(id), 1);
+                ids.splice(to, 0, id);
+                saveMealOrder(ids);
+            },
+        });
     const refresh = () => {
         if (!current || current.error || refreshingRef.current || liftedId)
             return;
@@ -312,6 +461,9 @@ export default function MyJournal({
     const dailyNutritionPartial =
         dailyNutritionIncomplete && dailyKnownIngredients.length > 0;
     const dailyFiber = totalFiber(ingredients);
+    // Food List: each food once, with the day's portions added up.
+    const foods = combineFoods(ingredients);
+    const foodCalorieScale = calorieScale(foods);
     const dailyFiberForSummary =
         ingredients.length === 0
             ? { ...dailyFiber, available: true, hasKnown: true }
@@ -326,6 +478,8 @@ export default function MyJournal({
         setExpandedEntryIds([]);
         setOrderError('');
         setOpenSwipeId(null);
+        // Unmounting the new meal saves it (or drops it if empty).
+        setNewMeal(null);
         setDay(nextDay);
     }
 
@@ -334,6 +488,127 @@ export default function MyJournal({
             current.includes(id)
                 ? current.filter((entryId) => entryId !== id)
                 : [...current, id],
+        );
+    }
+
+    /** Shows a saved meal in place of `replacesId`, or last if new. */
+    function showEntry(
+        saved: JournalEntry,
+        day: string,
+        replacesId = saved.id,
+    ) {
+        setResult((value) =>
+            value?.day === day
+                ? {
+                      ...value,
+                      entries: value.entries.some(
+                          (item) => item.id === replacesId,
+                      )
+                          ? value.entries.map((item) =>
+                                item.id === replacesId ? saved : item,
+                            )
+                          : [...value.entries, saved],
+                  }
+                : value,
+        );
+    }
+
+    /**
+     * Creates `input` as the meal shown in place of `replacesId`, keeping its
+     * card (row key) so it stays mounted; later saves for that id go to it.
+     */
+    async function saveInPlace(
+        replacesId: string,
+        input: JournalEntryInput,
+        day: string,
+    ) {
+        const request = saveJournalEntry(input, journalChangeSource.current);
+        replacements.current.set(replacesId, request);
+        try {
+            const saved = await request;
+            setRowKeys((keys) => ({
+                ...keys,
+                [saved.id]: keys[replacesId] ?? replacesId,
+            }));
+            showEntry(saved, day, replacesId);
+            setNewMeal((meal) => (meal?.entry.id === replacesId ? null : meal));
+            return saved;
+        } catch (error) {
+            replacements.current.delete(replacesId);
+            throw error;
+        }
+    }
+
+    async function saveMealIngredients(
+        entry: JournalEntry,
+        ingredients: MealIngredient[],
+    ): Promise<JournalEntry> {
+        const replacement = replacements.current.get(entry.id);
+        if (replacement)
+            return saveMealIngredients(await replacement, ingredients);
+        try {
+            const saved = await updateJournalEntryIngredients(
+                entry.id,
+                ingredients,
+                journalChangeSource.current,
+            );
+            showEntry(saved, day);
+            return saved;
+        } catch (error) {
+            if (!(error instanceof MissingJournalEntryError)) throw error;
+            // Deleted on another device while being edited here: keep the
+            // edit by saving it as the same meal again, in the same card.
+            if (replacements.current.has(entry.id))
+                return saveMealIngredients(entry, ingredients);
+            const { eatenAt, mealName } = entry;
+            return saveInPlace(
+                entry.id,
+                { eatenAt, mealName, ingredients },
+                day,
+            );
+        }
+    }
+
+    /** "Create a new one": an empty meal card, open for ingredients. */
+    function startNewMeal() {
+        setAddingMeal(false);
+        setOpenSwipeId(null);
+        discardToast.dismiss();
+        const key = `new-meal-${Date.now()}`;
+        setExpandedEntryIds((ids) => [...ids, key]);
+        setNewMeal({
+            day,
+            initialDraft: [],
+            entry: {
+                id: key,
+                eatenAt: nextPlanTime(day, current?.entries ?? []),
+                mealName: 'New meal',
+                ingredients: [],
+            },
+        });
+    }
+
+    /**
+     * The first save creates the meal, named as typed or from its day and
+     * first ingredient; later saves (nutrition filled in afterwards) update it.
+     */
+    function saveNewMeal(
+        meal: NewMeal,
+        ingredients: MealIngredient[],
+        name?: string,
+    ) {
+        const { id, eatenAt } = meal.entry;
+        if (replacements.current.has(id))
+            return saveMealIngredients(meal.entry, ingredients);
+        const mealName = name ?? defaultMealName(meal.day, ingredients);
+        return saveInPlace(id, { eatenAt, mealName, ingredients }, meal.day);
+    }
+
+    function discardNewMeal(meal: NewMeal, draft: MealIngredient[]) {
+        setNewMeal(null);
+        if (!draft.length) return;
+        discardToast.show('Meal discarded.', () =>
+            setNewMeal({ ...meal, initialDraft: draft }),
         );
     }
 
@@ -383,6 +658,160 @@ export default function MyJournal({
         setMealAdded((count) => count + 1);
     }
 
+    /** The menu's Edit: open the meal and start editing its ingredients. */
+    function editMeal(entry: JournalEntry) {
+        const key = rowKey(entry.id);
+        setExpandedEntryIds((ids) => (ids.includes(key) ? ids : [...ids, key]));
+        setEditRequests((requests) => ({
+            ...requests,
+            [entry.id]: (requests[entry.id] ?? 0) + 1,
+        }));
+    }
+
+    /** Opens the name field of a meal being edited. */
+    function startRename(key: string, name: string) {
+        renameOrigin.current = name;
+        setNameDraft(key, name);
+        openRename(key);
+    }
+
+    /** Closes the name field; an emptied name goes back to what it was. */
+    function closeRename(restore = false) {
+        const key = renamingKeyRef.current;
+        if (!key) return;
+        openRename(null);
+        const name = nameDraftsRef.current[key] ?? '';
+        if (!restore && name.trim()) return;
+        // A new meal's untouched name is no name: it keeps its placeholder.
+        setNameDraft(key, renameOrigin.current || undefined);
+    }
+
+    /** The edited name to save with the ingredients, if it changed. */
+    function editedName(key: string, current: string) {
+        const name = nameDraftsRef.current[key]?.trim();
+        return name && name !== current ? name : undefined;
+    }
+
+    /** Ends a meal's edit: its name draft goes with it. */
+    function endNameEdit(key: string) {
+        if (renamingKeyRef.current === key) openRename(null);
+        if (key in nameDraftsRef.current) setNameDraft(key);
+    }
+
+    async function saveMeal(
+        entry: JournalEntry,
+        key: string,
+        ingredients: MealIngredient[],
+    ) {
+        const name = editedName(key, entry.mealName);
+        const saved = await saveMealIngredients(entry, ingredients);
+        if (!name || name === saved.mealName) return saved;
+        const renamed = await updateJournalEntryName(
+            saved.id,
+            name,
+            journalChangeSource.current,
+        );
+        showEntry(renamed, day);
+        return renamed;
+    }
+
+    /**
+     * Right-click (or the menu key) on a meal opens its menu where clicked.
+     * A touch long press lifts the meal and shows the menu when let go
+     * (onHold); Android's own long press can arrive first, so it lifts now.
+     */
+    function openMealContextMenu(
+        event: ReactMouseEvent<HTMLElement>,
+        entry: JournalEntry,
+        editingMeal: boolean,
+    ) {
+        event.preventDefault();
+        if (lastPointerType.current === 'touch') {
+            if (!editingMeal) holdNow();
+            return;
+        }
+        pressProps(entry.id).onPointerUp();
+        if (liftedId) return;
+        const card =
+            event.currentTarget.closest<HTMLElement>('.journal-meal-card');
+        const trigger =
+            card?.querySelector<HTMLElement>('.journal-meal-toggle') ??
+            event.currentTarget;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        setOpenSwipeId(null);
+        setMealMenu({
+            entry,
+            touch: false,
+            trigger,
+            ...contextMenuPosition(
+                event.clientX || bounds.left + 16,
+                event.clientY || bounds.bottom,
+                mealMenuHeight(mealMenuActions(entry, false).length + 1),
+            ),
+        });
+    }
+
+    /**
+     * The long press and right-click of a meal's ingredients area. Sheets and
+     * popups opened from it are rendered elsewhere but their events still
+     * bubble here through React, so those are left alone.
+     */
+    function contentPressProps(
+        entry: JournalEntry,
+        press: ReturnType<typeof pressProps>,
+    ) {
+        const fromMeal = (event: ReactMouseEvent<HTMLElement>) =>
+            event.target instanceof Element &&
+            event.currentTarget.contains(event.target) &&
+            !event.target.closest(MEAL_OVERLAYS);
+        return {
+            ...press,
+            onPointerDown(event: ReactPointerEvent<HTMLElement>) {
+                if (!fromMeal(event)) return;
+                lastPointerType.current = event.pointerType;
+                pressPoint.current = { x: event.clientX, y: event.clientY };
+                press.onPointerDown(event);
+            },
+            onContextMenu(event: ReactMouseEvent<HTMLElement>) {
+                if (fromMeal(event)) openMealContextMenu(event, entry, false);
+            },
+        };
+    }
+
+    /**
+     * The meal's menu: View Details (its meal page) and Edit, then Move Up /
+     * Down for mouse and keyboard only; on touch, hold and drag reorders.
+     * Delete follows on its own.
+     */
+    function mealMenuActions(entry: JournalEntry, touch: boolean) {
+        return [
+            ...(onOpenMeal
+                ? [
+                      {
+                          label: 'View Details',
+                          icon: (
+                              // The Recipes tab's book, as the meal page
+                              // shares Recipe Detail's layout.
+                              <path d="M12 5c-2.5-1.8-5.7-2-9-1v16c3.3-1 6.5-.8 9 1 2.5-1.8 5.7-2 9-1V4c-3.3-1-6.5-.8-9 1Zm0 0v16" />
+                          ),
+                          onSelect: () => onOpenMeal(entry),
+                      },
+                  ]
+                : []),
+            {
+                label: 'Edit',
+                icon: (
+                    <>
+                        <path d="M4 20h4l11-11a2.1 2.1 0 0 0-4-4L4 16v4Z" />
+                        <path d="m13.7 6.3 4 4" />
+                    </>
+                ),
+                onSelect: () => editMeal(entry),
+            },
+            ...(touch ? [] : mealMoveActions(entry.id)),
+        ];
+    }
+
     function mealMoveActions(id: string) {
         const index = entries.findIndex((entry) => entry.id === id);
         return [
@@ -421,11 +850,32 @@ export default function MyJournal({
             <PullRefreshIndicator
                 distance={pullDistance}
                 refreshing={refreshing}
-                label="Refreshing My Plan"
+                label="Refreshing My Diary"
             />
             <header className="saved-collection-intro">
                 <div className="saved-collection-title journal-title-row">
-                    <h1 id="my-journal-heading">My Plan</h1>
+                    <h1 id="my-journal-heading">My Diary</h1>
+                    {/* Like Calendar and Reminders, adding lives in the title
+                        bar: always in the same place, never hidden while a
+                        meal is edited, and away from the meals. Tapping it
+                        mid-edit saves that edit first (save on leave). */}
+                    <button
+                        type="button"
+                        className="journal-add-meal-button"
+                        aria-label="Add meal"
+                        title="Add meal"
+                        disabled={
+                            !current ||
+                            Boolean(current.error) ||
+                            Boolean(shownNewMeal) ||
+                            Boolean(liftedId)
+                        }
+                        onClick={openAddMeal}
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 4.5v15M4.5 12h15" />
+                        </svg>
+                    </button>
                 </div>
                 <div className="journal-date-row">
                     <button
@@ -441,7 +891,7 @@ export default function MyJournal({
                     <button
                         type="button"
                         className="journal-date"
-                        aria-label="Choose plan date"
+                        aria-label="Choose diary date"
                         aria-haspopup="dialog"
                         aria-expanded={calendarOpen}
                         disabled={Boolean(liftedId)}
@@ -490,7 +940,7 @@ export default function MyJournal({
             {!current ? (
                 <div className="journal-loading" role="status">
                     <LoadingSpinner />
-                    Loading your plan…
+                    Loading your diary…
                 </div>
             ) : current.error ? (
                 <div className="journal-error" role="alert">
@@ -519,7 +969,7 @@ export default function MyJournal({
                     <div
                         className="journal-view-tabs"
                         role="tablist"
-                        aria-label="Plan views"
+                        aria-label="Diary views"
                         onKeyDown={(event) => {
                             const views = [
                                 'meals',
@@ -598,36 +1048,50 @@ export default function MyJournal({
                                 {orderError || removeError}
                             </p>
                         )}
-                        {entries.length ? (
+                        {listedMeals.length ? (
                             <ol
                                 ref={mealListRef}
                                 className={`journal-meals${liftedId ? ' journal-meals-dragging' : ''}`}
                             >
-                                {entries.map((entry, index) => {
-                                    const expanded = expandedEntryIds.includes(
-                                        entry.id,
-                                    );
-                                    const editingMeal = editingEntryIds.has(
-                                        entry.id,
-                                    );
-                                    const canOpen = Boolean(
-                                        onOpenMeal && expanded && !editingMeal,
-                                    );
+                                {listedMeals.map((entry, index) => {
+                                    const isNew = entry === shownNewMeal?.entry;
+                                    const key = rowKey(entry.id);
+                                    const expanded =
+                                        expandedEntryIds.includes(key);
+                                    // A new meal opens in edit mode; no frame shows the
+                                    // usual header before its editor reports in.
+                                    const editingMeal =
+                                        isNew || editingEntryIds.has(key);
                                     const mealNumber =
                                         projectedIndex(index) + 1;
                                     const press = pressProps(entry.id);
+                                    const renamingMeal = renamingKey === key;
+                                    const shownName =
+                                        editingMeal && key in nameDrafts
+                                            ? nameDrafts[key]
+                                            : entry.mealName;
                                     return (
                                         <li
                                             className={`journal-meal-card${liftedId === entry.id ? ' journal-meal-dragging' : ''}${exitClass(entry.id)}`}
-                                            ref={rowRef(entry.id)}
+                                            ref={
+                                                isNew
+                                                    ? undefined
+                                                    : rowRef(entry.id)
+                                            }
                                             data-expanded={expanded}
-                                            data-reorder-id={entry.id}
+                                            data-menu-open={
+                                                mealMenu?.entry.id ===
+                                                    entry.id || undefined
+                                            }
+                                            data-reorder-id={
+                                                isNew ? undefined : entry.id
+                                            }
                                             style={exitStyle(entry.id)}
-                                            key={entry.id}
+                                            key={key}
                                         >
                                             <SwipeableCollectionRow
                                                 name={entry.mealName}
-                                                enabled={!liftedId}
+                                                enabled={!liftedId && !isNew}
                                                 open={openSwipeId === entry.id}
                                                 onOpen={() =>
                                                     setOpenSwipeId(entry.id)
@@ -648,7 +1112,7 @@ export default function MyJournal({
                                                     expanded, the name (with its chevron) opens the meal
                                                     page and the trailing chevron collapses it. */}
                                                 <div
-                                                    className={`journal-meal-row${canOpen ? ' journal-meal-row-split' : ''}${editingMeal ? ' journal-meal-row-editing' : ''}`}
+                                                    className={`journal-meal-row${editingMeal ? ' journal-meal-row-editing' : ''}`}
                                                     // Editing pauses reordering, so a long press
                                                     // near ✕ / ✓ never lifts the meal.
                                                     {...(editingMeal
@@ -657,6 +1121,8 @@ export default function MyJournal({
                                                     onPointerDown={(event) => {
                                                         lastPointerType.current =
                                                             event.pointerType;
+                                                        pressPoint.current =
+                                                            null;
                                                         if (!editingMeal)
                                                             press.onPointerDown(
                                                                 event,
@@ -683,6 +1149,7 @@ export default function MyJournal({
                                                     onContextMenu={(event) => {
                                                         // Leave the open edit actions their own menu.
                                                         if (
+                                                            isNew ||
                                                             (
                                                                 event.target as HTMLElement
                                                             ).closest(
@@ -690,36 +1157,11 @@ export default function MyJournal({
                                                             )
                                                         )
                                                             return;
-                                                        event.preventDefault();
-                                                        press.onPointerUp();
-                                                        // Touch long press lifts the meal; the menu is
-                                                        // for right-click and the keyboard menu key.
-                                                        if (
-                                                            liftedId ||
-                                                            lastPointerType.current ===
-                                                                'touch'
-                                                        )
-                                                            return;
-                                                        const toggle =
-                                                            event.currentTarget.querySelector<HTMLElement>(
-                                                                '.journal-meal-toggle',
-                                                            ) ??
-                                                            event.currentTarget;
-                                                        const bounds =
-                                                            event.currentTarget.getBoundingClientRect();
-                                                        setOpenSwipeId(null);
-                                                        setMealMenu({
+                                                        openMealContextMenu(
+                                                            event,
                                                             entry,
-                                                            trigger: toggle,
-                                                            ...contextMenuPosition(
-                                                                event.clientX ||
-                                                                    bounds.left +
-                                                                        16,
-                                                                event.clientY ||
-                                                                    bounds.bottom,
-                                                                MEAL_MENU_HEIGHT,
-                                                            ),
-                                                        });
+                                                            editingMeal,
+                                                        );
                                                     }}
                                                 >
                                                     {/* No collapse while editing: leaving saves,
@@ -746,9 +1188,7 @@ export default function MyJournal({
                                                                     : undefined
                                                             }
                                                             onClick={() =>
-                                                                toggleEntry(
-                                                                    entry.id,
-                                                                )
+                                                                toggleEntry(key)
                                                             }
                                                         >
                                                             <svg
@@ -761,57 +1201,88 @@ export default function MyJournal({
                                                             </svg>
                                                         </button>
                                                     )}
-                                                    {canOpen ? (
-                                                        <button
-                                                            type="button"
-                                                            className="journal-meal-label journal-meal-open"
-                                                            aria-label={`Open ${entry.mealName} recipe`}
-                                                            disabled={Boolean(
-                                                                liftedId,
-                                                            )}
-                                                            onClick={() =>
-                                                                onOpenMeal?.(
-                                                                    entry,
+                                                    {/* The meal page opens from the meal's
+                                                        menu (View Details), so the whole row
+                                                        just opens and closes the meal. */}
+                                                    {/* While editing, the name is part of the edit:
+                                                        tapping it renames the meal. */}
+                                                    <span
+                                                        className={`journal-meal-label${editingMeal ? ' journal-meal-label-editing' : ''}`}
+                                                        aria-hidden={
+                                                            !editingMeal
+                                                        }
+                                                        data-part-of-edit={
+                                                            editingMeal ||
+                                                            undefined
+                                                        }
+                                                    >
+                                                        <MealLabelText
+                                                            number={mealNumber}
+                                                            name={shownName}
+                                                            placeholder={
+                                                                isNew &&
+                                                                !(
+                                                                    key in
+                                                                    nameDrafts
                                                                 )
                                                             }
-                                                        >
-                                                            <MealLabelText
-                                                                number={
-                                                                    mealNumber
-                                                                }
-                                                                name={
-                                                                    entry.mealName
-                                                                }
-                                                                chevron="shown"
-                                                            />
-                                                        </button>
-                                                    ) : (
-                                                        <span
-                                                            className="journal-meal-label"
-                                                            aria-hidden="true"
-                                                        >
-                                                            <MealLabelText
-                                                                number={
-                                                                    mealNumber
-                                                                }
-                                                                name={
-                                                                    entry.mealName
-                                                                }
-                                                                // Hidden, but keeps the name wrapping
-                                                                // the same as when it opens the meal.
-                                                                chevron={
-                                                                    onOpenMeal
-                                                                        ? 'space'
-                                                                        : undefined
-                                                                }
-                                                            />
-                                                        </span>
-                                                    )}
+                                                            nameEditor={
+                                                                renamingMeal ? (
+                                                                    <MealNameField
+                                                                        value={
+                                                                            shownName
+                                                                        }
+                                                                        placeholder={
+                                                                            isNew
+                                                                                ? entry.mealName
+                                                                                : 'Meal name'
+                                                                        }
+                                                                        onChange={(
+                                                                            name,
+                                                                        ) =>
+                                                                            setNameDraft(
+                                                                                key,
+                                                                                name,
+                                                                            )
+                                                                        }
+                                                                        onSave={() =>
+                                                                            closeRename()
+                                                                        }
+                                                                        onCancel={() =>
+                                                                            closeRename(
+                                                                                true,
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                ) : editingMeal ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="journal-meal-name-button"
+                                                                        aria-label={`Rename ${shownName}`}
+                                                                        onClick={() =>
+                                                                            startRename(
+                                                                                key,
+                                                                                isNew &&
+                                                                                    !(
+                                                                                        key in
+                                                                                        nameDrafts
+                                                                                    )
+                                                                                    ? ''
+                                                                                    : shownName,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            shownName
+                                                                        }
+                                                                    </button>
+                                                                ) : undefined
+                                                            }
+                                                        />
+                                                    </span>
                                                     <div
                                                         className="journal-meal-ingredient-actions"
-                                                        ref={actionSlotRef(
-                                                            entry.id,
-                                                        )}
+                                                        ref={actionSlotRef(key)}
                                                     />
                                                 </div>
                                             </SwipeableCollectionRow>
@@ -822,14 +1293,22 @@ export default function MyJournal({
                                                 aria-hidden={!expanded}
                                                 inert={!expanded}
                                             >
-                                                <div className="journal-meal-expand-inner">
+                                                {/* Long press and right-click work on the
+                                                    ingredients too, outside editing. */}
+                                                <div
+                                                    className={`journal-meal-expand-inner${editingMeal ? '' : ' journal-meal-expand-pressable'}`}
+                                                    {...(editingMeal
+                                                        ? {}
+                                                        : contentPressProps(
+                                                              entry,
+                                                              press,
+                                                          ))}
+                                                >
                                                     <JournalMealIngredients
                                                         entry={entry}
                                                         expanded={expanded}
                                                         actionsContainer={
-                                                            actionSlots[
-                                                                entry.id
-                                                            ]
+                                                            actionSlots[key]
                                                         }
                                                         disabled={Boolean(
                                                             liftedId,
@@ -839,42 +1318,86 @@ export default function MyJournal({
                                                         }
                                                         onEditingChange={(
                                                             editing,
-                                                        ) =>
+                                                        ) => {
                                                             setEntryEditing(
-                                                                entry.id,
+                                                                key,
                                                                 editing,
+                                                            );
+                                                            if (!editing)
+                                                                endNameEdit(
+                                                                    key,
+                                                                );
+                                                        }}
+                                                        nameChanged={
+                                                            Boolean(
+                                                                nameDrafts[
+                                                                    key
+                                                                ]?.trim(),
+                                                            ) &&
+                                                            nameDrafts[
+                                                                key
+                                                            ].trim() !==
+                                                                entry.mealName
+                                                        }
+                                                        onDiscardName={() => {
+                                                            const name =
+                                                                nameDrafts[key];
+                                                            return () => {
+                                                                if (
+                                                                    name !==
+                                                                    undefined
+                                                                )
+                                                                    setNameDraft(
+                                                                        key,
+                                                                        name,
+                                                                    );
+                                                            };
+                                                        }}
+                                                        editRequest={
+                                                            editRequests[
+                                                                entry.id
+                                                            ]
+                                                        }
+                                                        onHeaderActions={
+                                                            onEditActionsChange
+                                                                ? (actions) =>
+                                                                      setHeaderEditActions(
+                                                                          key,
+                                                                          isNew,
+                                                                          actions,
+                                                                      )
+                                                                : undefined
+                                                        }
+                                                        isNew={isNew}
+                                                        initialDraft={
+                                                            isNew
+                                                                ? shownNewMeal?.initialDraft
+                                                                : undefined
+                                                        }
+                                                        onDiscardNew={(draft) =>
+                                                            shownNewMeal &&
+                                                            discardNewMeal(
+                                                                shownNewMeal,
+                                                                draft,
                                                             )
                                                         }
-                                                        onSave={async (
-                                                            next,
-                                                        ) => {
-                                                            const saved =
-                                                                await updateJournalEntryIngredients(
-                                                                    entry.id,
-                                                                    next,
-                                                                    journalChangeSource.current,
-                                                                );
-                                                            setResult(
-                                                                (current) =>
-                                                                    current?.day ===
-                                                                    day
-                                                                        ? {
-                                                                              ...current,
-                                                                              entries:
-                                                                                  current.entries.map(
-                                                                                      (
-                                                                                          item,
-                                                                                      ) =>
-                                                                                          item.id ===
-                                                                                          entry.id
-                                                                                              ? saved
-                                                                                              : item,
-                                                                                  ),
-                                                                          }
-                                                                        : current,
-                                                            );
-                                                            return saved;
-                                                        }}
+                                                        onSave={(next) =>
+                                                            isNew &&
+                                                            shownNewMeal
+                                                                ? saveNewMeal(
+                                                                      shownNewMeal,
+                                                                      next,
+                                                                      editedName(
+                                                                          key,
+                                                                          '',
+                                                                      ),
+                                                                  )
+                                                                : saveMeal(
+                                                                      entry,
+                                                                      key,
+                                                                      next,
+                                                                  )
+                                                        }
                                                     />
                                                 </div>
                                             </div>
@@ -885,24 +1408,13 @@ export default function MyJournal({
                         ) : (
                             <div className="saved-collection-empty journal-empty">
                                 <p className="saved-collection-empty-title">
-                                    No meals in your plan for this day
+                                    No meals in your diary for this day
                                 </p>
                                 <p className="saved-collection-empty-hint">
-                                    Add a meal from My Recipes or enter one
-                                    yourself.
+                                    Tap + to add a meal from My Recipes or enter
+                                    one yourself.
                                 </p>
                             </div>
-                        )}
-                        {current && !current.error && (
-                            <AddRowButton
-                                label="Add meal"
-                                className="journal-add-meal"
-                                disabled={Boolean(liftedId)}
-                                onClick={() => {
-                                    setOpenSwipeId(null);
-                                    setAddingMeal(true);
-                                }}
-                            />
                         )}
                     </div>
                     <div
@@ -911,43 +1423,28 @@ export default function MyJournal({
                         aria-labelledby="journal-foods-tab"
                         hidden={view !== 'foods'}
                     >
-                        {ingredients.length ? (
-                            <ul className="journal-food-list">
-                                {entries.flatMap((entry) =>
-                                    entry.ingredients.map(
-                                        (ingredient, index) => (
-                                            <li key={`${entry.id}-${index}`}>
-                                                <IngredientThumbnail
-                                                    name={ingredient.name}
-                                                    fdcId={
-                                                        ingredient
-                                                            .nutritionSource
-                                                            ?.fdcId
-                                                    }
-                                                />
-                                                <span>
-                                                    <strong>
-                                                        {ingredient.resolvedName ??
-                                                            ingredient.name}
-                                                    </strong>
-                                                    <small>
-                                                        {entry.mealName}
-                                                    </small>
-                                                </span>
-                                                <b>
-                                                    {displayWeight(
-                                                        ingredient.weight,
-                                                    )}
-                                                </b>
-                                            </li>
-                                        ),
-                                    ),
-                                )}
-                            </ul>
+                        {foods.length ? (
+                            // The same rows as a recipe's Ingredients.
+                            <div className="meal-ingredients journal-food-ingredients">
+                                <ul
+                                    className="ingredient-list"
+                                    aria-label="Foods for the day"
+                                >
+                                    {foods.map((food, index) => (
+                                        <li key={`${food.name}-${index}`}>
+                                            <IngredientSectionRow
+                                                ingredient={food}
+                                                calorieScale={foodCalorieScale}
+                                                showChevron
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         ) : (
                             <div className="saved-collection-empty journal-empty">
                                 <p className="saved-collection-empty-title">
-                                    No foods in your plan for this day
+                                    No foods in your diary for this day
                                 </p>
                             </div>
                         )}
@@ -975,7 +1472,7 @@ export default function MyJournal({
                     x={mealMenu.x}
                     y={mealMenu.y}
                     trigger={mealMenu.trigger}
-                    actions={mealMoveActions(mealMenu.entry.id)}
+                    actions={mealMenuActions(mealMenu.entry, mealMenu.touch)}
                     onDelete={() => removeMeal(mealMenu.entry)}
                     onClose={closeMealMenu}
                 />
@@ -984,13 +1481,7 @@ export default function MyJournal({
                 <AddMealSheet
                     onClose={() => setAddingMeal(false)}
                     onAddRecipe={addRecipeToPlan}
-                    onManual={() => {
-                        setAddingMeal(false);
-                        onEnterMeal?.({
-                            day,
-                            eatenAt: nextPlanTime(day, current?.entries ?? []),
-                        });
-                    }}
+                    onManual={startNewMeal}
                 />
             )}
             {mealAdded > 0 && (
@@ -1003,6 +1494,7 @@ export default function MyJournal({
                 />
             )}
             {undoToast}
+            {discardToast.undoToast}
         </section>
     );
 }

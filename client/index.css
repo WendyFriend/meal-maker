@@ -40,6 +40,8 @@
     --accent-bg: #fff0ee;
     --accent-border: #f4796c;
     --accent-green: #dce9e8;
+    /* Saved (filled) stars, e.g. Meal Detail and ingredient sheets. */
+    --star: #f6b900;
 
     --error: #c8452f;
 
@@ -93,6 +95,15 @@
     --shadow: 0 8px 24px rgb(84 60 46 / 10%);
     --shadow-sm: 0 1px 2px rgb(84 60 46 / 6%), 0 4px 12px rgb(84 60 46 / 5%);
     --shadow-md: 0 2px 6px rgb(84 60 46 / 5%), 0 12px 32px rgb(84 60 46 / 8%);
+
+    /* Toasts: an inverse surface, so they read apart from the page. */
+    --toast-bg: var(--text-h-strong);
+    --toast-text: #ffffff;
+    --toast-icon-bg: #d4efd3;
+    --toast-icon: #1f6b31;
+    --toast-action: #ff9d92;
+    --toast-shadow:
+        0 2px 6px rgb(27 51 47 / 16%), 0 10px 28px rgb(27 51 47 / 24%);
 
     font: 16px/150% var(--sans);
     letter-spacing: 0.1px;

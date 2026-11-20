@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest';
 import { handleIdentifyFood } from './identifyFood.js';
+import { parseJsonObject } from '../../ai/vision.js';
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -39,4 +40,11 @@ it('reports photos that do not show a food', async () => {
 
 it('rejects requests without a photo', async () => {
     expect((await handleIdentifyFood({ image: 'x' })).status).toBe(400);
+});
+
+it('reads JSON wrapped in a code fence', () => {
+    expect(parseJsonObject('```json\n{"name":"oats"}\n```')).toEqual({
+        name: 'oats',
+    });
+    expect(parseJsonObject('no json here')).toBeUndefined();
 });

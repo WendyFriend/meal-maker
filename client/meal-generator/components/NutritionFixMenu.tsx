@@ -10,7 +10,7 @@ export type NutritionFix = 'food' | 'label' | 'photo' | 'values';
 
 const fixes: { id: NutritionFix; label: string; symbol: ActionSheetSymbol }[] =
     [
-        { id: 'food', label: 'Choose a different food', symbol: 'search' },
+        { id: 'food', label: 'Search from database', symbol: 'search' },
         { id: 'label', label: 'Scan nutrition label', symbol: 'scan' },
         { id: 'photo', label: 'Take a photo', symbol: 'camera' },
         { id: 'values', label: 'Correct the numbers', symbol: 'edit' },
@@ -21,7 +21,7 @@ const variants = {
     icon: {
         className: 'nutrition-fix-icon',
         label: 'Doesn’t look right?',
-        caption: 'Not the ingredient you entered?',
+        caption: 'Doesn’t look right?',
     },
     // A text link under Vitamins & minerals, for wrong numbers.
     link: {
@@ -30,6 +30,37 @@ const variants = {
         caption: undefined,
     },
 } as const;
+
+/** The fixes as a list of choices, in the menu or a failed scan's panel. */
+export function NutritionFixOptions({
+    only,
+    disabled = false,
+    onChoose,
+}: {
+    /** A subset of the fixes, in their usual order. */
+    only?: readonly NutritionFix[];
+    disabled?: boolean;
+    onChoose: (fix: NutritionFix) => void;
+}) {
+    return (
+        <ul className="nutrition-fix-options">
+            {fixes
+                .filter(({ id }) => !only || only.includes(id))
+                .map(({ id, label, symbol }) => (
+                    <li key={id}>
+                        <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => onChoose(id)}
+                        >
+                            <ActionSheetIcon symbol={symbol} />
+                            {label}
+                        </button>
+                    </li>
+                ))}
+        </ul>
+    );
+}
 
 function QuestionIcon() {
     return (
@@ -88,23 +119,13 @@ export default function NutritionFixMenu({
                     {caption && (
                         <p className="nutrition-fix-menu-caption">{caption}</p>
                     )}
-                    <ul>
-                        {fixes.map(({ id, label, symbol }) => (
-                            <li key={id}>
-                                <button
-                                    type="button"
-                                    disabled={disabled}
-                                    onClick={() => {
-                                        close();
-                                        onChoose(id);
-                                    }}
-                                >
-                                    <ActionSheetIcon symbol={symbol} />
-                                    {label}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
+                    <NutritionFixOptions
+                        disabled={disabled}
+                        onChoose={(fix) => {
+                            close();
+                            onChoose(fix);
+                        }}
+                    />
                 </>
             )}
         </Popover>

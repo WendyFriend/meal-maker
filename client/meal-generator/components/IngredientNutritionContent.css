@@ -405,3 +405,106 @@
     display: inline;
     white-space: pre-wrap;
 }
+
+/* A tappable title (My Diary renames from it): it looks like the title,
+   with a soft press state. */
+.ingredient-nutrition-name-button {
+    border-radius: 4px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 150ms ease;
+}
+
+.ingredient-nutrition-name-button:active {
+    opacity: 0.6;
+}
+
+/* Focus returned to the title after renaming shows no ring. */
+.ingredient-nutrition-name[tabindex='-1']:focus {
+    outline: none;
+}
+
+.ingredient-nutrition-name-button:focus-visible {
+    outline: 2px solid var(--coral);
+    outline-offset: 3px;
+}
+
+/* Renaming in place, like Recipe Detail: the title's own type and
+   position, with only an underline marking the field. The padding and
+   matching margin hold the underline without moving what follows. */
+.nutrition-rename-input {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 0 0 4px;
+    /* -2px: the inline title sits 2px lower on its row's line box. */
+    margin: -2px 0 -4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    resize: none;
+    overflow: hidden;
+    box-shadow: inset 0 -1px 0 var(--border);
+    caret-color: var(--accent);
+    transition: box-shadow 150ms ease;
+}
+
+.nutrition-rename-input:focus,
+.nutrition-rename-input:focus-visible {
+    outline: none;
+    box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-nutrition-name-button,
+    .nutrition-rename-input {
+        transition: none;
+    }
+}
+
+/* A label being read (or not): the numbers keep their space under a cover,
+   so nothing jumps, and fade back in. */
+.ingredient-nutrition-body {
+    position: relative;
+}
+
+.ingredient-nutrition-numbers {
+    transition: opacity 320ms ease;
+}
+
+.ingredient-nutrition-body[data-covered] .ingredient-nutrition-numbers {
+    opacity: 0;
+    transition-duration: 160ms;
+}
+
+.ingredient-nutrition-cover {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    padding-top: 56px;
+}
+
+/* Each new cover (reading, then an error) fades in. */
+.ingredient-nutrition-cover > * {
+    animation: ingredient-nutrition-cover-in 240ms ease-out both;
+}
+
+@keyframes ingredient-nutrition-cover-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ingredient-nutrition-numbers {
+        transition: none;
+    }
+
+    .ingredient-nutrition-cover > * {
+        animation: none;
+    }
+}

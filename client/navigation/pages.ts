@@ -2,16 +2,23 @@ export type Page = keyof typeof pageConfig;
 
 export const mainPagePaths = {
     'meal-maker': '/',
-    'my-journal': '/my-plan',
+    'my-journal': '/my-diary',
     'my-recipes': '/my-recipes',
     'my-ingredients': '/my-ingredients',
-    settings: '/settings',
+    profile: '/profile',
 } as const;
 
 export type MainPage = keyof typeof mainPagePaths;
 
+// Old addresses that still open their page (My Plan became My Diary).
+const legacyPaths: Record<string, MainPage> = {
+    '/my-plan': 'my-journal',
+    '/settings': 'profile',
+};
+
 export function mainPageFromPath(pathname: string): MainPage | undefined {
     const path = pathname.replace(/\/+$/, '') || '/';
+    if (legacyPaths[path]) return legacyPaths[path];
     return (Object.entries(mainPagePaths) as [MainPage, string][]).find(
         ([, route]) => route === path,
     )?.[0];
@@ -26,8 +33,8 @@ export const pageConfig = {
         type: 'main',
         title: 'My Ingredients',
     },
-    'my-journal': { type: 'main', title: 'My Plan' },
-    settings: { type: 'main', title: 'Settings' },
+    'my-journal': { type: 'main', title: 'My Diary' },
+    profile: { type: 'main', title: 'Profile' },
     'my-recipes': {
         type: 'main',
         title: 'My Meals',
@@ -48,14 +55,12 @@ export const pageConfig = {
         type: 'sub',
         title: 'Create Recipe',
     },
-    // A My Plan meal shown as a recipe; it may not exist in My Recipes.
+    // A Meal Maker photo with the foods found in it.
+    'meal-photo': { type: 'sub', title: 'Photo' },
+    // A My Diary meal shown as a recipe; it may not exist in My Recipes.
     'plan-meal-detail': {
         type: 'sub',
         title: 'Recipe',
-    },
-    'add-meal': {
-        type: 'sub',
-        title: 'Add Meal',
     },
 } as const;
 
@@ -75,7 +80,7 @@ export const navigationItems: {
         id: 'my-recipes',
         label: 'My Meals',
     },
-    { id: 'my-journal', label: 'My Plan' },
+    { id: 'my-journal', label: 'My Diary' },
 ];
 
 /*
@@ -89,6 +94,6 @@ export const subPageParent: Partial<Record<Page, Page>> = {
     'ingredient-detail': 'my-ingredients',
     'recipe-detail': 'my-recipes',
     'create-recipe': 'my-recipes',
-    'add-meal': 'my-journal',
     'plan-meal-detail': 'my-journal',
+    'meal-photo': 'meal-maker',
 };

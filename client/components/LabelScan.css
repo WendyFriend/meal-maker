@@ -1,0 +1,74 @@
+.label-scan {
+    display: flex;
+    justify-content: center;
+    margin: -8px 0 var(--space-5);
+}
+
+.label-scan[data-hidden] {
+    visibility: hidden;
+}
+
+.label-scan-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.label-scan-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.label-scan-button svg {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.label-scan-reading {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    padding-top: 16px;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.label-scan-failed {
+    display: grid;
+    gap: 14px;
+    width: min(100%, 320px);
+}
+
+.label-scan-failed > p {
+    margin: 0;
+    padding: 0 12px;
+    color: var(--text-h);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.label-scan-failed > ul {
+    padding: 6px;
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}

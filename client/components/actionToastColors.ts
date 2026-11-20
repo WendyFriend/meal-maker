@@ -1,7 +1,12 @@
-/** Shared confirmation styling for saved recipes, logged meals and edits. */
+/**
+ * Shared confirmation styling for saved recipes, logged meals and edits: an
+ * inverse (dark ink-green) surface, so the toast stands out from the app's
+ * white and cream pages and sheets.
+ */
 export const successToastColors = {
-    background: '#fff',
-    text: 'var(--text-h-strong)',
-    iconBackground: '#e6f3e5',
-    icon: '#27813a',
+    background: 'var(--toast-bg)',
+    text: 'var(--toast-text)',
+    iconBackground: 'var(--toast-icon-bg)',
+    icon: 'var(--toast-icon)',
+    action: 'var(--toast-action)',
 };

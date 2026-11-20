@@ -1,0 +1,160 @@
+/* Profile: an account card, then Log Out and Delete Account at the bottom. */
+
+/* Fills the scroll area between the header and the tabs exactly, so the
+   page never scrolls and the actions sit at the bottom. The tab bar is
+   outside that area, so no tab-bar padding is needed. */
+.page-transition:has(> .page-content > .profile),
+.page-content:has(> .profile) {
+    display: flex;
+    flex-direction: column;
+}
+
+.page-content:has(> .profile) {
+    flex: 1 0 auto;
+}
+
+.profile.saved-collection {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    padding-top: 24px;
+    padding-bottom: 48px;
+}
+
+/* Same title area as My Recipes, My Ingredients and My Diary: their title
+   rows hold 44px icons, so keep that height without any. */
+.profile .saved-collection-title {
+    min-height: 44px;
+    flex-wrap: nowrap;
+}
+
+.profile .saved-collection-title h1 {
+    min-width: 0;
+    white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+    .profile .saved-collection-title {
+        display: flex;
+    }
+}
+
+.profile-account {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin: 8px 0 32px;
+    text-align: center;
+}
+
+.profile-avatar {
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: var(--accent-bg);
+    color: var(--accent-strong);
+    font-size: 32px;
+    font-weight: 600;
+}
+
+.profile-email {
+    max-width: 100%;
+    margin: 0;
+    overflow: hidden;
+    color: var(--text-h);
+    font-size: 17px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* One pair: their 44px targets already space them apart. */
+    gap: 4px;
+    margin-top: auto;
+}
+
+.profile-actions /* Plain text, no button look; dims while pressed. */
+.profile-log-out {
+    min-height: 44px;
+    padding: 8px 24px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-h);
+    font: inherit;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 150ms ease;
+}
+
+.profile-log-out:active {
+    opacity: 0.55;
+}
+
+.profile-log-out:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Findable but quiet: plain muted text, red only while pressed. */
+.profile-delete-link {
+    min-height: 44px;
+    padding: 8px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    transition: color 150ms ease;
+}
+
+.profile-delete-link:hover,
+.profile-delete-link:active {
+    color: var(--danger);
+}
+
+.profile-delete-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Quietest line on the page, under Delete Account. */
+.profile-version {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.profile-error {
+    margin: 0 0 20px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: 14px;
+}
+
+.popover-panel.profile-delete-confirm p {
+    margin: 6px 10px 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-log-out,
+    .profile-delete-link {
+        transition: none;
+    }
+}

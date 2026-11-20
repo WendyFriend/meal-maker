@@ -72,6 +72,10 @@ export default function IngredientSection({
     footer,
     error,
     feedback,
+    messages = {
+        saving: 'Saving ingredients…',
+        saved: 'Ingredients updated.',
+    },
     toastColors = successToastColors,
 }: {
     children: ReactNode;
@@ -83,6 +87,8 @@ export default function IngredientSection({
     footer?: ReactNode;
     error?: string;
     feedback?: IngredientSectionFeedback;
+    /** Toast wording while saving and once saved. */
+    messages?: { saving: string; saved: string };
     toastColors?: {
         background?: string;
         text?: string;
@@ -111,7 +117,7 @@ export default function IngredientSection({
             {footer}
             {feedback?.saving && (
                 <ActionToast
-                    message="Saving ingredients…"
+                    message={messages.saving}
                     icon={<LoadingSpinner size="small" tone="inherit" />}
                     placement="floating"
                     colors={toastColors}
@@ -120,7 +126,7 @@ export default function IngredientSection({
             {!feedback?.saving && feedback?.successId != null && (
                 <ActionToast
                     key={feedback.successId}
-                    message="Ingredients updated."
+                    message={messages.saved}
                     placement="floating"
                     colors={toastColors}
                     onClose={() => feedback.dismiss(feedback.successId!)}

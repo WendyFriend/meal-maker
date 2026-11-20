@@ -76,7 +76,6 @@ function Form({
 
 let setMobile: (mobile: boolean) => void;
 beforeEach(() => {
-    localStorage.removeItem('meal-maker:quick-add-layout');
     setMobile = mockPickerEnvironment();
 });
 afterEach(() => {
@@ -248,7 +247,7 @@ describe('ingredient search catalogue', () => {
         ).toBeVisible();
     });
 
-    it('places matching saved ingredients before curated ingredients', async () => {
+    it('ranks the closest match first, even above a saved ingredient', async () => {
         const user = userEvent.setup();
         render(
             <Form
@@ -268,7 +267,7 @@ describe('ingredient search catalogue', () => {
             within(screen.getByRole('listbox'))
                 .getAllByRole('option')
                 .map((option) => option.textContent),
-        ).toEqual(['Tomato relish', 'Tomato']);
+        ).toEqual(['Tomato', 'Tomato relish']);
     });
 
     it('uses the saved record when its name duplicates a curated ingredient', async () => {
@@ -421,7 +420,7 @@ it('does not add a search result when a touch is cancelled', async () => {
     const user = userEvent.setup();
     render(<Form />);
     await user.type(screen.getByRole('combobox'), 'To');
-    const option = screen.getByRole('option', { name: 'Tofu' });
+    const option = screen.getByRole('option', { name: 'Tofu, saved' });
     fireEvent.pointerDown(option, { pointerType: 'touch', pointerId: 1 });
     fireEvent.pointerCancel(option, { pointerType: 'touch', pointerId: 1 });
     expect(option).toBeInTheDocument();

@@ -84,10 +84,12 @@
     cursor: pointer;
 }
 
-.ingredient-section-row
-    .ingredient-chevron-button:hover
-    .ingredient-name-chevron {
-    border-color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+    .ingredient-section-row
+        .ingredient-chevron-button:hover
+        .ingredient-name-chevron {
+        border-color: var(--accent);
+    }
 }
 
 .ingredient-section-row .ingredient-chevron-button:focus-visible {
@@ -177,4 +179,59 @@
 
 .ingredient-name-chevron.ingredient-name-chevron-space {
     visibility: hidden;
+}
+
+/* A tappable read-only weight (My Diary: tap to edit it). The padding and
+   matching negative margin give a 44px target without moving the text. */
+.ingredient-section-row button.ingredient-weight-edit {
+    min-height: 44px;
+    margin: -10px -10px -10px 0;
+    padding: 10px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    font-family: inherit;
+    line-height: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 150ms ease;
+}
+
+.ingredient-section-row button.ingredient-weight-edit:active {
+    background: var(--accent-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .ingredient-section-row button.ingredient-weight-edit:hover {
+        background: var(--warm-cream);
+    }
+}
+
+.ingredient-section-row button.ingredient-weight-edit:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+/* Wraps the picture without becoming a box, so the row lays out the same. */
+.ingredient-section-row .ingredient-thumbnail-button {
+    display: contents;
+}
+
+.ingredient-section-row
+    .ingredient-thumbnail-button
+    .meal-ingredient-thumbnail {
+    cursor: pointer;
+}
+
+.ingredient-section-row
+    .ingredient-thumbnail-button:focus-visible
+    .meal-ingredient-thumbnail {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.ingredient-section-row
+    .ingredient-thumbnail-button:active
+    .meal-ingredient-thumbnail {
+    opacity: 0.7;
 }

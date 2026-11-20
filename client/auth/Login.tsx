@@ -7,9 +7,12 @@ import Brand from '../components/Brand';
 export default function Login({
     embedded = false,
     initialMode = 'sign-in',
+    onModeChange,
 }: {
+    /** Inside a dialog that has its own heading, so this one is left out. */
     embedded?: boolean;
     initialMode?: 'sign-in' | 'sign-up';
+    onModeChange?: (mode: 'sign-in' | 'sign-up') => void;
 }) {
     const { signIn, signUp, signInWithGoogle } = useAuth();
 
@@ -78,17 +81,28 @@ export default function Login({
         >
             <div className="login-shell">
                 <Brand className="login-brand" />
-                <section className="login" aria-labelledby="login-heading">
-                    <header className="login-heading">
-                        <h1 id="login-heading">
-                            {isSignUp ? 'A fresh start.' : 'Welcome back.'}
-                        </h1>
-                        <p className="login-subtitle">
-                            {isSignUp
-                                ? 'Create your account and make something delicious with what you have.'
-                                : 'Your ingredients, favourite meals and a little inspiration — all in one place.'}
-                        </p>
-                    </header>
+                <section
+                    className="login"
+                    {...(embedded
+                        ? {
+                              'aria-label': isSignUp
+                                  ? 'Create account'
+                                  : 'Sign in',
+                          }
+                        : { 'aria-labelledby': 'login-heading' })}
+                >
+                    {!embedded && (
+                        <header className="login-heading">
+                            <h1 id="login-heading">
+                                {isSignUp ? 'A fresh start.' : 'Welcome back.'}
+                            </h1>
+                            <p className="login-subtitle">
+                                {isSignUp
+                                    ? 'Create your account and make something delicious with what you have.'
+                                    : 'Your ingredients, favourite meals and a little inspiration — all in one place.'}
+                            </p>
+                        </header>
+                    )}
 
                     <button
                         type="button"
@@ -198,7 +212,7 @@ export default function Login({
                                     Please wait…
                                 </span>
                             ) : isSignUp ? (
-                                'Create account'
+                                'Create free account'
                             ) : (
                                 'Sign in'
                             )}
@@ -214,7 +228,10 @@ export default function Login({
                             className="login-toggle"
                             disabled={isLoading}
                             onClick={() => {
-                                setIsSignUp((value) => !value);
+                                setIsSignUp(!isSignUp);
+                                onModeChange?.(
+                                    isSignUp ? 'sign-in' : 'sign-up',
+                                );
                                 setError(undefined);
                                 setMessage(undefined);
                             }}

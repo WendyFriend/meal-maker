@@ -295,13 +295,17 @@ button.ingredient-name-button {
         transform 150ms ease;
 }
 
-button.ingredient-name-button:hover {
-    color: var(--accent);
-}
+/* Mouse only: on touch screens :hover sticks to the last tapped name, which
+   stayed coral under its open nutrition sheet. */
+@media (hover: hover) and (pointer: fine) {
+    button.ingredient-name-button:hover {
+        color: var(--accent);
+    }
 
-button.ingredient-name-button:hover .ingredient-name-chevron {
-    border-color: var(--accent);
-    transform: translateX(2px) rotate(45deg);
+    button.ingredient-name-button:hover .ingredient-name-chevron {
+        border-color: var(--accent);
+        transform: translateX(2px) rotate(45deg);
+    }
 }
 
 button.ingredient-name-button:focus-visible {
@@ -687,7 +691,7 @@ button.ingredient-name-button:focus-visible {
 }
 
 .meal-bookmark-button[aria-pressed='true'] {
-    color: #f6b900;
+    color: var(--star);
 }
 
 .meal-bookmark-button[aria-pressed='true'] svg {

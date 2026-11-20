@@ -23,7 +23,7 @@ const choices: {
 ];
 
 /**
- * Bottom sheet behind My Plan's "Add meal": pick a saved recipe (its
+ * Bottom sheet behind My Diary's "Add meal": pick a saved recipe (its
  * ingredients are copied into the plan) or enter a meal by hand.
  */
 export default function AddMealSheet({

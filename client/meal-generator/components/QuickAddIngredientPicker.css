@@ -358,13 +358,6 @@
             border-color: transparent;
             background: transparent;
         }
-
-        .quick-add-sheet
-            .quick-add-picker-options-rows
-            .quick-add-option:hover {
-            border-color: var(--border-hairline);
-            background: color-mix(in srgb, var(--soft-sage) 30%, transparent);
-        }
     }
 }
 
@@ -379,61 +372,6 @@
         display: grid;
         align-content: start;
         gap: 10px;
-    }
-
-    /* iOS-style inset grouped list: one rounded group with hairline rows. */
-    .quick-add-sheet .quick-add-picker-options-rows {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0;
-        padding: 0;
-        margin: 0;
-        border: 1px solid var(--border-hairline);
-        border-radius: var(--radius-lg);
-        background: var(--surface-tint);
-    }
-
-    .quick-add-sheet .quick-add-picker-options-rows .quick-add-option {
-        display: grid;
-        grid-template-columns: 48px minmax(0, 1fr) 24px;
-        gap: 12px;
-        width: 100%;
-        min-height: 64px;
-        padding: 8px 14px;
-        border: 0;
-        border-bottom: 1px solid var(--border-hairline);
-        border-radius: 0;
-        background: transparent;
-        font-size: 17px;
-        font-weight: 600;
-    }
-
-    .quick-add-sheet
-        .quick-add-picker-options-rows
-        .quick-add-option:last-child {
-        border-bottom: 0;
-    }
-
-    .quick-add-sheet
-        .quick-add-picker-options-rows
-        .quick-add-option[aria-pressed='true'] {
-        background: color-mix(in srgb, var(--soft-sage) 55%, transparent);
-    }
-
-    .quick-add-sheet
-        .quick-add-picker-options-rows
-        .quick-add-option
-        > .meal-ingredient-thumbnail {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-    }
-
-    .quick-add-sheet
-        .quick-add-picker-options-rows
-        .quick-add-option
-        > .quick-add-option-state {
-        width: 22px;
-        height: 22px;
     }
 
     /* Borderless tiles, like the category buttons: photo, label, badge. */

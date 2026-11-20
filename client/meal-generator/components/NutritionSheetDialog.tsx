@@ -14,16 +14,24 @@ export default function NutritionSheetDialog({
     onBack,
     fullHeight,
     saveButtonRef,
+    headerAction,
 }: {
     children: ReactNode;
     onClose: () => void;
     label: string;
-    editor?: { formId: string; saving: boolean };
+    /** Editing: ✕ and ✓ in the header. */
+    editor?: {
+        formId: string;
+        saving: boolean;
+        saveLabel?: string;
+    };
     /** Shows a leading ✕ that returns to the nutrition view. */
     onBack?: () => void;
     /** Opens to full height, e.g. while searching, so it never grows. */
     fullHeight?: boolean;
     saveButtonRef?: Ref<HTMLButtonElement>;
+    /** A trailing action in the top bar when not editing, e.g. a ☆. */
+    headerAction?: ReactNode;
 }) {
     return (
         <SlidingSheet
@@ -53,9 +61,12 @@ export default function NutritionSheetDialog({
                             label={
                                 editor.saving
                                     ? 'Saving changes'
-                                    : 'Save ingredient changes'
+                                    : (editor.saveLabel ??
+                                      'Save ingredient changes')
                             }
-                            title="Save ingredient changes"
+                            title={
+                                editor.saveLabel ?? 'Save ingredient changes'
+                            }
                         />
                     </>
                 ) : onBack ? (
@@ -65,7 +76,9 @@ export default function NutritionSheetDialog({
                         label="Back to nutrition"
                         onClick={onBack}
                     />
-                ) : undefined
+                ) : (
+                    headerAction
+                )
             }
         >
             {children}

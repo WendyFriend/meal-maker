@@ -21,10 +21,12 @@ export function needsMicronutrients(ingredient: MicronutrientValues): boolean {
 }
 
 // Food reference values can be reused across recipes and app restarts.
-// v1 keyed entries by meal generator; it is dropped once.
-const CACHE_KEY = 'meal-maker:ingredient-nutrition:v2';
+// v1 keyed entries by meal generator and v2 predates choline; both are
+// dropped once.
+const CACHE_KEY = 'meal-maker:ingredient-nutrition:v3';
 try {
     window.localStorage.removeItem('meal-maker:ingredient-nutrition:v1');
+    window.localStorage.removeItem('meal-maker:ingredient-nutrition:v2');
 } catch {
     // Storage can be unavailable; there is then nothing to clean up.
 }

@@ -22,9 +22,8 @@ type UndoableDeleteOptions = {
 
 /**
  * Optimistic list deletion: rows collapse at once (no server wait) and stay
- * hidden while the server catches up.
- * - `remove` shows an Undo toast and deletes only when it expires.
- * - `removeNow` is for already-confirmed deletes such as bulk delete.
+ * hidden while the server catches up. `remove` shows an Undo toast and
+ * deletes only when it expires (or the page is left).
  */
 export function useUndoableDelete<T extends HTMLElement = HTMLElement>({
     commit,
@@ -94,24 +93,12 @@ export function useUndoableDelete<T extends HTMLElement = HTMLElement>({
         unhide(ids);
     }
 
-    async function removeNow<R>(ids: string[], run: () => Promise<R>) {
-        finish();
-        ids.forEach((id) => undone.current.delete(id));
-        await hide(ids);
-        try {
-            return await run();
-        } finally {
-            unhide(ids);
-        }
-    }
-
     return {
         rowRef,
         exitClass,
         exitStyle,
         hiddenIds,
         remove,
-        removeNow,
         finish,
         undoToast,
     };

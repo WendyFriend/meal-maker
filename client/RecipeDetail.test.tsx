@@ -216,17 +216,17 @@ it('persists nutrients found during a save once after the recipe update', async 
     ]);
 });
 
-it('shows the My Plan add action without a saved star', () => {
+it('shows the My Diary add action without a saved star', () => {
     setup();
     expect(
-        screen.getByRole('button', { name: 'Add to My Plan' }),
+        screen.getByRole('button', { name: 'Add to My Diary' }),
     ).toBeInTheDocument();
     expect(
         screen.queryByRole('img', { name: 'Saved to My Meals' }),
     ).not.toBeInTheDocument();
 });
 
-it('keeps the My Plan action while editing ingredients', async () => {
+it('keeps the My Diary action while editing ingredients', async () => {
     const user = userEvent.setup();
     render(
         <RecipeDetail
@@ -249,7 +249,7 @@ it('keeps the My Plan action while editing ingredients', async () => {
         }),
     ).toBeDisabled();
     expect(
-        screen.getByRole('button', { name: 'Add to My Plan' }),
+        screen.getByRole('button', { name: 'Add to My Diary' }),
     ).toBeInTheDocument();
 });
 
@@ -266,7 +266,7 @@ it('edits the recipe name in place and saves only after confirmation', async () 
         screen.queryByRole('img', { name: 'Saved to My Meals' }),
     ).not.toBeInTheDocument();
     expect(
-        screen.getByRole('button', { name: 'Add to My Plan' }),
+        screen.getByRole('button', { name: 'Add to My Diary' }),
     ).toBeInTheDocument();
     const name = screen.getByRole('textbox', { name: 'Meal name' });
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
@@ -1046,7 +1046,7 @@ it('drops the Undo toast once ingredient changes are saved', async () => {
     );
 });
 
-it('shows a My Plan meal with a star that confirms saving to My Recipes at once', async () => {
+it('shows a My Diary meal with a star that confirms saving to My Recipes at once', async () => {
     let finishSave!: () => void;
     const saveRecipe = vi.spyOn(recipeService, 'saveRecipe').mockImplementation(
         (value) =>
@@ -1066,7 +1066,7 @@ it('shows a My Plan meal with a star that confirms saving to My Recipes at once'
         />,
     );
     expect(
-        screen.queryByRole('button', { name: /My Plan/ }),
+        screen.queryByRole('button', { name: /My Diary/ }),
     ).not.toBeInTheDocument();
     // Plan meals have no steps; the name and ingredients are editable.
     expect(screen.queryByRole('button', { name: 'Edit steps' })).toBeNull();
@@ -1114,7 +1114,7 @@ it('takes back the saved confirmation when saving to My Recipes fails', async ()
     ).toHaveAttribute('aria-pressed', 'false');
 });
 
-it('saves ingredient weight edits of a My Plan meal through onSave', async () => {
+it('saves ingredient weight edits of a My Diary meal through onSave', async () => {
     const save = vi.fn(async (value: Recipe) => value);
     const user = userEvent.setup();
     render(
@@ -1150,7 +1150,7 @@ it('edits a long name in a full-width field confirmed from the header', async ()
     ).not.toBeInTheDocument();
     // The + stays, so the field keeps the heading's width.
     expect(
-        screen.getByRole('button', { name: 'Add to My Plan' }),
+        screen.getByRole('button', { name: 'Add to My Diary' }),
     ).toBeInTheDocument();
     const name = screen.getByRole('textbox', { name: 'Meal name' });
     expect(name.tagName).toBe('TEXTAREA');
@@ -1185,7 +1185,7 @@ it('edits a long name in a full-width field confirmed from the header', async ()
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
 });
 
-it('renames a My Plan meal from the same header controls', async () => {
+it('renames a My Diary meal from the same header controls', async () => {
     const save = vi.fn(async (value: Recipe) => value);
     const user = userEvent.setup();
     render(

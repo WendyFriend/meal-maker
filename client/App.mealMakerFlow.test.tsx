@@ -86,7 +86,9 @@ it('uses saved nutrition from Favourites, keeps nutrition edits and search/manua
     );
 
     await user.click(
-        screen.getByRole('button', { name: 'Edit nutrition for Spinach' }),
+        screen.getByRole('button', {
+            name: 'Edit nutrition for Spinach, saved',
+        }),
     );
     const nutrition = screen.getByRole('dialog', {
         name: 'Ingredient nutrition',
@@ -134,7 +136,9 @@ it('uses saved nutrition from Favourites, keeps nutrition edits and search/manua
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(document.body.style.overflow).toBe('');
         expect(
-            screen.getByRole('button', { name: 'Edit nutrition for Spinach' }),
+            screen.getByRole('button', {
+                name: 'Edit nutrition for Spinach, saved',
+            }),
         ).toHaveFocus();
     });
 
@@ -403,4 +407,46 @@ it('reuses looked-up nutrition for an unknown ingredient during generation', asy
         ],
         requirements: { preferences: [] },
     });
+});
+
+it('renames a chip from its sheet title, renaming a saved one too', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Favourites' }));
+    await user.click(
+        await within(
+            screen.getByRole('dialog', { name: 'Add ingredient' }),
+        ).findByRole('button', { name: 'Tofu' }),
+    );
+    await user.click(
+        screen.getByRole('button', { name: 'Close ingredient picker' }),
+    );
+    await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    await user.click(
+        screen.getByRole('button', { name: 'Edit nutrition for Tofu, saved' }),
+    );
+    const sheet = screen.getByRole('dialog', { name: 'Ingredient nutrition' });
+    await user.click(within(sheet).getByRole('button', { name: /^Rename / }));
+    const name = within(sheet).getByRole('textbox', {
+        name: 'Ingredient name',
+    });
+    await user.clear(name);
+    await user.type(name, 'Silken tofu{Enter}');
+
+    // The chip takes the new name and keeps the sheet open.
+    expect(
+        await screen.findByRole('button', {
+            name: 'Edit nutrition for Silken tofu, saved',
+        }),
+    ).toBeInTheDocument();
+    expect(sheet).toBeInTheDocument();
+    // Tofu was saved, so it is renamed in My Ingredients too.
+    await waitFor(() =>
+        expect(updateUserIngredient).toHaveBeenCalledWith(
+            'tofu',
+            expect.objectContaining({ name: 'Silken tofu' }),
+        ),
+    );
 });

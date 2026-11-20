@@ -23,7 +23,8 @@ import {
     commonSearchIngredients,
     findCommonQuickAddIngredient,
 } from './meal-generator/components/commonQuickAddIngredients';
-import { normalizeIngredientName } from './utils/Ingredient';
+import { normalizeIngredientName, rankByCloseness } from './utils/Ingredient';
+import SavedMark from './components/SavedMark';
 import { totalFiber, totalNutrition } from './utils/nutrition';
 import NutritionOverview from './meal-generator/components/NutritionOverview';
 import { DetailTabPanel, DetailTabs } from './components/DetailTabs';
@@ -174,6 +175,8 @@ type RecipeSearchOption = {
     name: string;
     label: string;
     source?: IngredientInfo;
+    /** In My Ingredients: shows the ★. */
+    saved?: boolean;
 };
 
 export function RecipeIngredientNameInput({
@@ -187,6 +190,7 @@ export function RecipeIngredientNameInput({
     onChange,
     onCommit,
     onOpenSheet,
+    enterKeyHint = 'done',
 }: {
     value: string;
     index: number;
@@ -196,8 +200,14 @@ export function RecipeIngredientNameInput({
     lookingUp?: boolean;
     lookupFailed?: boolean;
     onChange: (value: string) => void;
-    onCommit: (value: string, source?: IngredientInfo) => void;
+    /** `submitted` is true for Enter or a picked suggestion, not blur. */
+    onCommit: (
+        value: string,
+        source?: IngredientInfo,
+        submitted?: boolean,
+    ) => void;
     onOpenSheet: () => void;
+    enterKeyHint?: 'done' | 'next';
 }) {
     const listboxId = useId();
     const [open, setOpen] = useState(false);
@@ -223,15 +233,11 @@ export function RecipeIngredientNameInput({
         })
         .slice(0, 6);
     const remoteSuggestions = foods
+        // Nutrition Lab already matched and ranked these for what was
+        // typed (word order, plurals, typos), so only drop duplicates.
         .filter((food) => {
             const key = normalizeIngredientName(food.name);
-            if (
-                !normalizeIngredientName(
-                    `${food.name} ${food.description}`,
-                ).includes(query) ||
-                seen.has(key)
-            )
-                return false;
+            if (seen.has(key)) return false;
             seen.add(key);
             return true;
         })
@@ -248,18 +254,26 @@ export function RecipeIngredientNameInput({
             : [];
     const options: RecipeSearchOption[] = [
         ...manualOption,
-        ...suggestions.map((item) => ({
-            key: `local:${normalizeIngredientName(item.name)}`,
-            name: item.name,
-            label: item.name,
-            source: item as IngredientInfo,
-        })),
-        ...remoteSuggestions.map((food) => ({
-            key: `food:${food.fdcId}`,
-            name: food.name,
-            label: food.name,
-            source: ingredientDraftFromFoodSearch(food),
-        })),
+        // Local and Nutrition Lab results together, closest first.
+        ...rankByCloseness<RecipeSearchOption>(
+            [
+                ...suggestions.map((item) => ({
+                    key: `local:${normalizeIngredientName(item.name)}`,
+                    name: item.name,
+                    label: item.name,
+                    saved: 'ingredientId' in item,
+                    source: item as IngredientInfo,
+                })),
+                ...remoteSuggestions.map((food) => ({
+                    key: `food:${food.fdcId}`,
+                    name: food.name,
+                    label: food.name,
+                    source: ingredientDraftFromFoodSearch(food),
+                })),
+            ],
+            value,
+            ({ name }) => name,
+        ),
     ];
     const visible = open && query.length > 0 && options.length > 0;
     const activeIndex =
@@ -272,7 +286,7 @@ export function RecipeIngredientNameInput({
                 );
 
     function choose(name: string, source?: IngredientInfo) {
-        onCommit(name, source);
+        onCommit(name, source, true);
         setOpen(false);
         setHighlightedIndex(-1);
     }
@@ -313,7 +327,7 @@ export function RecipeIngredientNameInput({
                         : undefined
                 }
                 placeholder="Ingredient name"
-                enterKeyHint="done"
+                enterKeyHint={enterKeyHint}
                 value={value}
                 onChange={(event) => {
                     onChange(event.target.value);
@@ -367,7 +381,7 @@ export function RecipeIngredientNameInput({
                             aria-label={
                                 option.key === 'manual'
                                     ? `Enter ${option.name} manually`
-                                    : option.label
+                                    : `${option.label}${option.saved ? ', saved' : ''}`
                             }
                             aria-selected={activeIndex === optionIndex}
                             className={`ingredient-suggestion create-recipe-suggestion${
@@ -379,6 +393,7 @@ export function RecipeIngredientNameInput({
                             onClick={() => choose(option.name, option.source)}
                         >
                             <span>{option.label}</span>
+                            {option.saved && <SavedMark trailing />}
                             {option.key === 'manual' && (
                                 <span
                                     className="create-recipe-enter-hint"
@@ -419,7 +434,6 @@ const recipeTabs = [
     { id: 'steps', label: 'Steps' },
 ] as const;
 // Plan meals keep ingredients only, so Add Meal has no Steps.
-const mealTabs = recipeTabs.slice(0, 2);
 type CreateTab = (typeof recipeTabs)[number]['id'];
 
 export default function CreateRecipe({
@@ -429,8 +443,6 @@ export default function CreateRecipe({
     editMode = false,
     formId = 'create-recipe-form',
     onCancel,
-    subject = 'recipe',
-    fallbackName,
 }: {
     savedIngredients: UserIngredient[];
     onSave: (recipe: RecipeInput) => Promise<void>;
@@ -438,16 +450,7 @@ export default function CreateRecipe({
     editMode?: boolean;
     formId?: string;
     onCancel?: () => void;
-    /**
-     * "meal" is Add Meal on My Plan: the same form, labelled for a meal,
-     * without Steps (plan meals keep ingredients only).
-     */
-    subject?: 'recipe' | 'meal';
-    /** Makes the name optional; used when it is left blank. */
-    fallbackName?: (ingredients: MealIngredient[]) => string;
 }) {
-    const isMeal = subject === 'meal';
-    const nameLabel = isMeal ? 'Meal name' : 'Recipe name';
     const [name, setName] = useState(initialRecipe?.recipeName ?? '');
     const [rows, setRows] = useState<IngredientRow[]>(() =>
         (initialRecipe?.ingredients ?? []).map((ingredient, id) => ({
@@ -648,8 +651,8 @@ export default function CreateRecipe({
     async function save(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (saving) return;
-        if (!name.trim() && !fallbackName) {
-            setError(`Enter a ${subject} name.`);
+        if (!name.trim()) {
+            setError('Enter a recipe name.');
             return;
         }
         if (!rows.length || ingredients.length !== rows.length) {
@@ -659,19 +662,17 @@ export default function CreateRecipe({
             );
             return;
         }
-        const instructions = isMeal
-            ? []
-            : steps.map((step) => step.trim()).filter(Boolean);
+        const instructions = steps.map((step) => step.trim()).filter(Boolean);
         setSaving(true);
         setError(undefined);
         try {
             await onSave({
-                recipeName: name.trim() || fallbackName?.(ingredients) || '',
+                recipeName: name.trim(),
                 ingredients,
                 instructions,
             });
         } catch {
-            setError(`Could not save your ${subject}. Please try again.`);
+            setError('Could not save your recipe. Please try again.');
             setSaving(false);
         }
     }
@@ -691,23 +692,11 @@ export default function CreateRecipe({
                 <div className="create-recipe-hero">
                     <RecipeImagePlaceholder />
                     <label className="create-recipe-name">
-                        <span>
-                            {nameLabel}
-                            {fallbackName && (
-                                <span className="create-recipe-optional">
-                                    {' '}
-                                    (optional)
-                                </span>
-                            )}
-                        </span>
+                        <span>Recipe name</span>
                         <input
                             type="text"
-                            aria-label={nameLabel}
-                            placeholder={
-                                isMeal
-                                    ? 'e.g. Sunday lentils'
-                                    : 'e.g. My Chickpea Curry'
-                            }
+                            aria-label="Recipe name"
+                            placeholder="e.g. My Chickpea Curry"
                             value={name}
                             onChange={(event) => {
                                 setName(event.target.value);
@@ -747,11 +736,11 @@ export default function CreateRecipe({
 
                 <DetailTabs
                     className="create-recipe-tabs"
-                    tabs={isMeal ? mealTabs : recipeTabs}
+                    tabs={recipeTabs}
                     active={activeTab}
                     onChange={setActiveTab}
                     idPrefix={tabIdPrefix}
-                    ariaLabel={isMeal ? 'Meal details' : 'Recipe details'}
+                    ariaLabel="Recipe details"
                 />
 
                 {error && (
@@ -974,28 +963,26 @@ export default function CreateRecipe({
                     )}
                 </DetailTabPanel>
 
-                {!isMeal && (
-                    <DetailTabPanel
-                        id="steps"
-                        idPrefix={tabIdPrefix}
-                        active={activeTab === 'steps'}
-                        className="create-recipe-steps-panel"
-                    >
-                        <MealInstructions
-                            instructions={steps}
-                            editor={{
-                                editing: true,
-                                canReset: false,
-                                onReset: () => {},
-                                onChange: (value) => {
-                                    setSteps(value.split('\n'));
-                                    setError(undefined);
-                                },
-                                disabled: saving,
-                            }}
-                        />
-                    </DetailTabPanel>
-                )}
+                <DetailTabPanel
+                    id="steps"
+                    idPrefix={tabIdPrefix}
+                    active={activeTab === 'steps'}
+                    className="create-recipe-steps-panel"
+                >
+                    <MealInstructions
+                        instructions={steps}
+                        editor={{
+                            editing: true,
+                            canReset: false,
+                            onReset: () => {},
+                            onChange: (value) => {
+                                setSteps(value.split('\n'));
+                                setError(undefined);
+                            },
+                            disabled: saving,
+                        }}
+                    />
+                </DetailTabPanel>
             </fieldset>
             {sheetRow && (
                 <NutritionDialog

@@ -60,6 +60,14 @@ export const MICRONUTRIENTS = [
         dailyValue: 2.4,
         usda: 418,
     },
+    {
+        // Nutrition Lab reports choline but not iodine.
+        key: 'cholinePer100g',
+        label: 'Choline',
+        unit: 'mg',
+        dailyValue: 550,
+        usda: 421,
+    },
 ] as const;
 
 export type MicronutrientKey = (typeof MICRONUTRIENTS)[number]['key'];
